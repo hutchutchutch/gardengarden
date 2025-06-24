@@ -49,7 +49,7 @@ export const useAIStore = create<AIState>()(
           }));
 
           if (mode === 'teacher') {
-            // In a real app, this would send to teacher via Firebase
+            // In a real app, this would send to teacher via Supabase
             // For now, simulate teacher response
             await new Promise(resolve => setTimeout(resolve, 2000));
             

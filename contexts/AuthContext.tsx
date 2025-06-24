@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, firestore } from '@/config/firebase';
-import { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { supabase, supabaseAuth } from '@/config/supabase';
+import { Session, AuthError } from '@supabase/supabase-js';
 
 export interface AuthContextType {
   user: User | null;
@@ -31,48 +31,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showFAB, setShowFAB] = useState(true);
 
   useEffect(() => {
-    if (!auth) {
-      setIsLoading(false);
-      return;
-    }
-
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser: FirebaseAuthTypes.User | null) => {
-      if (firebaseUser) {
-        try {
-          // For now, create a simple user object from Firebase user
-          // Later we'll add Firestore integration
-          const userData: User = {
-            id: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            name: firebaseUser.displayName || 'User',
-            role: 'student', // Default role for now
-            classId: 'default', // Default class for now
-            createdAt: new Date().toISOString(),
-            lastActiveAt: new Date().toISOString(),
-            streak: 0
-          };
-          setUser(userData);
-          await AsyncStorage.setItem('user', JSON.stringify(userData));
-        } catch (error) {
-          console.error('Error processing user data:', error);
+    // Check if user is already logged in
+    const checkUser = async () => {
+      try {
+        const { data: { session } } = await supabaseAuth.getSession();
+        if (session?.user) {
+          await loadUserData(session);
         }
+      } catch (error) {
+        console.error('Error checking user session:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabaseAuth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        await loadUserData(session);
       } else {
         setUser(null);
         await AsyncStorage.removeItem('user');
       }
-      setIsLoading(false);
     });
 
-    return unsubscribe;
+    return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    if (!auth) {
-      throw new Error('Firebase auth not initialized');
-    }
-    
+  const loadUserData = async (session: Session) => {
     try {
-      await auth.signInWithEmailAndPassword(email, password);
+      // Check if user profile exists in the database
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // Profile doesn't exist, create a default one
+        const userData: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+          role: 'student',
+          classId: 'default',
+          createdAt: new Date().toISOString(),
+          lastActiveAt: new Date().toISOString(),
+          streak: 0
+        };
+
+        // Insert new user profile
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([userData]);
+
+        if (!insertError) {
+          setUser(userData);
+          await AsyncStorage.setItem('user', JSON.stringify(userData));
+        }
+      } else if (profile) {
+        setUser(profile);
+        await AsyncStorage.setItem('user', JSON.stringify(profile));
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabaseAuth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
     } catch (error) {
       console.error('Sign in error:', error);
       throw error;
@@ -86,18 +121,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: 'student' | 'teacher',
     classId: string
   ) => {
-    if (!auth) {
-      throw new Error('Firebase auth not initialized');
-    }
-    
     try {
-      const credential = await auth.createUserWithEmailAndPassword(email, password);
-      
-      // Update the user's display name
-      if (credential.user) {
-        await credential.user.updateProfile({
-          displayName: name
-        });
+      const { data, error } = await supabaseAuth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            role,
+            classId
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      // Create user profile in database
+      if (data.user) {
+        const userData: User = {
+          id: data.user.id,
+          email: data.user.email || '',
+          name,
+          role,
+          classId,
+          createdAt: new Date().toISOString(),
+          lastActiveAt: new Date().toISOString(),
+          streak: 0
+        };
+
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([userData]);
+
+        if (profileError) {
+          console.error('Error creating user profile:', profileError);
+          // Consider deleting the auth user if profile creation fails
+          await supabaseAuth.signOut();
+          throw profileError;
+        }
       }
     } catch (error) {
       console.error('Sign up error:', error);
@@ -106,12 +167,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    if (!auth) {
-      throw new Error('Firebase auth not initialized');
-    }
-    
     try {
-      await auth.signOut();
+      const { error } = await supabaseAuth.signOut();
+      if (error) throw error;
+      
       setUser(null);
       await AsyncStorage.removeItem('user');
     } catch (error) {
@@ -122,9 +181,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUserRole = async (role: 'student' | 'teacher') => {
     if (user) {
-      const updatedUser = { ...user, role };
-      setUser(updatedUser);
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      try {
+        // Update in database
+        const { error } = await supabase
+          .from('users')
+          .update({ role })
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        // Update local state
+        const updatedUser = { ...user, role };
+        setUser(updatedUser);
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      } catch (error) {
+        console.error('Error updating user role:', error);
+        throw error;
+      }
     }
   };
 

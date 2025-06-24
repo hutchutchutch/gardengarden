@@ -56,7 +56,7 @@ export default function TeacherIndex() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'not-submitted' | 'low-health'>('all');
   
-  // Mock data - In real app, fetch from Firebase
+        // Mock data - In real app, fetch from Supabase
   const [classStats, setClassStats] = useState<ClassStats>({
     totalStudents: 28,
     submissionsToday: 24,
@@ -91,7 +91,7 @@ export default function TeacherIndex() {
     try {
       // FR-016: Calculate submission percentage
       // FR-017: Update within 5 seconds
-      // In real app, fetch from Firebase
+      // In real app, fetch from Supabase
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
       console.error('Failed to load dashboard:', error);
