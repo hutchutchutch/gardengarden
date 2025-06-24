@@ -1,0 +1,352 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Switch } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import colors from '@/constants/colors';
+import { useAIStore } from '@/store/ai-store';
+import * as ImagePicker from 'expo-image-picker';
+import { AIPlantAnalysis } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface AIChatProps {
+  analysis?: AIPlantAnalysis | null;
+  photoUri?: string;
+  plantId?: string;
+  initialMode?: 'ai' | 'teacher';
+}
+
+export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai' }: AIChatProps) {
+  const [message, setMessage] = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(photoUri || null);
+  const [mode, setMode] = useState<'ai' | 'teacher'>(initialMode);
+  const { messages, isLoading, sendMessage, fetchMessages } = useAIStore();
+  const { user } = useAuth();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const isTeacher = user?.role === 'teacher';
+
+  useEffect(() => {
+    fetchMessages();
+    
+    // If we have analysis results, show them
+    if (analysis && mode === 'ai') {
+      const analysisMessage = `🌱 Plant Analysis Complete!\n\nHealth Score: ${analysis.healthScore}/100\nGrowth Stage: ${analysis.growthStage}\n\n${
+        analysis.issues.length > 0 
+          ? `Issues Found:\n${analysis.issues.map(i => `• ${i}`).join('\n')}\n\n` 
+          : 'No issues detected! Your plant looks healthy.\n\n'
+      }Recommendations:\n${analysis.recommendations.map(r => `• ${r}`).join('\n')}`;
+      
+      sendMessage(analysisMessage, photoUri);
+    }
+  }, [fetchMessages]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollToEnd({ animated: true });
+    }
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (message.trim() === '' && !imageUri) return;
+    
+    // In teacher mode, send to teacher; in AI mode, send to AI
+    await sendMessage(message, imageUri || undefined, mode);
+    setMessage('');
+    setImageUri(null);
+  };
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const toggleMode = () => {
+    setMode(mode === 'ai' ? 'teacher' : 'ai');
+  };
+
+  // Filter messages based on mode
+  const filteredMessages = messages.filter(msg => 
+    mode === 'ai' ? msg.recipientId === 'ai-assistant' : msg.recipientId !== 'ai-assistant'
+  );
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={100}
+    >
+      {/* Mode Toggle - Only show for students */}
+      {!isTeacher && (
+        <View style={styles.modeToggleContainer}>
+          <Text style={[styles.modeLabel, mode === 'ai' && styles.modeLabelActive]}>
+            AI Assistant
+          </Text>
+          <Switch
+            value={mode === 'teacher'}
+            onValueChange={toggleMode}
+            trackColor={{ false: colors.secondary, true: colors.primaryDark }}
+            thumbColor={colors.white}
+          />
+          <Text style={[styles.modeLabel, mode === 'teacher' && styles.modeLabelActive]}>
+            Teacher
+          </Text>
+        </View>
+      )}
+
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.messagesContainer}
+        contentContainerStyle={styles.messagesContent}
+      >
+        {filteredMessages.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              {mode === 'ai' 
+                ? "Ask your garden mentor any questions about plant care, identification, or troubleshooting."
+                : "Send a message to your teacher for personalized help and guidance."
+              }
+            </Text>
+          </View>
+        ) : (
+          filteredMessages.map((msg) => (
+            <View
+              key={msg.id}
+              style={[
+                styles.messageBubble,
+                msg.role === 'user' ? styles.userBubble : 
+                mode === 'ai' ? styles.aiBubble : styles.teacherBubble,
+              ]}
+            >
+              <Text style={[
+                styles.messageText,
+                msg.role === 'user' && styles.userMessageText
+              ]}>
+                {msg.content}
+              </Text>
+              {/* Show sources for AI messages */}
+              {mode === 'ai' && msg.sources && msg.sources.length > 0 && (
+                <View style={styles.sourcesContainer}>
+                  <Text style={styles.sourcesTitle}>Sources:</Text>
+                  {msg.sources.map((source, index) => (
+                    <Text key={index} style={styles.sourceText}>• {source}</Text>
+                  ))}
+                </View>
+              )}
+              <Text style={[
+                styles.timestamp,
+                msg.role === 'user' && styles.userTimestamp
+              ]}>
+                {formatTime(msg.timestamp)}
+              </Text>
+            </View>
+          ))
+        )}
+        {isLoading && (
+          <View style={[styles.messageBubble, mode === 'ai' ? styles.aiBubble : styles.teacherBubble]}>
+            <Text style={styles.messageText}>
+              {mode === 'ai' ? 'Thinking...' : 'Teacher is typing...'}
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {imageUri && (
+        <View style={styles.imagePreviewContainer}>
+          <Pressable style={styles.removeImageButton} onPress={() => setImageUri(null)}>
+            <Text style={styles.removeImageText}>×</Text>
+          </Pressable>
+          <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+        </View>
+      )}
+
+      <View style={styles.inputContainer}>
+        <Pressable style={styles.imageButton} onPress={handlePickImage}>
+          <Feather name="image" size={24} color={colors.primary} />
+        </Pressable>
+        <TextInput
+          style={styles.input}
+          placeholder={mode === 'ai' ? "Ask about your plants..." : "Message your teacher..."}
+          value={message}
+          onChangeText={setMessage}
+          multiline
+        />
+        <Pressable
+          style={[styles.sendButton, (!message.trim() && !imageUri) && styles.sendButtonDisabled]}
+          onPress={handleSend}
+          disabled={!message.trim() && !imageUri}
+        >
+          <Feather name="send" size={20} color={colors.white} />
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundLight,
+  },
+  modeToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.grayLight,
+  },
+  modeLabel: {
+    fontSize: 16,
+    color: colors.textLight,
+    marginHorizontal: 12,
+  },
+  modeLabelActive: {
+    color: colors.text,
+    fontWeight: '600',
+  },
+  messagesContainer: {
+    flex: 1,
+  },
+  messagesContent: {
+    padding: 16,
+  },
+  messageBubble: {
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 8,
+    maxWidth: '80%',
+  },
+  userBubble: {
+    backgroundColor: colors.primary,
+    alignSelf: 'flex-end',
+    borderBottomRightRadius: 4,
+  },
+  aiBubble: {
+    backgroundColor: colors.white,
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 4,
+  },
+  teacherBubble: {
+    backgroundColor: colors.primaryLight,
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  userMessageText: {
+    color: colors.white,
+  },
+  timestamp: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginTop: 4,
+    alignSelf: 'flex-end',
+  },
+  userTimestamp: {
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  sourcesContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.grayLight,
+  },
+  sourcesTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textLight,
+    marginBottom: 4,
+  },
+  sourceText: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginBottom: 2,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 12,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.grayLight,
+    alignItems: 'center',
+  },
+  imageButton: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    maxHeight: 100,
+  },
+  sendButton: {
+    backgroundColor: colors.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  sendButtonDisabled: {
+    backgroundColor: colors.gray,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: colors.textLight,
+    fontSize: 16,
+  },
+  imagePreviewContainer: {
+    padding: 8,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.grayLight,
+  },
+  imagePreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    zIndex: 1,
+    backgroundColor: colors.error,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeImageText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+});
+
+// Fix for TypeScript error with Image component
+import { Image } from 'react-native';

@@ -1,13 +1,20 @@
-export const colors = {
-  primary: "#4CAF50", // Garden green
-  secondary: "#81C784", // Light green
-  accent: "#3F51B5", // Indigo blue
-  background: "#F9FAFB",
-  card: "#FFFFFF",
-  text: "#1F2937",
-  textSecondary: "#6B7280",
-  border: "#E5E7EB",
-  success: "#10B981",
-  error: "#EF4444",
-  warning: "#F59E0B",
+export default {
+  primary: '#4CAF50',
+  primaryLight: '#A5D6A7',
+  primaryDark: '#2E7D32',
+  secondary: '#81D4FA',
+  secondaryLight: '#B3E5FC',
+  secondaryDark: '#4FC3F7',
+  text: '#263238',
+  textLight: '#607D8B',
+  background: '#FFFFFF',
+  backgroundLight: '#F5F7FA',
+  success: '#66BB6A',
+  warning: '#FFA726',
+  error: '#EF5350',
+  white: '#FFFFFF',
+  black: '#000000',
+  gray: '#9E9E9E',
+  grayLight: '#EEEEEE',
+  transparent: 'transparent',
 };
