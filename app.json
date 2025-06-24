@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -15,14 +15,16 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.gardenguru-student-portal"
+      "bundleIdentifier": "app.rork.gardenguru-student-portal",
+      "jsEngine": "hermes"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.gardenguru-student-portal"
+      "package": "app.rork.gardenguru-student-portal",
+      "jsEngine": "hermes"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
