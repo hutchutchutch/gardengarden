@@ -15,7 +15,6 @@ An AI-powered educational garden monitoring app built with React Native, Expo, a
 2. **Install dependencies:**
    ```bash
    npm install --legacy-peer-deps
-   npx expo install
    ```
 
 3. **Start the development server:**
@@ -30,6 +29,10 @@ An AI-powered educational garden monitoring app built with React Native, Expo, a
 5. **Run on Expo Go (physical device):**
    - Install Expo Go from the App Store
    - Scan the QR code displayed in terminal
+
+## OR follow the link and scan with your phone
+https://gardenguru-student-portal.rork.app/
+
 
 ### Prerequisites
 - Node.js 16+
