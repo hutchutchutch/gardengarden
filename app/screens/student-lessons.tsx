@@ -4,10 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { CheckCircle, Play, Clock, BookOpen } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMode } from '@/contexts/ModeContext';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Text, Button } from 'react-native-paper';
 import { Progress } from '@/components/ui/progress';
+import { GSModeToggle } from '@/components/ui';
 
 // Mock lesson data
 const mockLessons = [
@@ -166,6 +168,7 @@ const LessonCard = ({ lesson, onPress, showProgress = false }: LessonCardProps) 
 export default function StudentLessons() {
   const router = useRouter();
   const { user } = useAuth();
+  const { isTeacherMode } = useMode();
   const [selectedTab, setSelectedTab] = useState<'completed' | 'upcoming'>('upcoming');
   
   // Get active lesson (first lesson with progress > 0 and < 100)
@@ -191,8 +194,19 @@ export default function StudentLessons() {
     }
   };
 
+  useEffect(() => {
+    if (isTeacherMode) {
+      router.replace('/screens/teacher-lessons');
+    }
+  }, [isTeacherMode]);
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* Fixed Mode Toggle at the top */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
+        <GSModeToggle />
+      </View>
+      
       {/* Active Lesson Section - Top Half */}
       <View style={styles.flex}>
         {activeLesson ? (

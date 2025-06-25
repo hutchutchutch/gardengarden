@@ -4,10 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMode } from '@/contexts/ModeContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
+import { GSModeToggle } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 // Mock lesson data with associated documents
@@ -301,8 +303,15 @@ const TeacherLessonCard = ({ lesson, isExpanded, onToggleExpand, onEdit }: Teach
 export default function TeacherLessons() {
   const router = useRouter();
   const { user } = useAuth();
+  const { isTeacherMode } = useMode();
   const [selectedTab, setSelectedTab] = useState<'active' | 'all'>('active');
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
+  
+  useEffect(() => {
+    if (!isTeacherMode) {
+      router.replace('/screens/student-lessons');
+    }
+  }, [isTeacherMode]);
   
   // Calculate stats
   const totalLessons = teacherLessons.length;
@@ -342,6 +351,11 @@ export default function TeacherLessons() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
+      {/* Fixed Mode Toggle at the top */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
+        <GSModeToggle />
+      </View>
+      
       {/* Stats Section */}
       <View className="p-4">
         <Text className="text-2xl font-bold mb-4">Lesson Management</Text>

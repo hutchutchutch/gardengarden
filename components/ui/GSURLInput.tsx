@@ -66,8 +66,8 @@ export const GSURLInput: React.FC<GSURLInputProps> = ({
     }
 
     try {
-      // Basic URL validation
-      const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+      // Basic URL validation - updated to handle query parameters and special characters
+      const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*(\?[;&a-z\d%_.~+=-]*)?(\#[-a-z\d_]*)?$/i;
       
       if (!urlPattern.test(url)) {
         setError(true);

@@ -46,6 +46,9 @@ export { GSTaskChecklist } from './GSTaskChecklist';
 export { GSBadge } from './GSBadge';
 export { SectionHeader } from './SectionHeader';
 
+// Modal Component
+export { default as ModalScreen } from './modal';
+
 // Re-export existing components for backward compatibility
 export { Badge } from './badge';
 export { Button } from './button';
