@@ -140,11 +140,17 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
             style={[styles.healthRing, { backgroundColor: healthColor }]}
           >
             <View style={styles.imageContainer}>
-              <Image
-                source={{ uri: story.photoUrl }}
-                style={styles.storyImage}
-                resizeMode="cover"
-              />
+              {story.photoUrl ? (
+                <Image
+                  source={{ uri: story.photoUrl }}
+                  style={styles.storyImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.storyImage, styles.placeholderImage]}>
+                  <Heart size={24} color="#9CA3AF" />
+                </View>
+              )}
             </View>
           </View>
           
@@ -260,6 +266,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 40,
+  },
+  placeholderImage: {
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   healthBadge: {
     position: 'absolute',

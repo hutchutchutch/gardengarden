@@ -63,11 +63,17 @@ export const GSStoryThumbnail: React.FC<GSStoryThumbnailProps> = ({
           "w-20 h-20 rounded-xl overflow-hidden relative",
           !viewed && "border-2 border-white"
         )}>
-          <Image 
-            source={{ uri: thumbnailUrl }} 
-            className="w-full h-full"
-            resizeMode="cover"
-          />
+          {thumbnailUrl ? (
+            <Image 
+              source={{ uri: thumbnailUrl }} 
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="w-full h-full bg-gray-200 items-center justify-center">
+              <Text className="text-gray-400 text-lg">No Image</Text>
+            </View>
+          )}
           
           {/* Health badge positioned at top-right */}
           <View className="absolute top-1 right-1">

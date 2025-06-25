@@ -48,12 +48,18 @@ export default function PlantCard({ plant }: PlantCardProps) {
 
   return (
     <Pressable style={styles.container} onPress={handlePress}>
-      <Image
-        source={{ uri: plant.images[0]?.uri || 'https://images.unsplash.com/photo-1592841200221-a6898f307baa?q=80&w=2787&auto=format&fit=crop' }}
-        style={styles.image}
-        contentFit="cover"
-        transition={200}
-      />
+      {plant.images[0]?.uri ? (
+        <Image
+          source={{ uri: plant.images[0].uri }}
+          style={styles.image}
+          contentFit="cover"
+          transition={200}
+        />
+      ) : (
+        <View style={[styles.image, styles.placeholderImage]}>
+          <Text style={styles.placeholderText}>No Image</Text>
+        </View>
+      )}
       <View style={styles.infoContainer}>
         <Text style={styles.name}>{plant.name}</Text>
         <Text style={styles.species}>{plant.species}</Text>
@@ -83,6 +89,15 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 150,
+  },
+  placeholderImage: {
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    color: '#9CA3AF',
+    fontSize: 16,
   },
   infoContainer: {
     padding: 12,

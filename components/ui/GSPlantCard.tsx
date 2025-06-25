@@ -6,7 +6,7 @@ import { GSHealthBadge } from './GSHealthBadge';
 import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 interface GSPlantCardProps {
-  imageUrl: string;
+  imageUrl?: string | null;
   studentName: string;
   plantName: string;
   dayNumber: number;
@@ -87,15 +87,23 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
       testID={testID}
     >
       <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: imageUrl }}
-          style={styles.image}
-          onLoadStart={() => setImageLoading(true)}
-          onLoadEnd={() => setImageLoading(false)}
-          testID={`${testID}-image`}
-        />
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.image}
+            onLoadStart={() => setImageLoading(true)}
+            onLoadEnd={() => setImageLoading(false)}
+            testID={`${testID}-image`}
+          />
+        ) : (
+          <View style={[styles.image, styles.placeholderImage, { backgroundColor: theme.colors.surfaceVariant }]}>
+            <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
+              No Image
+            </Text>
+          </View>
+        )}
         
-        {imageLoading && (
+        {imageLoading && imageUrl && (
           <View style={[styles.loadingOverlay, { backgroundColor: theme.colors.surfaceVariant }]}>
             <ProgressBar indeterminate color={theme.colors.primary} />
           </View>
@@ -179,6 +187,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  placeholderImage: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

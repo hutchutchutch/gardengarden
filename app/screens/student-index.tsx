@@ -119,8 +119,8 @@ export default function StudentIndexScreen() {
 
   // Tips
   const tips = [
-    { icon: 'droplets', title: 'Watering Tip', description: 'Check soil moisture before watering' },
-    { icon: 'sun', title: 'Light Check', description: 'Ensure 6-8 hours of indirect sunlight' },
+    { icon: 'water', title: 'Watering Tip', description: 'Check soil moisture before watering' },
+    { icon: 'white-balance-sunny', title: 'Light Check', description: 'Ensure 6-8 hours of indirect sunlight' },
     { icon: 'thermometer', title: 'Temperature', description: 'Keep between 65-75°F for optimal growth' }
   ];
 
@@ -164,7 +164,7 @@ export default function StudentIndexScreen() {
           <View style={{ marginBottom: 24, marginTop: 24 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 16 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Class Gardens</Text>
-              <GSIconButton icon="info" onPress={() => {}} size={20} />
+              <GSIconButton icon="information" onPress={() => {}} size={20} />
             </View>
             
             <PlantStories 
@@ -174,17 +174,17 @@ export default function StudentIndexScreen() {
           </View>
 
           {/* My Plant Progress Section with GSPlantCard */}
-          {activePlant && (
+          {activePlant && plantProgress && (
             <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>My Plant Progress</Text>
               
               <View style={{ marginTop: 12 }}>
                 <GSPlantCard
-                  imageUrl={plantProgress.imageUrl}
+                  imageUrl={plantProgress.imageUrl || null}
                   studentName="My Plant"
                   plantName={activePlant.name}
-                  dayNumber={plantProgress.dayNumber}
-                  healthScore={plantProgress.healthScore}
+                  dayNumber={plantProgress.dayNumber || 1}
+                  healthScore={plantProgress.healthScore || 0}
                   analysis="Thriving! Your plant is showing excellent growth patterns."
                 />
               </View>
@@ -307,7 +307,7 @@ export default function StudentIndexScreen() {
 
         {/* AI Chat FAB - Always visible in Student Mode */}
         <GSFAB
-          icon="message-circle"
+          icon="message-text"
           onPress={() => router.push('/ai-chat')}
           variant="primary"
         />

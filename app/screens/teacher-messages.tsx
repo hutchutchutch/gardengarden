@@ -74,7 +74,7 @@ export default function TeacherMessagesScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <Text style={{ fontSize: 24, fontWeight: '600', color: '#000' }}>Messages</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <GSIconButton icon="search" onPress={() => {}} size={24} />
+            <GSIconButton icon="magnify" onPress={() => {}} size={24} />
             <GSIconButton icon="filter" onPress={() => {}} size={24} />
           </View>
         </View>
@@ -184,14 +184,14 @@ export default function TeacherMessagesScreen() {
                   </View>
 
                   {/* Message Icon */}
-                  <GSIconButton icon="message-circle" onPress={() => {}} size={20} />
+                  <GSIconButton icon="message-text" onPress={() => {}} size={20} />
                 </View>
               </GSCard>
             </Pressable>
           )}
           ListEmptyComponent={() => (
             <View style={{ alignItems: 'center', paddingVertical: 48, paddingHorizontal: 16 }}>
-              <GSIconButton icon="message-circle" onPress={() => {}} size={48} />
+              <GSIconButton icon="message-text" onPress={() => {}} size={48} />
               <Text style={{ fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8, color: '#000' }}>
                 No messages found
               </Text>

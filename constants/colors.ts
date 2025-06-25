@@ -9,12 +9,17 @@ export default {
   textLight: '#607D8B',
   background: '#FFFFFF',
   backgroundLight: '#F5F7FA',
-  success: '#66BB6A',
-  warning: '#FFA726',
-  error: '#EF5350',
+  success: '#2ECC40',
+  warning: '#FF851B',
+  error: '#FF4136',
   white: '#FFFFFF',
   black: '#000000',
   gray: '#9E9E9E',
   grayLight: '#EEEEEE',
   transparent: 'transparent',
+  info: '#0074D9',
+  
+  // Placeholder colors
+  placeholderBg: '#E5E7EB',
+  placeholderText: '#9CA3AF',
 };

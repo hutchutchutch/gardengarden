@@ -36,12 +36,18 @@ export default function StoryCard({ story }: StoryCardProps) {
         <Text style={styles.username}>{story.userName}</Text>
         <Text style={styles.date}>{formatDate(story.date)}</Text>
       </View>
-      <Image
-        source={{ uri: story.imageUri }}
-        style={styles.image}
-        contentFit="cover"
-        transition={200}
-      />
+      {story.imageUri ? (
+        <Image
+          source={{ uri: story.imageUri }}
+          style={styles.image}
+          contentFit="cover"
+          transition={200}
+        />
+      ) : (
+        <View style={[styles.image, styles.placeholderImage]}>
+          <Text style={styles.placeholderText}>No Image</Text>
+        </View>
+      )}
       <View style={styles.contentContainer}>
         <Text style={styles.plantName}>{story.plantName}</Text>
         <Text style={styles.caption}>{story.caption}</Text>
@@ -90,6 +96,15 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 250,
+  },
+  placeholderImage: {
+    backgroundColor: colors.grayLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    color: colors.gray,
+    fontSize: 16,
   },
   contentContainer: {
     padding: 12,

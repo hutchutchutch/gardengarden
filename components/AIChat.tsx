@@ -171,7 +171,13 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
           <Pressable style={styles.removeImageButton} onPress={() => setImageUri(null)}>
             <Text style={styles.removeImageText}>×</Text>
           </Pressable>
+          {imageUri ? (
           <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+        ) : (
+          <View style={[styles.imagePreview, styles.placeholderImage]}>
+            <Text style={styles.placeholderText}>No Image</Text>
+          </View>
+        )}
         </View>
       )}
 
@@ -332,6 +338,15 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 8,
+  },
+  placeholderImage: {
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    color: '#9CA3AF',
+    fontSize: 14,
   },
   removeImageButton: {
     position: 'absolute',
