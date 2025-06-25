@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { FAB, Portal } from 'react-native-paper';
 import { Animated, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../config/theme';
 import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
@@ -11,12 +12,24 @@ export interface FABAction {
   testID?: string;
 }
 
+export type { FABVariant, FABSize, FABPosition };
+
+type FABVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
+type FABSize = 'small' | 'medium' | 'large';
+type FABPosition = 'bottom-right' | 'bottom-left' | 'bottom-center';
+
 interface GSFABProps {
   icon: string;
   onPress?: () => void;
   actions?: FABAction[];
   visible?: boolean;
   isLoading?: boolean;
+  variant?: FABVariant;
+  size?: FABSize;
+  position?: FABPosition;
+  label?: string;
+  elevation?: number;
+  offsetBottom?: number; // Additional offset from bottom (default: 24px above tab bar)
   testID?: string;
 }
 
@@ -26,19 +39,96 @@ export const GSFAB: React.FC<GSFABProps> = ({
   actions = [],
   visible = true,
   isLoading = false,
+  variant = 'primary',
+  size = 'medium',
+  position = 'bottom-right',
+  label,
+  elevation = 6,
+  offsetBottom,
   testID = 'gs-fab',
 }) => {
   const theme = useAppTheme();
+  const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const animation = useRef(new Animated.Value(0)).current;
 
+  // Get variant-specific colors
+  const getVariantColors = () => {
+    switch (variant) {
+      case 'primary':
+        return {
+          backgroundColor: theme.colors.primary,
+          iconColor: theme.colors.onPrimary,
+          rippleColor: 'rgba(255, 255, 255, 0.32)',
+        };
+      case 'secondary':
+        return {
+          backgroundColor: theme.colors.secondary,
+          iconColor: theme.colors.onSecondary,
+          rippleColor: 'rgba(255, 255, 255, 0.32)',
+        };
+      case 'success':
+        return {
+          backgroundColor: theme.colors.excellent,
+          iconColor: '#FFFFFF',
+          rippleColor: 'rgba(255, 255, 255, 0.32)',
+        };
+      case 'warning':
+        return {
+          backgroundColor: '#FF9500',
+          iconColor: '#FFFFFF',
+          rippleColor: 'rgba(255, 255, 255, 0.32)',
+        };
+      case 'danger':
+        return {
+          backgroundColor: theme.colors.error,
+          iconColor: theme.colors.onError,
+          rippleColor: 'rgba(255, 255, 255, 0.32)',
+        };
+    }
+  };
+
+  // Get size-specific dimensions
+  const getSizeStyles = () => {
+    switch (size) {
+      case 'small':
+        return { width: 40, height: 40, borderRadius: 20 };
+      case 'medium':
+        return { width: 56, height: 56, borderRadius: 28 };
+      case 'large':
+        return { width: 72, height: 72, borderRadius: 36 };
+    }
+  };
+
+  // Get position-specific styles with dynamic bottom positioning
+  const getPositionStyles = () => {
+          // Calculate bottom offset: 16px above bottom navigation (56px) + safe area + custom offset
+      const tabBarHeight = 56;
+      const defaultOffset = 16;
+      const totalBottomOffset = tabBarHeight + defaultOffset + insets.bottom + (offsetBottom || 0);
+    
+    const base = { position: 'absolute' as const, margin: 16 };
+    switch (position) {
+      case 'bottom-right':
+        return { ...base, right: 0, bottom: totalBottomOffset };
+      case 'bottom-left':
+        return { ...base, left: 0, bottom: totalBottomOffset };
+      case 'bottom-center':
+        return { ...base, alignSelf: 'center' as const, bottom: totalBottomOffset };
+    }
+  };
+
+  const variantColors = getVariantColors();
+  const sizeStyles = getSizeStyles();
+  const positionStyles = getPositionStyles();
+
   if (isLoading) {
     return (
-      <View style={styles.fab}>
+      <View style={[positionStyles, sizeStyles]}>
         <ShimmerPlaceholder 
-          width={56} 
-          height={56} 
-          borderRadius={28}
+          width={sizeStyles.width} 
+          height={sizeStyles.height} 
+          borderRadius={sizeStyles.borderRadius}
         />
       </View>
     );
@@ -81,11 +171,17 @@ export const GSFAB: React.FC<GSFABProps> = ({
     return (
       <FAB
         icon={icon}
+        label={label}
         style={[
-          styles.fab,
-          { backgroundColor: theme.colors.primary },
+          positionStyles,
+          sizeStyles,
+          { 
+            backgroundColor: variantColors.backgroundColor,
+            elevation: elevation,
+          },
         ]}
-        color={theme.colors.onPrimary}
+        color={variantColors.iconColor}
+        rippleColor={variantColors.rippleColor}
         onPress={onPress}
         visible={visible}
         testID={testID}
@@ -107,14 +203,17 @@ export const GSFAB: React.FC<GSFABProps> = ({
         onPress={handleMainPress}
         visible={visible}
         fabStyle={[
-          styles.fab,
+          positionStyles,
+          sizeStyles,
           { 
             backgroundColor: open 
               ? theme.colors.secondaryContainer 
-              : theme.colors.primary,
+              : variantColors.backgroundColor,
+            elevation: elevation,
           },
         ]}
-        color={open ? theme.colors.onSecondaryContainer : theme.colors.onPrimary}
+        label={label}
+        color={open ? theme.colors.onSecondaryContainer : variantColors.iconColor}
         backdropColor="rgba(0, 0, 0, 0.5)"
         testID={testID}
       />
@@ -122,11 +221,4 @@ export const GSFAB: React.FC<GSFABProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-  },
-}); 
+// No longer need static styles since everything is dynamic now 

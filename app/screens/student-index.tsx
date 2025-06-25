@@ -4,10 +4,9 @@ import { useRouter } from 'expo-router';
 import { usePlantStore } from '@/store/plant-store';
 import { useTaskStore } from '@/store/task-store';
 import { useMode } from '@/contexts/ModeContext';
-import { cn } from '@/lib/utils';
+
 import {
   GSModeToggle,
-  GSHeader,
   GSIconButton,
   GSStoryThumbnail,
   GSHealthBadge,
@@ -19,7 +18,8 @@ import {
   GSTaskChecklist,
   GSProgressIndicator,
   GSPlantCard,
-  SectionHeader,
+  GSCard,
+  GSFAB,
   Text
 } from '@/components/ui';
 
@@ -136,10 +136,11 @@ export default function StudentIndexScreen() {
           
 
           {/* Plant Stories Section */}
-          <View className="mb-6 mt-6 px-4">
-            <SectionHeader title="Class Gardens">
+          <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Class Gardens</Text>
               <GSIconButton icon="info" onPress={() => {}} size={20} />
-            </SectionHeader>
+            </View>
             
             <ScrollView 
               horizontal 
@@ -149,20 +150,30 @@ export default function StudentIndexScreen() {
             >
               {/* Add Story Card */}
               {activePlant && (
-                <View className="items-center mr-3">
+                <View style={{ alignItems: 'center', marginRight: 12 }}>
                   <Pressable 
                     onPress={() => router.push('/(tabs)/camera')}
-                    className="w-20 h-20 bg-primary/10 rounded-2xl items-center justify-center border-2 border-dashed border-primary"
+                    style={{ 
+                      width: 80, 
+                      height: 80, 
+                      backgroundColor: 'rgba(34, 197, 94, 0.1)', 
+                      borderRadius: 16, 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      borderWidth: 2, 
+                      borderStyle: 'dashed', 
+                      borderColor: '#22c55e' 
+                    }}
                   >
                     <GSIconButton icon="camera" onPress={() => router.push('/(tabs)/camera')} size={24} />
                   </Pressable>
-                  <Text className="text-xs mt-2 text-center text-primary font-medium">Share Today</Text>
+                  <Text style={{ fontSize: 12, marginTop: 8, textAlign: 'center', color: '#22c55e', fontWeight: '500' }}>Share Today</Text>
                 </View>
               )}
               
               {/* Story Thumbnails with proper spacing */}
               {classStories.map((story, index) => (
-                <View key={story.id} className={cn("mr-3", index === classStories.length - 1 && "mr-0")}>
+                <View key={story.id} style={{ marginRight: index === classStories.length - 1 ? 0 : 12 }}>
                   <GSStoryThumbnail
                     thumbnailUrl={story.thumbnailUrl}
                     healthScore={story.healthScore}
@@ -178,10 +189,10 @@ export default function StudentIndexScreen() {
 
           {/* My Plant Progress Section with GSPlantCard */}
           {activePlant && (
-            <View className="mb-6 mt-6 px-4">
-              <SectionHeader title="My Plant Progress" />
+            <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>My Plant Progress</Text>
               
-              <View className="mt-3">
+              <View style={{ marginTop: 12 }}>
                 <GSPlantCard
                   imageUrl={plantProgress.imageUrl}
                   studentName="My Plant"
@@ -193,13 +204,8 @@ export default function StudentIndexScreen() {
               </View>
 
               {/* Horizontal scrollable stats */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4">
-                <View className="flex-row gap-3">
-                  <GSStatCard 
-                    label="Height" 
-                    value={`${plantProgress.height}"`} 
-                    icon="ruler" 
-                  />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }}>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
                   <GSStatCard 
                     label="Stage" 
                     value={plantProgress.currentStage} 
@@ -219,7 +225,7 @@ export default function StudentIndexScreen() {
               </ScrollView>
 
               {/* Today's Photo CTA */}
-              <View className="mt-4">
+              <View style={{ marginTop: 16 }}>
                 <GSButton 
                   variant="secondary" 
                   icon="camera" 
@@ -233,10 +239,10 @@ export default function StudentIndexScreen() {
           )}
 
           {/* Yesterday's Feedback Section with proper GSGuidanceCard */}
-          <View className="mb-6 mt-6 px-4">
-            <SectionHeader title="Yesterday's Feedback" />
+          <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Yesterday's Feedback</Text>
             
-            <View className="mt-3">
+            <View style={{ marginTop: 12 }}>
               <GSGuidanceCard
                 emoji="📊"
                 title={`Day ${plantProgress.dayNumber - 1} Analysis`}
@@ -245,17 +251,17 @@ export default function StudentIndexScreen() {
             </View>
 
             {/* Additional feedback details */}
-            <View className="bg-card rounded-lg p-4 mt-3 border border-border">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="font-medium text-base">Health Score</Text>
+            <GSCard variant="elevated" padding="medium" margin="none" style={{ marginTop: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={{ fontWeight: '500', fontSize: 16, color: '#000' }}>Health Score</Text>
                 <GSHealthBadge size="small" score={yesterdaysFeedback.score} />
               </View>
 
               {/* Issues */}
               {yesterdaysFeedback.issues.length > 0 && (
-                <View className="mb-3">
-                  <Text className="text-sm font-medium mb-2">Issues Detected:</Text>
-                  <View className="flex-row flex-wrap gap-2">
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8, color: '#000' }}>Issues Detected:</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {yesterdaysFeedback.issues.map((issue, index) => (
                       <GSChip key={index} label={issue} variant="warning" />
                     ))}
@@ -266,25 +272,26 @@ export default function StudentIndexScreen() {
               {/* Sources */}
               <GSCollapsible label="View Sources">
                 {yesterdaysFeedback.sources.map((source, index) => (
-                  <View key={index} className="flex-row items-center gap-2 py-2">
+                  <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 }}>
                     <GSIconButton icon="link-2" onPress={() => {}} size={16} />
-                    <View className="flex-1">
-                      <Text className="text-sm font-medium">{source.title}</Text>
-                      <Text className="text-xs text-muted-foreground">{source.domain}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: '#000' }}>{source.title}</Text>
+                      <Text style={{ fontSize: 12, color: '#666' }}>{source.domain}</Text>
                     </View>
                   </View>
                 ))}
               </GSCollapsible>
-            </View>
+            </GSCard>
           </View>
 
           {/* Today's Tasks Section */}
-          <View className="mb-6 mt-6 px-4">
-            <SectionHeader title="Today's Tasks">
+          <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Today's Tasks</Text>
               <GSProgressIndicator progress={completedTasksPercentage / 100} size="small" />
-            </SectionHeader>
+            </View>
             
-            <View className="mt-3">
+            <View style={{ marginTop: 12 }}>
               <GSTaskChecklist 
                 tasks={todaysTasks}
                 onTaskToggle={handleTaskToggle}
@@ -293,39 +300,32 @@ export default function StudentIndexScreen() {
           </View>
 
           {/* Tips & Reminders Section */}
-          <View className="mb-6 mt-6 px-4">
-            <SectionHeader title="Tips & Reminders" />
+          <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Tips & Reminders</Text>
             
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3">
-              <View className="flex-row gap-3">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
                 {tips.map((tip, index) => (
-                  <View key={index} className="bg-card rounded-lg p-4 min-w-[200px] border border-border">
-                    <View className="flex-row items-center gap-2 mb-2">
+                  <GSCard key={index} variant="elevated" padding="medium" style={{ minWidth: 200 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                       <GSIconButton icon={tip.icon} onPress={() => {}} size={20} />
-                      <Text className="font-medium text-base">{tip.title}</Text>
+                      <Text style={{ fontWeight: '500', fontSize: 16, color: '#000' }}>{tip.title}</Text>
                     </View>
-                    <Text className="text-sm text-muted-foreground">{tip.description}</Text>
-                  </View>
+                    <Text style={{ fontSize: 14, color: '#666' }}>{tip.description}</Text>
+                  </GSCard>
                 ))}
               </View>
             </ScrollView>
           </View>
-
-          {/* Need Help Section */}
-          <View className="mb-6 mt-6 px-4">
-            <SectionHeader title="Need Help?" />
-            <View className="mt-3">
-              <GSButton 
-                variant="primary" 
-                fullWidth 
-                icon="message-circle"
-                onPress={() => router.push('/ai-chat')}
-              >
-                Ask AI Assistant
-              </GSButton>
-            </View>
-          </View>
         </ScrollView>
+
+        {/* AI Chat FAB - Always visible in Student Mode */}
+        <GSFAB
+          icon="message-circle"
+          onPress={() => router.push('/ai-chat')}
+          variant="primary"
+          label="AI Assistant"
+        />
       </View>
     </SafeAreaView>
   );

@@ -2,25 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
-  ScrollView, 
-  Pressable, 
-  TextInput,
+  FlatList,
   RefreshControl,
-  ActivityIndicator,
-  Image
+  Image,
+  Pressable,
+  ScrollView
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { Feather } from '@expo/vector-icons';
-import { Bell, Settings } from 'lucide-react-native';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
-import ModeToggle from '@/components/ui/mode-toggle';
+import { 
+  CheckCircle2, 
+  AlertCircle, 
+  MessageCircle,
+  RefreshCcw,
+  Users,
+  BarChart3,
+  BookOpen,
+  MessageSquare
+} from 'lucide-react-native';
 import { useMode } from '@/contexts/ModeContext';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { format } from 'date-fns';
+import {
+  GSModeToggle,
+  GSProgressIndicator,
+  GSStatCard,
+  GSStudentCard,
+  GSPlantCard,
+  GSHealthBadge,
+  GSIconButton,
+  GSButton,
+  GSBadge,
+  GSChip,
+  GSLoadingSpinner,
+  GSCard
+} from '@/components/ui';
 
 interface StudentData {
   id: string;
@@ -31,10 +48,8 @@ interface StudentData {
   plantStage: 'seed' | 'sprout' | 'growing' | 'mature';
   needsAttention: boolean;
   lastPhotoUrl?: string;
-  avatar: string;
-  lastActive: string;
-  grade: string;
-  progress: number;
+  missedTasks?: number;
+  timeAgo?: string;
 }
 
 interface ClassStats {
@@ -43,6 +58,13 @@ interface ClassStats {
   averageHealthScore: number;
   plantsNeedingAttention: number;
   participationRate: number;
+  weeklyHealthScores: number[];
+  healthDistribution: {
+    excellent: number;
+    good: number;
+    fair: number;
+    poor: number;
+  };
 }
 
 export default function TeacherIndex() {
@@ -50,32 +72,81 @@ export default function TeacherIndex() {
   const { isTeacherMode, setIsTeacherMode } = useMode();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'not-submitted' | 'low-health'>('all');
-  const [showNotificationMenu, setShowNotificationMenu] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(3);
   
-        // Mock data - In real app, fetch from Supabase
+  // Mock data - In real app, fetch from Supabase
   const [classStats, setClassStats] = useState<ClassStats>({
     totalStudents: 28,
     submissionsToday: 24,
     averageHealthScore: 82,
     plantsNeedingAttention: 3,
-    participationRate: 86
+    participationRate: 86,
+    weeklyHealthScores: [78, 80, 79, 82, 85, 83, 82],
+    healthDistribution: {
+      excellent: 12,
+      good: 10,
+      fair: 4,
+      poor: 2
+    }
   });
 
-  const [students, setStudents] = useState<StudentData[]>([
-    { id: '1', name: 'Sarah Chen', submitted: true, healthScore: 85, daysSinceLastSubmission: 0, plantStage: 'growing', needsAttention: false, avatar: '', lastActive: '', grade: '', progress: 0 },
-    { id: '2', name: 'Alex Rivera', submitted: true, healthScore: 92, daysSinceLastSubmission: 0, plantStage: 'mature', needsAttention: false, avatar: '', lastActive: '', grade: '', progress: 0 },
-    { id: '3', name: 'Maya Patel', submitted: false, healthScore: 78, daysSinceLastSubmission: 1, plantStage: 'growing', needsAttention: true, avatar: '', lastActive: '', grade: '', progress: 0 },
-    { id: '4', name: 'Jordan Kim', submitted: true, healthScore: 65, daysSinceLastSubmission: 0, plantStage: 'sprout', needsAttention: true, avatar: '', lastActive: '', grade: '', progress: 0 },
-    { id: '5', name: 'Emma Wilson', submitted: true, healthScore: 88, daysSinceLastSubmission: 0, plantStage: 'growing', needsAttention: false, avatar: '', lastActive: '', grade: '', progress: 0 },
+  const [pendingStudents, setPendingStudents] = useState<StudentData[]>([
+    { 
+      id: '1', 
+      name: 'Maya Patel', 
+      submitted: false, 
+      healthScore: 78, 
+      daysSinceLastSubmission: 1, 
+      plantStage: 'growing', 
+      needsAttention: true, 
+      missedTasks: 2
+    },
+    { 
+      id: '2', 
+      name: 'Jordan Kim', 
+      submitted: false, 
+      healthScore: 65, 
+      daysSinceLastSubmission: 0, 
+      plantStage: 'sprout', 
+      needsAttention: true,
+      missedTasks: 3
+    },
   ]);
 
-  const [recentActivity, setRecentActivity] = useState([
-    { type: 'submission', student: 'Emma Wilson', action: 'submitted photo', time: '5m ago' },
-    { type: 'message', student: 'Sarah Chen', action: 'sent message', time: '15m ago' },
-    { type: 'achievement', student: 'Alex Rivera', action: 'earned First Flower badge', time: '1h ago' },
-    { type: 'alert', student: 'Maya Patel', action: 'missed daily submission', time: '2h ago' },
+  const [recentSubmissions, setRecentSubmissions] = useState<StudentData[]>([
+    { 
+      id: '3', 
+      name: 'Sarah Chen', 
+      submitted: true, 
+      healthScore: 85, 
+      daysSinceLastSubmission: 0, 
+      plantStage: 'growing', 
+      needsAttention: false,
+      timeAgo: '5m ago',
+      lastPhotoUrl: 'https://images.unsplash.com/photo-1515150144380-bca9f1650ed9'
+    },
+    { 
+      id: '4', 
+      name: 'Alex Rivera', 
+      submitted: true, 
+      healthScore: 92, 
+      daysSinceLastSubmission: 0, 
+      plantStage: 'mature', 
+      needsAttention: false,
+      timeAgo: '15m ago',
+      lastPhotoUrl: 'https://images.unsplash.com/photo-1515150144380-bca9f1650ed9'
+    },
+    { 
+      id: '5', 
+      name: 'Emma Wilson', 
+      submitted: true, 
+      healthScore: 88, 
+      daysSinceLastSubmission: 0, 
+      plantStage: 'growing', 
+      needsAttention: false,
+      timeAgo: '23m ago',
+      lastPhotoUrl: 'https://images.unsplash.com/photo-1515150144380-bca9f1650ed9'
+    },
   ]);
 
   const router = useRouter();
@@ -95,10 +166,8 @@ export default function TeacherIndex() {
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      // FR-016: Calculate submission percentage
-      // FR-017: Update within 5 seconds
       // In real app, fetch from Supabase
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Removed artificial delay for better performance
     } catch (error) {
       console.error('Failed to load dashboard:', error);
     } finally {
@@ -112,315 +181,285 @@ export default function TeacherIndex() {
     setRefreshing(false);
   };
 
-  const getHealthColor = (score: number) => {
-    if (score >= 80) return '#10B981'; // excellent
-    if (score >= 70) return '#84CC16'; // good
-    if (score >= 60) return '#EAB308'; // warning
-    return '#EF4444'; // danger
+  const handleOpenChat = (studentId: string) => {
+    // Navigate to chat with student
+    console.log('Open chat with student:', studentId);
   };
 
-  const getHealthLabel = (score: number) => {
-    if (score >= 80) return 'Excellent';
-    if (score >= 70) return 'Good';
-    if (score >= 60) return 'Needs Attention';
-    return 'Critical';
-  };
-
-  const filteredStudents = students.filter(student => {
-    // FR-023: Filter dashboard
-    if (filter === 'not-submitted' && student.submitted) return false;
-    if (filter === 'low-health' && student.healthScore >= 70) return false;
-    
-    if (searchQuery) {
-      return student.name.toLowerCase().includes(searchQuery.toLowerCase());
-    }
-    
-    return true;
-  });
-
-  const studentsNeedingAttention = students.filter(s => 
-    s.needsAttention || !s.submitted || s.healthScore < 60
+  const renderHealthRow = (label: string, count: number, color: string) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View 
+          style={{ 
+            width: 12, 
+            height: 12, 
+            borderRadius: 6, 
+            marginRight: 8,
+            backgroundColor: color 
+          }}
+        />
+        <Text style={{ fontSize: 14, color: '#000' }}>{label}</Text>
+      </View>
+      <Text style={{ fontSize: 14, fontWeight: '500', color: '#000' }}>{count}</Text>
+    </View>
   );
 
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color="#10B981" />
+        <GSLoadingSpinner size="large" />
       </View>
     );
   }
 
+  const submissionPercentage = Math.round((classStats.submissionsToday / classStats.totalStudents) * 100);
+  const yesterdayDate = format(new Date(Date.now() - 86400000), 'EEEE, MMMM d');
+
   return (
-    <SafeAreaView className="flex-1 bg-backgroundLight">
-      <ScrollView
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        className="flex-1"
-      >
-        {/* Header with notification bell and toggle */}
-        <View className="px-4 pb-2">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-2xl font-bold text-foreground">Teacher Dashboard</Text>
-            <View>
-              <Pressable 
-                className="relative"
-                onPress={() => setShowNotificationMenu(!showNotificationMenu)}
-              >
-                <Bell size={24} color="#64748B" />
-                <View className="absolute -top-1 -right-1 h-2 w-2 bg-destructive rounded-full" />
-              </Pressable>
-              
-              {showNotificationMenu && (
-                <View className="absolute right-0 top-8 w-48 bg-card border border-border rounded-lg shadow-lg z-10">
-                  <Pressable className="flex-row items-center p-2" onPress={() => {/* Handle notifications */}}>
-                    <Bell size={16} color="#64748B" />
-                    <Text className="text-sm ml-2">View Notifications</Text>
-                  </Pressable>
-                   <Pressable className="flex-row items-center p-2" onPress={() => router.push('/(tabs)/profile')}>
-                    <Settings size={16} color="#64748B" />
-                    <Text className="text-sm ml-2">Settings</Text>
-                  </Pressable>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+      <View style={{ flex: 1 }}>
+        {/* Fixed Mode Toggle at the top - standardized across all screens */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
+          <GSModeToggle />
+        </View>
+        
+        {/* Scrollable Content */}
+        <ScrollView
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 80 }}
+        >
+
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          {/* Current Lesson Progress Section */}
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Current Lesson Progress</Text>
+            <GSCard variant="elevated" padding="large">
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Growing Tomatoes</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                  <GSChip label="Tomato" />
+                  <View style={{ marginLeft: 8 }}>
+                    <GSBadge label="Day 23 of 75" variant="secondary" />
+                  </View>
                 </View>
-              )}
-            </View>
-          </View>
-
-          {/* Student/Teacher Toggle */}
-          <View className="mb-6">
-            <ModeToggle />
-          </View>
-        </View>
-
-        {/* Header Stats - FR-016, FR-017 */}
-        <View className="bg-primary p-6">
-          <Text className="text-2xl font-bold text-white mb-2">
-            Good morning, {user?.name || 'Teacher'}!
-          </Text>
-          <Text className="text-primary-foreground/80 mb-4">
-            Growing Tomatoes • Day 23 of 75
-          </Text>
-          
-          <View className="flex-row justify-between">
-            <View className="items-center">
-              <Text className="text-2xl font-bold text-white">
-                {classStats.submissionsToday}/{classStats.totalStudents}
-              </Text>
-              <Text className="text-sm text-primary-foreground/80">
-                Submitted Today
-              </Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-2xl font-bold text-white">
-                {classStats.averageHealthScore}%
-              </Text>
-              <Text className="text-sm text-primary-foreground/80">
-                Avg Health
-              </Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-2xl font-bold text-white">
-                {classStats.plantsNeedingAttention}
-              </Text>
-              <Text className="text-sm text-primary-foreground/80">
-                Need Attention
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View className="p-4 space-y-4">
-          {/* Students Needing Attention - FR-018, FR-019 */}
-          <Card>
-            <CardHeader className="flex-row items-center justify-between pb-3">
-              <View className="flex-row items-center">
-                <Feather name="alert-triangle" size={20} color="#EAB308" style={{ marginRight: 8 }} />
-                <CardTitle title="Students Needing Attention" />
               </View>
-              <Badge className="bg-destructive">
-                {studentsNeedingAttention.length}
-              </Badge>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {studentsNeedingAttention.map(student => (
-                <Pressable 
-                  key={student.id}
-                  className="flex-row items-center justify-between p-3 bg-muted rounded-lg"
-                  onPress={() => {/* FR-021: Navigate to student profile */}}
-                >
-                  <View className="flex-row items-center flex-1">
-                    <View className="w-10 h-10 bg-gray-300 rounded-full items-center justify-center mr-3">
-                      <Text className="font-semibold">
-                        {student.name.split(' ').map(n => n[0]).join('')}
-                      </Text>
-                    </View>
-                    <View className="flex-1">
-                      <Text className="font-medium text-foreground">{student.name}</Text>
-                      <Text className="text-sm text-muted-foreground">
-                        {!student.submitted 
-                          ? 'No photo today' 
-                          : `Health: ${student.healthScore}%`
-                        }
-                      </Text>
-                    </View>
-                  </View>
-                  <View className="flex-row items-center space-x-2">
-                    <Pressable className="p-2">
-                      <Feather name="camera" size={18} color="#64748B" />
-                    </Pressable>
-                    <Pressable className="p-2">
-                      <Feather name="message-circle" size={18} color="#64748B" />
-                    </Pressable>
-                  </View>
-                </Pressable>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Recent Activity Feed */}
-          <Card>
-            <CardHeader>
-              <CardTitle title="Recent Activity" />
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {recentActivity.map((activity, index) => (
-                <View key={index} className="flex-row items-center space-x-3">
-                  <View 
-                    className={`w-2 h-2 rounded-full ${
-                      activity.type === 'alert' ? 'bg-destructive' : 
-                      activity.type === 'achievement' ? 'bg-health-excellent' : 
-                      'bg-primary'
-                    }`} 
-                  />
-                  <View className="flex-1">
-                    <Text className="text-sm">
-                      <Text className="font-medium">{activity.student}</Text>
-                      <Text className="text-muted-foreground"> {activity.action}</Text>
-                    </Text>
-                  </View>
-                  <Text className="text-xs text-muted-foreground">{activity.time}</Text>
+              
+              <View style={{ marginBottom: 12 }}>
+                <GSProgressIndicator type="linear" progress={0.31} />
+              </View>
+              <Text style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
+                {75 - 23} days remaining
+              </Text>
+              
+              {/* Health Stats */}
+              <GSCard variant="filled" padding="medium" margin="none">
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 14, color: '#666' }}>Average Health</Text>
+                  <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#000' }}>
+                    {classStats.averageHealthScore}%
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#22c55e' }}>↑ +5% from yesterday</Text>
                 </View>
-              ))}
-            </CardContent>
-          </Card>
+                
+                <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 12 }}>
+                  {renderHealthRow('Excellent', classStats.healthDistribution.excellent, '#4CAF50')}
+                  {renderHealthRow('Good', classStats.healthDistribution.good, '#8BC34A')}
+                  {renderHealthRow('Fair', classStats.healthDistribution.fair, '#FFB74D')}
+                  {renderHealthRow('Poor', classStats.healthDistribution.poor, '#F44336')}
+                </View>
+              </GSCard>
+              
+              <View style={{ marginTop: 16 }}>
+                <GSButton
+                  variant="secondary"
+                  onPress={() => router.push('/(tabs)/lessons')}
+                >
+                  View Details →
+                </GSButton>
+              </View>
+            </GSCard>
+          </View>
 
-          {/* Student List with Search - FR-023 */}
-          <Card>
-            <CardHeader>
-              <CardTitle title="All Students" />
-              {/* Search Bar */}
-              <View className="relative mt-3">
-                <Feather name="search" size={20} color="#64748B" style={{ position: 'absolute', left: 12, top: 10 }} />
-                <TextInput
-                  className="pl-10 pr-4 py-2 bg-muted rounded-lg text-foreground"
-                  placeholder="Search students..."
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
+          {/* Task Completion Section */}
+          <View style={{ marginBottom: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Task Completion</Text>
+              <Text style={{ fontSize: 14, color: '#666' }}>{yesterdayDate}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+              <View style={{ flex: 1 }}>
+                <GSStatCard
+                  value={`${classStats.participationRate}%`}
+                  label="Completed All Tasks"
+                  icon="check-circle"
                 />
               </View>
-              {/* Filter Buttons */}
-              <View className="flex-row space-x-2 mt-3">
-                <Pressable
-                  onPress={() => setFilter('all')}
-                  className={`px-3 py-1 rounded-full ${
-                    filter === 'all' ? 'bg-primary' : 'bg-muted'
-                  }`}
-                >
-                  <Text className={filter === 'all' ? 'text-white' : 'text-muted-foreground'}>
-                    All
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setFilter('not-submitted')}
-                  className={`px-3 py-1 rounded-full ${
-                    filter === 'not-submitted' ? 'bg-primary' : 'bg-muted'
-                  }`}
-                >
-                  <Text className={filter === 'not-submitted' ? 'text-white' : 'text-muted-foreground'}>
-                    Not Submitted
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setFilter('low-health')}
-                  className={`px-3 py-1 rounded-full ${
-                    filter === 'low-health' ? 'bg-primary' : 'bg-muted'
-                  }`}
-                >
-                  <Text className={filter === 'low-health' ? 'text-white' : 'text-muted-foreground'}>
-                    Low Health
-                  </Text>
-                </Pressable>
+              <View style={{ flex: 1 }}>
+                <GSStatCard
+                  value={pendingStudents.length.toString()}
+                  label="Students Pending"
+                  icon="alert-circle"
+                />
               </View>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {filteredStudents.map(student => (
-                <Pressable
-                  key={student.id}
-                  className="bg-background border border-border rounded-lg p-4"
-                  onPress={() => {/* Navigate to student detail */}}
-                >
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center flex-1">
-                      <View className="w-12 h-12 bg-muted rounded-full items-center justify-center mr-3">
-                        <Text className="font-semibold">
-                          {student.name.split(' ').map(n => n[0]).join('')}
-                        </Text>
-                      </View>
-                      <View className="flex-1">
-                        <Text className="font-semibold text-foreground">{student.name}</Text>
-                        <Text className="text-sm text-muted-foreground capitalize">
-                          {student.plantStage} stage
-                        </Text>
-                      </View>
-                    </View>
-                    <View className="items-end">
-                      <View 
-                        className="px-2 py-1 rounded-full"
-                        style={{ backgroundColor: getHealthColor(student.healthScore) }}
-                      >
-                        <Text className="text-white text-xs font-medium">
-                          {getHealthLabel(student.healthScore)}
-                        </Text>
-                      </View>
-                      <Text className="text-sm text-muted-foreground mt-1">
-                        {student.healthScore}%
-                      </Text>
-                    </View>
+            </View>
+
+            {/* Pending Students List */}
+            {pendingStudents.length > 0 && (
+              <View>
+                <Text style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>
+                  Students who need encouragement
+                </Text>
+                <View style={{ gap: 8 }}>
+                  {pendingStudents.slice(0, 5).map((student) => (
+                    <GSStudentCard
+                      key={student.id}
+                      name={student.name}
+                      plantName={`Missed ${student.missedTasks} tasks`}
+                      healthScore={student.healthScore}
+                      onPress={() => router.push('/profile')}
+                      onMessage={() => handleOpenChat(student.id)}
+                    />
+                  ))}
+                </View>
+                {pendingStudents.length > 5 && (
+                  <View style={{ marginTop: 8 }}>
+                    <GSButton
+                      variant="secondary"
+                      onPress={() => router.push('/profile')}
+                    >
+                      See all {pendingStudents.length} students →
+                    </GSButton>
                   </View>
-                  
-                  <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-border">
-                    <View className="flex-row items-center">
-                      {student.submitted ? (
-                        <>
-                          <Feather name="check-circle" size={16} color="#10B981" style={{ marginRight: 4 }} />
-                          <Text className="text-sm text-muted-foreground">
-                            Submitted today
-                          </Text>
-                        </>
-                      ) : (
-                        <>
-                          <Feather name="clock" size={16} color="#EAB308" style={{ marginRight: 4 }} />
-                          <Text className="text-sm text-muted-foreground">
-                            {student.daysSinceLastSubmission}d ago
-                          </Text>
-                        </>
-                      )}
-                    </View>
-                    <View className="flex-row space-x-2">
-                      <Pressable className="p-2">
-                        <Feather name="camera" size={16} color="#64748B" />
-                      </Pressable>
-                      <Pressable className="p-2">
-                        <Feather name="message-circle" size={16} color="#64748B" />
-                      </Pressable>
-                    </View>
-                  </View>
-                </Pressable>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Photo Submissions Section */}
+          <View style={{ marginBottom: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Today's Gardens</Text>
+              <GSIconButton
+                icon="refresh-ccw"
+                size={20}
+                onPress={onRefresh}
+              />
+            </View>
+
+            {/* Submission Stats */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ marginRight: 16 }}>
+                <GSProgressIndicator
+                  type="circular"
+                  progress={submissionPercentage / 100}
+                  size="large"
+                  showPercentage
+                />
+              </View>
+              <Text style={{ fontSize: 16, color: '#666' }}>
+                {classStats.submissionsToday} of {classStats.totalStudents} submitted
+              </Text>
+            </View>
+
+            {/* Photo Grid */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
+              {recentSubmissions.slice(0, 6).map((submission, index) => (
+                <View key={submission.id} style={{ width: '33.33%', paddingHorizontal: 4, marginBottom: 8 }}>
+                  <GSPlantCard
+                    imageUrl={submission.lastPhotoUrl || 'https://via.placeholder.com/150'}
+                    studentName={submission.name}
+                    plantName="Tomato"
+                    dayNumber={23}
+                    healthScore={submission.healthScore}
+                    onExpand={() => router.push('/modal')}
+                  />
+                </View>
               ))}
-            </CardContent>
-          </Card>
+            </View>
+            <View style={{ marginTop: 8 }}>
+              <GSButton
+                variant="secondary"
+                onPress={() => router.push('/(tabs)/camera')}
+              >
+                View all photos →
+              </GSButton>
+            </View>
+          </View>
+
+          {/* Quick Actions Section */}
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Quick Actions</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
+              <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
+                <View style={{ position: 'relative' }}>
+                  <GSButton
+                    variant="primary"
+                    onPress={() => router.push('/ai-chat')}
+                    size="medium"
+                    fullWidth
+                    icon="message-square"
+                  >
+                    Messages
+                  </GSButton>
+                  {unreadMessages > 0 && (
+                    <View style={{ 
+                      position: 'absolute', 
+                      top: -8, 
+                      right: -8, 
+                      backgroundColor: '#ef4444', 
+                      borderRadius: 12, 
+                      width: 24, 
+                      height: 24, 
+                      alignItems: 'center', 
+                      justifyContent: 'center' 
+                    }}>
+                      <Text style={{ fontSize: 12, color: 'white', fontWeight: '600' }}>{unreadMessages}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
+                <GSButton
+                  variant="secondary"
+                  onPress={() => router.push('/(tabs)/profile')}
+                  size="medium"
+                  fullWidth
+                  icon="users"
+                >
+                  Students
+                </GSButton>
+              </View>
+              <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
+                <GSButton
+                  variant="secondary"
+                  onPress={() => router.push('/(tabs)/progress')}
+                  size="medium"
+                  fullWidth
+                  icon="bar-chart-3"
+                >
+                  Analytics
+                </GSButton>
+              </View>
+              <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
+                <GSButton
+                  variant="secondary"
+                  onPress={() => router.push('/(tabs)/lessons')}
+                  size="medium"
+                  fullWidth
+                  icon="book-open"
+                >
+                  Lessons
+                </GSButton>
+              </View>
+            </View>
+          </View>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 } 

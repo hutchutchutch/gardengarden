@@ -1,346 +1,94 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Pressable, FlatList, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, ScrollView, FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { GSModeToggle } from '@/components/ui';
-import { cn } from '@/lib/utils';
-
-// Mock lesson data with associated documents
-const teacherLessons = [
-  {
-    id: '1',
-    title: 'Understanding Plant Growth Stages',
-    description: 'Learn about the different stages of plant development from seed to maturity.',
-    duration: '15 min',
-    studentsAssigned: 28,
-    studentsCompleted: 24,
-    averageScore: 85,
-    category: 'Botany Basics',
-    difficulty: 'Beginner',
-    dueDate: '2024-02-15',
-    isActive: true,
-    documents: [
-      {
-        id: 'doc1',
-        title: 'Plant Growth Fundamentals.pdf',
-        type: 'PDF',
-        uploadDate: '2024-01-15',
-        ragReferences: 47,
-        size: '2.3 MB'
-      },
-      {
-        id: 'doc2',
-        title: 'Growth Stages Visual Guide.png',
-        type: 'Image',
-        uploadDate: '2024-01-16',
-        ragReferences: 23,
-        size: '1.1 MB'
-      },
-      {
-        id: 'doc3',
-        title: 'Seedling Care Instructions.docx',
-        type: 'Document',
-        uploadDate: '2024-01-18',
-        ragReferences: 12,
-        size: '584 KB'
-      }
-    ]
-  },
-  {
-    id: '2',
-    title: 'Soil Composition and pH',
-    description: 'Discover how soil composition affects plant health and growth.',
-    duration: '12 min',
-    studentsAssigned: 28,
-    studentsCompleted: 28,
-    averageScore: 92,
-    category: 'Soil Science',
-    difficulty: 'Intermediate',
-    dueDate: '2024-01-28',
-    isActive: false,
-    documents: [
-      {
-        id: 'doc4',
-        title: 'Soil pH Testing Guide.pdf',
-        type: 'PDF',
-        uploadDate: '2024-01-10',
-        ragReferences: 65,
-        size: '3.1 MB'
-      },
-      {
-        id: 'doc5',
-        title: 'Nutrient Deficiency Chart.jpg',
-        type: 'Image',
-        uploadDate: '2024-01-12',
-        ragReferences: 38,
-        size: '892 KB'
-      }
-    ]
-  },
-  {
-    id: '3',
-    title: 'Plant Identification Techniques',
-    description: 'Master the art of identifying plants using key characteristics.',
-    duration: '20 min',
-    studentsAssigned: 28,
-    studentsCompleted: 0,
-    averageScore: null,
-    category: 'Plant ID',
-    difficulty: 'Advanced',
-    dueDate: '2024-02-20',
-    isActive: false,
-    documents: [
-      {
-        id: 'doc6',
-        title: 'Plant ID Field Guide.pdf',
-        type: 'PDF',
-        uploadDate: '2024-02-01',
-        ragReferences: 8,
-        size: '4.7 MB'
-      },
-      {
-        id: 'doc7',
-        title: 'Leaf Shape Reference.png',
-        type: 'Image',
-        uploadDate: '2024-02-02',
-        ragReferences: 3,
-        size: '1.5 MB'
-      },
-      {
-        id: 'doc8',
-        title: 'Common Plant Families.txt',
-        type: 'Text',
-        uploadDate: '2024-02-03',
-        ragReferences: 1,
-        size: '45 KB'
-      }
-    ]
-  },
-];
-
-interface DocumentItemProps {
-  document: any;
-}
-
-const DocumentItem = ({ document }: DocumentItemProps) => {
-  const getFileIcon = (type: string) => {
-    switch (type) {
-      case 'PDF': return '📄';
-      case 'Image': return '🖼️';
-      case 'Document': return '📝';
-      case 'Text': return '📄';
-      default: return '📎';
-    }
-  };
-
-  return (
-    <View className="flex-row items-center justify-between py-2 px-3 bg-muted/50 rounded-lg mb-2">
-      <View className="flex-1 flex-row items-center">
-        <Text className="text-lg mr-2">{getFileIcon(document.type)}</Text>
-        <View className="flex-1">
-          <Text className="text-sm font-medium" numberOfLines={1}>
-            {document.title}
-          </Text>
-          <Text className="text-xs text-muted-foreground">
-            {document.size} • {new Date(document.uploadDate).toLocaleDateString()}
-          </Text>
-        </View>
-      </View>
-      <View className="flex-row items-center gap-1">
-        <MaterialCommunityIcons name="message-outline" size={20} color="#64748B" />
-        <Text className="text-sm font-semibold text-primary">
-          {document.ragReferences}
-        </Text>
-      </View>
-    </View>
-  );
-};
-
-interface TeacherLessonCardProps {
-  lesson: any;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-  onEdit: () => void;
-}
-
-const TeacherLessonCard = ({ lesson, isExpanded, onToggleExpand, onEdit }: TeacherLessonCardProps) => {
-  const completionRate = (lesson.studentsCompleted / lesson.studentsAssigned) * 100;
-  
-  const getCompletionColor = (rate: number) => {
-    if (rate >= 90) return 'text-green-600';
-    if (rate >= 70) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const totalReferences = lesson.documents.reduce((sum: number, doc: any) => sum + doc.ragReferences, 0);
-
-  return (
-    <Card className={cn("mb-3", lesson.isActive && "border-primary")}>
-      <Pressable onPress={onToggleExpand}>
-        <CardHeader className="pb-2">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 flex-row items-center">
-              {isExpanded ? (
-                <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
-              ) : (
-                <MaterialCommunityIcons name="chevron-right" size={20} color="#64748B" />
-              )}
-              <View className="flex-1 ml-2">
-                <CardTitle title={lesson.title} titleStyle={{ fontSize: 16 }} />
-                <View className="flex-row items-center gap-2 mt-1">
-                  <Text className="text-xs text-muted-foreground">{lesson.category}</Text>
-                  <Text className="text-xs text-muted-foreground">•</Text>
-                  <Text className="text-xs text-muted-foreground">{lesson.duration}</Text>
-                  <Text className="text-xs text-muted-foreground">•</Text>
-                  <Text className="text-xs text-muted-foreground">
-                    {lesson.documents.length} docs
-                  </Text>
-                  {totalReferences > 0 && (
-                    <>
-                      <Text className="text-xs text-muted-foreground">•</Text>
-                      <View className="flex-row items-center gap-1">
-                        <MaterialCommunityIcons name="message-outline" size={12} color="#64748B" />
-                        <Text className="text-xs text-primary font-medium">
-                          {totalReferences}
-                        </Text>
-                      </View>
-                    </>
-                  )}
-                </View>
-              </View>
-            </View>
-            <View className="flex-row items-center gap-2">
-              <Text className={cn("text-xs font-medium", getCompletionColor(completionRate))}>
-                {lesson.studentsCompleted}/{lesson.studentsAssigned}
-              </Text>
-              {lesson.isActive && (
-                <Badge className="bg-primary/10">
-                  <Text className="text-primary text-xs">Active</Text>
-                </Badge>
-              )}
-              <Pressable onPress={onEdit} className="p-1">
-                <MaterialCommunityIcons name="cog" size={16} color="#64748B" />
-              </Pressable>
-            </View>
-          </View>
-        </CardHeader>
-      </Pressable>
-
-      {isExpanded && (
-        <CardContent className="pt-0">
-          <Text className="text-sm text-muted-foreground mb-3" numberOfLines={2}>
-            {lesson.description}
-          </Text>
-          
-          {/* Progress Bar */}
-          <View className="mb-4">
-            <View className="flex-row justify-between mb-1">
-              <Text className="text-xs text-muted-foreground">Completion Rate</Text>
-              <Text className="text-xs font-medium">{Math.round(completionRate)}%</Text>
-            </View>
-            <View className="h-2 bg-gray-200 rounded-full">
-              <View 
-                className={cn(
-                  "h-2 rounded-full",
-                  completionRate >= 90 ? "bg-green-500" :
-                  completionRate >= 70 ? "bg-yellow-500" : "bg-red-500"
-                )}
-                style={{ width: `${completionRate}%` }}
-              />
-            </View>
-          </View>
-
-          {/* Documents Section */}
-          <View className="mb-3">
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-sm font-semibold">
-                Documents ({lesson.documents.length})
-              </Text>
-              <Text className="text-xs text-muted-foreground">
-                Total References: {totalReferences}
-              </Text>
-            </View>
-            
-            {lesson.documents.map((document: any) => (
-              <DocumentItem key={document.id} document={document} />
-            ))}
-          </View>
-
-          {/* Stats Row */}
-          <View className="flex-row items-center justify-between pt-3 border-t border-border">
-            <View className="items-center">
-              <Text className="text-xs text-muted-foreground">Students</Text>
-              <Text className="text-sm font-medium">{lesson.studentsAssigned}</Text>
-            </View>
-            {lesson.averageScore && (
-              <View className="items-center">
-                <Text className="text-xs text-muted-foreground">Avg Score</Text>
-                <Text className="text-sm font-medium">{lesson.averageScore}%</Text>
-              </View>
-            )}
-            {lesson.dueDate && (
-              <View className="items-center">
-                <Text className="text-xs text-muted-foreground">Due Date</Text>
-                <Text className="text-sm font-medium">
-                  {new Date(lesson.dueDate).toLocaleDateString()}
-                </Text>
-              </View>
-            )}
-          </View>
-        </CardContent>
-      )}
-    </Card>
-  );
-};
+import { useAppTheme } from '@/config/theme';
+import { 
+  GSafeScreen,
+  GSModeToggle,
+  GSHeader,
+  GSIconButton,
+  GSSegmentedButtons,
+  GSBadge,
+  GSBottomSheet,
+  GSChip,
+  GSCollapsible,
+  GSLoadingSpinner,
+  GSButton,
+  GSEmptyState,
+  GSFAB,
+  GSProgressIndicator,
+  GSCard,
+  GSDocumentItem,
+  GSStatCard,
+  Text,
+  MenuItem
+} from '@/components/ui';
+import { LessonService, Lesson, LessonDocument } from '@/services/lesson-service';
 
 export default function TeacherLessons() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { } = useAuth();
   const { isTeacherMode } = useMode();
-  const [selectedTab, setSelectedTab] = useState<'active' | 'all'>('active');
-  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
+  const theme = useAppTheme();
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [documentsExpanded, setDocumentsExpanded] = useState(false);
   
+  // State for lesson data
+  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
+  const [completedLessons, setCompletedLessons] = useState<Lesson[]>([]);
+  const [upcomingLessons, setUpcomingLessons] = useState<Lesson[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load lesson data
+  const loadLessonData = async () => {
+    try {
+      setLoading(true);
+      console.log('Loading lesson data...');
+      
+      const [current, completed, upcoming] = await Promise.all([
+        LessonService.getCurrentLesson(),
+        LessonService.getCompletedLessons(),
+        LessonService.getUpcomingLessons()
+      ]);
+
+      console.log('Loaded data:', {
+        current: current?.lesson_name || 'None',
+        currentStats: current?.lesson_stats ? 'Has stats' : 'No stats',
+        completed: completed.length,
+        upcoming: upcoming.length
+      });
+
+      // Debug: Log the current lesson structure
+      if (current) {
+        console.log('Current lesson structure:', {
+          id: current.lesson_id,
+          name: current.lesson_name,
+          statsType: Array.isArray(current.lesson_stats) ? 'array' : typeof current.lesson_stats,
+          statsLength: Array.isArray(current.lesson_stats) ? current.lesson_stats.length : 'N/A'
+        });
+      }
+
+      setCurrentLesson(current);
+      setCompletedLessons(completed);
+      setUpcomingLessons(upcoming);
+    } catch (error) {
+      console.error('Error loading lesson data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!isTeacherMode) {
       router.replace('/screens/student-lessons');
+    } else {
+      loadLessonData();
     }
   }, [isTeacherMode]);
-  
-  // Calculate stats
-  const totalLessons = teacherLessons.length;
-  const activeLessons = teacherLessons.filter(lesson => lesson.isActive);
-  const totalStudentsAssigned = teacherLessons.reduce((sum, lesson) => sum + lesson.studentsAssigned, 0);
-  const totalStudentsCompleted = teacherLessons.reduce((sum, lesson) => sum + lesson.studentsCompleted, 0);
-  const overallCompletionRate = totalStudentsAssigned > 0 ? (totalStudentsCompleted / totalStudentsAssigned) * 100 : 0;
-  const totalRAGReferences = teacherLessons.reduce((sum, lesson) => 
-    sum + lesson.documents.reduce((docSum: number, doc: any) => docSum + doc.ragReferences, 0), 0
-  );
-
-  const handleToggleExpand = (lessonId: string) => {
-    setExpandedLessons(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(lessonId)) {
-        newSet.delete(lessonId);
-      } else {
-        newSet.add(lessonId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleEditLesson = (lessonId: string) => {
-    router.push({
-      pathname: '/modal',
-      params: { type: 'edit-lesson', lessonId }
-    });
-  };
 
   const handleCreateLesson = () => {
     router.push({
@@ -349,110 +97,663 @@ export default function TeacherLessons() {
     });
   };
 
+  const handleAIChat = () => {
+    router.push('/ai-chat');
+  };
+
+  const handleEditLesson = () => {
+    setBottomSheetVisible(false);
+    if (currentLesson) {
+      router.push({
+        pathname: '/modal',
+        params: { type: 'edit-lesson', lessonId: currentLesson.lesson_id }
+      });
+    }
+  };
+
+  const handleViewAnalytics = () => {
+    setBottomSheetVisible(false);
+    if (currentLesson) {
+      router.push({
+        pathname: '/modal',
+        params: { lessonId: currentLesson.lesson_id }
+      });
+    }
+  };
+
+  const handleEndLesson = async () => {
+    setBottomSheetVisible(false);
+    if (currentLesson) {
+      const success = await LessonService.completeLesson(currentLesson.lesson_id);
+      if (success) {
+        loadLessonData(); // Refresh data
+      }
+    }
+  };
+
+  const menuOptions: MenuItem[] = [
+    {
+      label: 'Edit Lesson',
+      icon: 'pencil',
+      onPress: handleEditLesson
+    },
+    {
+      label: 'View Analytics',
+      icon: 'chart-bar',
+      onPress: handleViewAnalytics
+    },
+    {
+      label: 'End Lesson',
+      icon: 'stop-circle',
+      variant: 'danger',
+      onPress: handleEndLesson
+    }
+  ];
+
+  const getDocumentStats = () => {
+    if (!currentLesson?.lesson_documents) {
+      return { completed: 0, pending: 0, failed: 0 };
+    }
+    const completed = currentLesson.lesson_documents.filter(d => d.status === 'completed').length;
+    const pending = currentLesson.lesson_documents.filter(d => d.status === 'processing').length;
+    const failed = currentLesson.lesson_documents.filter(d => d.status === 'failed').length;
+    return { completed, pending, failed };
+  };
+
+  const renderCurrentLessonTab = () => {
+    if (loading) {
+      return (
+        <View style={styles.centerContainer}>
+          <GSLoadingSpinner size="large" />
+          <Text style={[styles.loadingText, { color: theme.colors.onSurfaceVariant }]}>
+            Loading lesson data...
+          </Text>
+        </View>
+      );
+    }
+
+    if (!currentLesson) {
+      return (
+        <GSEmptyState
+          icon="book-open"
+          title="No active lesson"
+          description="Create a new lesson to get started"
+          actionLabel="Create Lesson"
+          onAction={handleCreateLesson}
+        />
+      );
+    }
+
+    const { completed, pending, failed } = getDocumentStats();
+    const stats = LessonService.normalizeStats(currentLesson.lesson_stats);
+
+    return (
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+        <View style={styles.contentContainer}>
+          {/* Main Lesson Card */}
+          <GSCard variant="elevated" padding="large">
+            {/* Header */}
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderLeft}>
+                <Text style={[styles.lessonTitle, { color: theme.colors.onSurface }]}>
+                  {currentLesson.lesson_name}
+                </Text>
+                <View style={styles.badgeContainer}>
+                  <GSBadge label="ACTIVE" variant="primary" />
+                </View>
+              </View>
+              <GSIconButton
+                icon="dots-vertical"
+                size={24}
+                onPress={() => setBottomSheetVisible(true)}
+              />
+            </View>
+
+            {/* Lesson Stats */}
+            <View style={styles.statsGrid}>
+              <GSStatCard
+                label="Duration"
+                value={`Day ${stats?.days_completed || 0} of ${stats?.total_days || 7}`}
+                icon="calendar"
+              />
+              <GSStatCard
+                label="Students"
+                value={`${stats?.active_students || 0} active`}
+                icon="account-group"
+              />
+              <GSStatCard
+                label="Avg Health"
+                value={`${stats?.average_health || 0}%`}
+                icon="heart"
+              />
+            </View>
+
+            {/* Document Status Section */}
+            <GSCard variant="filled" padding="medium" margin="none" style={styles.documentsCard}>
+              <View style={styles.documentsHeader}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                  Lesson Resources
+                </Text>
+                <View style={styles.chipContainer}>
+                  {completed > 0 && (
+                    <GSChip
+                      label={`${completed} Completed`}
+                      variant="success"
+                      size="small"
+                    />
+                  )}
+                  {pending > 0 && (
+                    <GSChip
+                      label={`${pending} Pending`}
+                      variant="warning"
+                      size="small"
+                    />
+                  )}
+                  {failed > 0 && (
+                    <GSChip
+                      label={`${failed} Failed`}
+                      variant="destructive"
+                      size="small"
+                    />
+                  )}
+                </View>
+              </View>
+
+              <GSCollapsible
+                label={`Documents (${currentLesson.lesson_documents?.length || 0})`}
+                defaultOpen={documentsExpanded}
+              >
+                <View style={styles.documentsList}>
+                  <Text style={[styles.totalReferences, { color: theme.colors.onSurfaceVariant }]}>
+                    Total References: {currentLesson.lesson_documents?.reduce((sum: number, doc: LessonDocument) => sum + doc.rag_references, 0) || 0}
+                  </Text>
+                  <FlatList
+                    data={currentLesson.lesson_documents || []}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                      <GSDocumentItem
+                        title={item.title}
+                        url={item.url}
+                        status={item.status}
+                        sections={item.sections}
+                        processingProgress={item.processing_progress}
+                        errorMessage={item.error_message}
+                        ragReferences={item.rag_references}
+                        onRetry={() => console.log('Retry document:', item.id)}
+                      />
+                    )}
+                    scrollEnabled={false}
+                  />
+                </View>
+              </GSCollapsible>
+            </GSCard>
+
+            <View style={styles.actionContainer}>
+              <GSButton
+                variant="primary"
+                fullWidth
+                onPress={handleViewAnalytics}
+              >
+                View Full Analytics
+              </GSButton>
+            </View>
+          </GSCard>
+        </View>
+      </ScrollView>
+    );
+  };
+
+  const renderCompletedLessonsTab = () => {
+    if (loading) {
+      return (
+        <View style={styles.centerContainer}>
+          <GSLoadingSpinner size="large" />
+          <Text style={[styles.loadingText, { color: theme.colors.onSurfaceVariant }]}>
+            Loading completed lessons...
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+        <FlatList
+          data={completedLessons}
+          keyExtractor={(item) => item.lesson_id}
+          renderItem={({ item }) => {
+            const stats = LessonService.normalizeStats(item.lesson_stats);
+            return (
+              <View style={styles.listContainer}>
+                <GSCard variant="elevated" padding="medium">
+                  <View style={styles.completedHeader}>
+                    <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
+                      {item.lesson_name}
+                    </Text>
+                    <Text style={[styles.dateText, { color: theme.colors.onSurfaceVariant }]}>
+                      {stats?.date_range || 'No date range'}
+                    </Text>
+                    {stats?.plant_type && (
+                      <View style={styles.chipWrapper}>
+                        <GSChip label={stats.plant_type} size="small" />
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.metricsGrid}>
+                    <View style={[styles.metricCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+                      <Text style={[styles.metricLabel, { color: theme.colors.onSurfaceVariant }]}>
+                        Students
+                      </Text>
+                      <Text style={[styles.metricValue, { color: theme.colors.onSurface }]}>
+                        {stats?.active_students || 0}
+                      </Text>
+                    </View>
+                    <View style={[styles.metricCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+                      <Text style={[styles.metricLabel, { color: theme.colors.onSurfaceVariant }]}>
+                        Avg Health
+                      </Text>
+                      <Text style={[styles.metricValue, { color: theme.colors.onSurface }]}>
+                        {stats?.average_health || 0}%
+                      </Text>
+                    </View>
+                    <View style={[styles.metricCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+                      <Text style={[styles.metricLabel, { color: theme.colors.onSurfaceVariant }]}>
+                        Completion
+                      </Text>
+                      <Text style={[styles.metricValue, { color: theme.colors.onSurface }]}>
+                        {stats?.completion_rate || 0}%
+                      </Text>
+                    </View>
+                    <View style={[styles.metricCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+                      <Text style={[styles.metricLabel, { color: theme.colors.onSurfaceVariant }]} numberOfLines={1}>
+                        Top Resource
+                      </Text>
+                      <Text style={[styles.metricValue, { color: theme.colors.onSurface }]} numberOfLines={1}>
+                        {stats?.top_resource || 'N/A'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.buttonRow}>
+                    <GSButton
+                      variant="secondary"
+                      size="small"
+                      onPress={() => console.log('View Report')}
+                    >
+                      View Report
+                    </GSButton>
+                    <GSButton
+                      variant="secondary"
+                      size="small"
+                      onPress={() => console.log('Duplicate')}
+                    >
+                      Duplicate
+                    </GSButton>
+                  </View>
+                </GSCard>
+              </View>
+            );
+          }}
+          scrollEnabled={false}
+          contentContainerStyle={styles.listContent}
+        />
+      </ScrollView>
+    );
+  };
+
+  const renderUpcomingLessonsTab = () => {
+    if (loading) {
+      return (
+        <View style={styles.centerContainer}>
+          <GSLoadingSpinner size="large" />
+          <Text style={[styles.loadingText, { color: theme.colors.onSurfaceVariant }]}>
+            Loading upcoming lessons...
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+        {upcomingLessons.length > 0 ? (
+          <FlatList
+            data={upcomingLessons}
+            keyExtractor={(item) => item.lesson_id}
+            renderItem={({ item }) => {
+              const stats = LessonService.normalizeStats(item.lesson_stats);
+              const scheduledDate = stats?.scheduled_date 
+                ? new Date(stats.scheduled_date).toLocaleDateString()
+                : 'No date set';
+              
+              return (
+                <View style={styles.listContainer}>
+                  <GSCard variant="elevated" padding="medium">
+                    <View style={styles.upcomingHeader}>
+                      <View style={styles.titleRow}>
+                        <Text style={[styles.cardTitle, { color: theme.colors.onSurface, flex: 1 }]}>
+                          {item.lesson_name}
+                        </Text>
+                        <GSBadge label={scheduledDate} variant="secondary" />
+                      </View>
+                      <View style={styles.metaRow}>
+                        {stats?.plant_type && <GSChip label={stats.plant_type} size="small" />}
+                        <Text style={[styles.durationText, { color: theme.colors.onSurfaceVariant }]}>
+                          {stats?.total_days || 7} days
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.resourceRow}>
+                      <View style={styles.resourceInfo}>
+                        <Text style={[styles.resourceText, { color: theme.colors.onSurfaceVariant }]}>
+                          {item.lesson_documents?.length || 0} resources
+                        </Text>
+                        {stats?.is_ready ? (
+                          <GSBadge label="Ready" variant="primary" />
+                        ) : (
+                          <GSProgressIndicator
+                            type="linear"
+                            progress={(stats?.processing_progress || 0) / 100}
+                          />
+                        )}
+                      </View>
+                    </View>
+
+                    <View style={styles.actionRow}>
+                      <GSButton
+                        variant="secondary"
+                        size="small"
+                        onPress={() => console.log('Edit')}
+                      >
+                        Edit
+                      </GSButton>
+                      <GSButton
+                        variant="primary"
+                        size="small"
+                        onPress={async () => {
+                          if (stats?.is_ready) {
+                            const success = await LessonService.activateLesson(item.lesson_id);
+                            if (success) {
+                              loadLessonData(); // Refresh data
+                            }
+                          }
+                        }}
+                        disabled={!stats?.is_ready}
+                      >
+                        Activate
+                      </GSButton>
+                      <GSIconButton
+                        icon="delete"
+                        size={20}
+                        onPress={() => console.log('Delete')}
+                        color={theme.colors.error}
+                      />
+                    </View>
+                  </GSCard>
+                </View>
+              );
+            }}
+            scrollEnabled={false}
+            contentContainerStyle={styles.listContent}
+          />
+        ) : (
+          <GSEmptyState
+            icon="book-open"
+            title="No upcoming lessons"
+            description="Create a new lesson to get started"
+            actionLabel="Create Lesson"
+            onAction={handleCreateLesson}
+          />
+        )}
+      </ScrollView>
+    );
+  };
+
+  const renderContent = () => {
+    switch (selectedTab) {
+      case 0:
+        return renderCurrentLessonTab();
+      case 1:
+        return renderCompletedLessonsTab();
+      case 2:
+        return renderUpcomingLessonsTab();
+      default:
+        return null;
+    }
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      {/* Fixed Mode Toggle at the top */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
+    <GSafeScreen>
+      {/* Fixed Mode Toggle at the top - standardized across all screens */}
+      <View style={[styles.modeToggleContainer, { backgroundColor: theme.colors.background }]}>
         <GSModeToggle />
       </View>
-      
-      {/* Stats Section */}
-      <View className="p-4">
-        <Text className="text-2xl font-bold mb-4">Lesson Management</Text>
-        
-        <View className="flex-row gap-2 mb-6">
-          <Card className="flex-1">
-            <CardContent className="p-3 items-center">
-              <MaterialCommunityIcons name="book-open-page-variant" size={20} color="#10B981" />
-              <Text className="text-lg font-bold mt-1">{totalLessons}</Text>
-              <Text className="text-xs text-muted-foreground">Lessons</Text>
-            </CardContent>
-          </Card>
-          
-          <Card className="flex-1">
-            <CardContent className="p-3 items-center">
-              <MaterialCommunityIcons name="trending-up" size={20} color="#3B82F6" />
-              <Text className="text-lg font-bold mt-1">{Math.round(overallCompletionRate)}%</Text>
-              <Text className="text-xs text-muted-foreground">Completion</Text>
-            </CardContent>
-          </Card>
-          
-          <Card className="flex-1">
-            <CardContent className="p-3 items-center">
-              <MaterialCommunityIcons name="message-outline" size={20} color="#8B5CF6" />
-              <Text className="text-lg font-bold mt-1">{totalRAGReferences}</Text>
-              <Text className="text-xs text-muted-foreground">References</Text>
-            </CardContent>
-          </Card>
-        </View>
 
-        <Button onPress={handleCreateLesson} className="w-full mb-4">
-          <MaterialCommunityIcons name="plus-circle" size={16} color="white" />
-          <Text className="text-primary-foreground ml-2">Create New Lesson</Text>
-        </Button>
-      </View>
-
-      {/* Tab Section */}
-      <View className="flex-1">
-        <View className="flex-row bg-muted mx-4 rounded-lg p-1">
-          <Pressable
-            onPress={() => setSelectedTab('active')}
-            className={cn(
-              "flex-1 py-2 items-center rounded-md",
-              selectedTab === 'active' ? 'bg-background shadow-sm' : ''
-            )}
-          >
-            <Text className={cn(
-              "font-medium text-sm",
-              selectedTab === 'active' ? 'text-foreground' : 'text-muted-foreground'
-            )}>
-              Active ({activeLessons.length})
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setSelectedTab('all')}
-            className={cn(
-              "flex-1 py-2 items-center rounded-md",
-              selectedTab === 'all' ? 'bg-background shadow-sm' : ''
-            )}
-          >
-            <Text className={cn(
-              "font-medium text-sm",
-              selectedTab === 'all' ? 'text-foreground' : 'text-muted-foreground'
-            )}>
-              All Lessons ({totalLessons})
-            </Text>
-          </Pressable>
-        </View>
-
-        <FlatList
-          data={selectedTab === 'active' ? activeLessons : teacherLessons}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TeacherLessonCard 
-              lesson={item} 
-              isExpanded={expandedLessons.has(item.id)}
-              onToggleExpand={() => handleToggleExpand(item.id)}
-              onEdit={() => handleEditLesson(item.id)}
+      {/* Header with Create Button */}
+      <View style={[styles.header, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.outline }]}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.sectionHeaderTitle, { color: theme.colors.onSurface }]}>Lessons</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <GSIconButton
+              icon="plus"
+              size={24}
+              onPress={handleCreateLesson}
             />
-          )}
-          contentContainerStyle={{ padding: 16 }}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View className="items-center justify-center py-12">
-              <MaterialCommunityIcons name="book-open-page-variant" size={48} color="#64748B" />
-              <Text className="text-lg font-semibold mt-4 mb-2">No lessons yet</Text>
-              <Text className="text-muted-foreground text-center mb-4">
-                Create your first lesson to get started with teaching.
-              </Text>
-              <Button onPress={handleCreateLesson}>
-                <MaterialCommunityIcons name="plus-circle" size={16} color="white" />
-                <Text className="text-primary-foreground ml-2">Create Lesson</Text>
-              </Button>
-            </View>
-          }
-        />
+          </View>
+        </View>
+
+        {/* Segmented Buttons */}
+        <View style={styles.segmentedContainer}>
+          <GSSegmentedButtons
+            options={['Current', 'Completed', 'Upcoming']}
+            selectedIndex={selectedTab}
+            onIndexChange={setSelectedTab}
+          />
+        </View>
       </View>
-    </SafeAreaView>
+
+      {/* Content */}
+      {renderContent()}
+
+      {/* AI Chat FAB */}
+      <GSFAB
+        icon="robot"
+        onPress={handleAIChat}
+        variant="secondary"
+        label="AI Assistant"
+      />
+
+      {/* Bottom Sheet */}
+      <GSBottomSheet
+        visible={bottomSheetVisible}
+        onClose={() => setBottomSheetVisible(false)}
+        options={menuOptions}
+      />
+    </GSafeScreen>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+  },
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 80,
+  },
+  modeToggleContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  header: {
+    borderBottomWidth: 1,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  segmentedContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  sectionHeaderTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  cardHeaderLeft: {
+    flex: 1,
+  },
+  lessonTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  badgeContainer: {
+    marginTop: 8,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  documentsCard: {
+    marginTop: 16,
+  },
+  documentsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  documentsList: {
+    paddingTop: 12,
+  },
+  totalReferences: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  actionContainer: {
+    marginTop: 24,
+  },
+  listContainer: {
+    paddingHorizontal: 16,
+  },
+  listContent: {
+    paddingVertical: 16,
+  },
+  completedHeader: {
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dateText: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  chipWrapper: {
+    marginTop: 8,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  metricCard: {
+    borderRadius: 8,
+    padding: 8,
+    flex: 1,
+    minWidth: '48%',
+    alignItems: 'center',
+  },
+  metricLabel: {
+    fontSize: 12,
+  },
+  metricValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  upcomingHeader: {
+    marginBottom: 12,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  durationText: {
+    fontSize: 14,
+  },
+  resourceRow: {
+    marginBottom: 12,
+  },
+  resourceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  resourceText: {
+    fontSize: 14,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+});

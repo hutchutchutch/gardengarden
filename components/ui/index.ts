@@ -17,19 +17,24 @@ export type { FilterChip } from './GSSearchBar';
 // Button Components
 export { GSButton } from './GSButton';
 export { GSFAB } from './GSFAB';
-export type { FABAction } from './GSFAB';
+export type { FABAction, FABVariant, FABSize, FABPosition } from './GSFAB';
 export { GSIconButton } from './GSIconButton';
 
 // Display Components
 export { GSHealthBadge } from './GSHealthBadge';
 export { GSProgressIndicator } from './GSProgressIndicator';
 export { GSEmptyState } from './GSEmptyState';
+export { GSLoadingSpinner } from './GSLoadingSpinner';
 
 // Card Components
+export { GSCard } from './GSCard';
+export type { GSCardProps } from './GSCard';
 export { GSLessonCard } from './GSLessonCard';
 export { GSStudentCard } from './GSStudentCard';
 export { GSPlantCard } from './GSPlantCard';
 export { GSGuidanceCard } from './GSGuidanceCard';
+export { GSDocumentItem } from './GSDocumentItem';
+export type { DocumentItemProps } from './GSDocumentItem';
 
 // Chat Components
 export { GSChatBubble } from './GSChatBubble';
@@ -45,6 +50,9 @@ export { GSCheckbox } from './GSCheckbox';
 export { GSTaskChecklist } from './GSTaskChecklist';
 export { GSBadge } from './GSBadge';
 export { SectionHeader } from './SectionHeader';
+export { GSSegmentedButtons } from './GSSegmentedButtons';
+export { GSBottomSheet } from './GSBottomSheet';
+export type { MenuItem } from './GSBottomSheet';
 
 // Modal Component
 export { default as ModalScreen } from './modal';
