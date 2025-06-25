@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile-like constraints for web */
+@media (min-width: 768px) {
+  body {
+    background-color: #f3f4f6;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px 0;
+  }
+  
+  #root {
+    max-width: 414px;
+    min-height: 896px;
+    background-color: white;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .dark body {
+    background-color: #1f2937;
+  }
+  
+  .dark #root {
+    background-color: hsl(var(--background));
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
