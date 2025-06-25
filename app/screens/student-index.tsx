@@ -58,43 +58,6 @@ export default function StudentIndexScreen() {
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView>
         <View className="px-4 pb-2">
-          {/* Header with notification bell */}
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-2xl font-bold text-foreground">Home</Text>
-            <View>
-              <Pressable 
-                className="relative"
-                onPress={() => setShowNotificationMenu(!showNotificationMenu)}
-              >
-                <Bell size={24} color="#64748B" />
-                <View className="absolute -top-1 -right-1 h-2 w-2 bg-destructive rounded-full" />
-              </Pressable>
-              
-              {showNotificationMenu && (
-                <View className="absolute right-0 top-8 w-48 bg-card border border-border rounded-lg shadow-lg z-10">
-                  <Pressable 
-                    className="flex-row items-center p-2" 
-                    onPress={() => {
-                      setIsTeacherMode(true);
-                      setShowNotificationMenu(false);
-                    }}
-                  >
-                    <User size={16} color="#64748B" />
-                    <Text className="text-sm ml-2">Switch to Teacher View</Text>
-                  </Pressable>
-                  <Pressable className="flex-row items-center p-2" onPress={() => {/* Handle notifications */}}>
-                    <Bell size={16} color="#64748B" />
-                    <Text className="text-sm ml-2">View Notifications</Text>
-                  </Pressable>
-                   <Pressable className="flex-row items-center p-2" onPress={() => router.push('/(tabs)/profile')}>
-                    <Settings size={16} color="#64748B" />
-                    <Text className="text-sm ml-2">Settings</Text>
-                  </Pressable>
-                </View>
-              )}
-            </View>
-          </View>
-
           {/* Student/Teacher Toggle */}
           <View className="mb-6">
             <ModeToggle />
@@ -107,8 +70,7 @@ export default function StudentIndexScreen() {
 
           {/* 2. Welcome back message */}
           <View className="mb-6">
-            <Text className="text-sm text-muted-foreground">Welcome back,</Text>
-            <Text className="text-2xl font-bold text-foreground">{firstName}</Text>
+            <Text className="text-sm text-muted-foreground">Welcome back!</Text>
           </View>
 
           {/* 3. Lesson Progress */}

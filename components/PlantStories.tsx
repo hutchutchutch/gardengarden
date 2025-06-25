@@ -10,12 +10,10 @@ import StoryCard from './StoryCard';
 export interface PlantStory {
   id: string;
   studentName: string;
-  plantDay: number;
   healthScore: number;
   photoUrl: string;
   hasSubmittedToday: boolean;
-  isCurrentUser: boolean;
-  timestamp: Date;
+  isCurrentUser: boolean; 
   reactions?: {
     heart?: number;
     thumbsUp?: number;
@@ -41,55 +39,45 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
       {
         id: 'user123',
         studentName: 'Sarah Chen',
-        plantDay: 23,
         healthScore: 85,
         photoUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=200&fit=crop&crop=center',
         hasSubmittedToday: false,
-        isCurrentUser: user?.id === 'user123',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+        isCurrentUser: user?.id === 'user123'
       },
       {
         id: 'user456',
         studentName: 'Alex Rivera',
-        plantDay: 25,
         healthScore: 92,
         photoUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=200&fit=crop&crop=center',
         hasSubmittedToday: true,
         isCurrentUser: false,
-        timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1 hour ago
         reactions: { heart: 3, thumbsUp: 2, sparkles: 1 }
       },
       {
         id: 'user789',
         studentName: 'Maya Patel',
-        plantDay: 22,
         healthScore: 78,
         photoUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=200&fit=crop&crop=center',
         hasSubmittedToday: true,
         isCurrentUser: false,
-        timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
         reactions: { thumbsUp: 1, trophy: 2 }
       },
       {
         id: 'user101',
         studentName: 'Jordan Kim',
-        plantDay: 24,
         healthScore: 65,
         photoUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=200&fit=crop&crop=center',
         hasSubmittedToday: true,
         isCurrentUser: false,
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
         reactions: { lightbulb: 1, heart: 1 }
       },
       {
         id: 'user202',
         studentName: 'Emma Wilson',
-        plantDay: 26,
         healthScore: 88,
         photoUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=200&fit=crop&crop=center',
         hasSubmittedToday: true,
         isCurrentUser: false,
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
         reactions: { sparkles: 2, trophy: 1, thumbsUp: 3 }
       }
     ];
@@ -126,7 +114,6 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
       </View>
       <View style={styles.storyTextContainer}>
         <Text variant="labelSmall" style={styles.storyName}>Add Photo</Text>
-        <Text variant="bodySmall" style={styles.storyDay}>Day 23</Text>
       </View>
     </Pressable>
   );
@@ -175,7 +162,6 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
           <Text variant="labelSmall" style={styles.storyName} numberOfLines={1}>
             {story.isCurrentUser ? 'You' : formatName(story.studentName)}
           </Text>
-          <Text variant="bodySmall" style={styles.storyDay}>Day {story.plantDay}</Text>
         </View>
       </Pressable>
     );
@@ -184,15 +170,11 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
   const currentUserStory = stories.find(s => s.isCurrentUser);
   const otherStories = stories
     .filter(story => !story.isCurrentUser)
-    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Text variant="titleMedium" style={styles.title}>Plant Stories</Text>
-          <Text variant="bodySmall" style={styles.timeLabel}>24h</Text>
-        </View>
+
         
         <ScrollView 
           horizontal 
@@ -237,16 +219,13 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: '600',
   },
-  timeLabel: {
-    color: '#64748B',
-  },
   scrollContent: {
     paddingRight: 16,
   },
   storyItem: {
     alignItems: 'center',
     marginRight: 16,
-    minWidth: 90,
+    minWidth: 60,
   },
   relative: {
     position: 'relative',
@@ -306,9 +285,5 @@ const styles = StyleSheet.create({
   storyName: {
     fontWeight: '500',
     maxWidth: 80,
-  },
-  storyDay: {
-    color: '#64748B',
-    fontSize: 12,
   },
 }); 
