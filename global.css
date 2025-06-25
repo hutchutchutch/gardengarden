@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 /* Mobile-like constraints for web */
+/* Commenting out web-only styles that cause React Native CSS parsing errors
 @media (min-width: 768px) {
   body {
     background-color: #f3f4f6;
@@ -32,6 +33,7 @@
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   }
 }
+*/
 
 @layer base {
   :root {

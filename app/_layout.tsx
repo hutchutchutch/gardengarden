@@ -10,6 +10,12 @@ import { View } from 'react-native';
 import '../global.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { trpc, trpcClient } from '@/lib/trpc';
+import { Platform } from 'react-native';
+
+// Import web-specific styles only on web
+if (Platform.OS === 'web') {
+  require('../global.web.css');
+}
 
 export {
   // Catch any errors thrown by the Layout component.

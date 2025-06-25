@@ -98,8 +98,14 @@ module.exports = {
     transition: false,
     transform: false,
     // Disable aspect-ratio to prevent parsing conflicts with ImagePicker
-    // aspectRatio: false,
+    aspectRatio: false,
     // Disable container queries that might conflict
     container: false,
+    // Disable other plugins that might cause parsing issues
+    backgroundOpacity: false,
+    borderOpacity: false,
+    divideOpacity: false,
+    placeholderOpacity: false,
+    textOpacity: false,
   },
 }; 
