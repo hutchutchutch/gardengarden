@@ -88,6 +88,15 @@ export function FAB({ visible = true }: FABProps) {
     router.replace('/(tabs)');
   };
 
+  // Debug FAB visibility
+  console.log('FAB Debug:', { 
+    visible, 
+    showFAB, 
+    hasUser: !!user, 
+    userRole: user?.role,
+    shouldShow: visible && showFAB && user 
+  });
+
   if (!visible || !showFAB || !user) return null;
 
   return (
@@ -167,6 +176,9 @@ export function FAB({ visible = true }: FABProps) {
         styles.container,
         {
           bottom: 64 + (Platform.OS === 'android' ? insets.bottom : 0) + 16, // Navigation height + safe area + padding
+          backgroundColor: 'rgba(255, 0, 0, 0.3)', // Debug: Red background to see if FAB is positioned
+          width: 100, // Debug: Give it a fixed width
+          height: 100, // Debug: Give it a fixed height
         },
       ]}>
         {/* Backdrop */}
