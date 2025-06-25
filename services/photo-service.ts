@@ -1,4 +1,4 @@
-import { supabase, supabaseStorage } from '@/config/supabase';
+import { supabase } from '@/utils/supabase';
 import { PlantImage } from '@/types';
 import { decode } from 'base64-arraybuffer';
 
@@ -31,7 +31,7 @@ export const uploadPlantPhoto = async (
     const base64Data = await base64Promise;
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabaseStorage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('plant-photos')
       .upload(filename, decode(base64Data), {
         contentType: 'image/jpeg',
@@ -41,7 +41,7 @@ export const uploadPlantPhoto = async (
     if (uploadError) throw uploadError;
 
     // Get public URL
-    const { data: { publicUrl } } = supabaseStorage
+    const { data: { publicUrl } } = supabase.storage
       .from('plant-photos')
       .getPublicUrl(filename);
 
@@ -92,7 +92,7 @@ export const deleteExpiredPhotos = async () => {
 
     // Delete from storage
     const storageDeletePromises = expiredPhotos.map(photo => 
-      supabaseStorage
+      supabase.storage
         .from('plant-photos')
         .remove([photo.storage_path])
     );

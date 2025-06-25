@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase, supabaseAuth } from '@/config/supabase';
+import { supabase } from '@/utils/supabase';
 import { Session, AuthError } from '@supabase/supabase-js';
 
 export interface AuthContextType {
@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check if user is already logged in
     const checkUser = async () => {
       try {
-        const { data: { session } } = await supabaseAuth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           await loadUserData(session);
         }
@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkUser();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabaseAuth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         await loadUserData(session);
       } else {
@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabaseAuth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     classId: string
   ) => {
     try {
-      const { data, error } = await supabaseAuth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -156,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (profileError) {
           console.error('Error creating user profile:', profileError);
           // Consider deleting the auth user if profile creation fails
-          await supabaseAuth.signOut();
+          await supabase.auth.signOut();
           throw profileError;
         }
       }
@@ -168,7 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      const { error } = await supabaseAuth.signOut();
+      const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
       setUser(null);
