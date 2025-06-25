@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { tasks as mockTasks } from '@/mocks/tasks';
 import { Task } from '@/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '@/utils/storage';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 interface TaskState {
@@ -98,7 +98,7 @@ export const useTaskStore = create<TaskState>()(
     }),
     {
       name: 'task-storage',
-      storage: createJSONStorage(() => AsyncStorage)
+      storage: createJSONStorage(() => storage)
     }
   )
 );

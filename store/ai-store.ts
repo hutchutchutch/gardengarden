@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { AIMessage } from '@/types';
 import { aiConversations as mockConversations } from '@/mocks/ai-conversations';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '@/utils/storage';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 interface AIState {
@@ -142,7 +142,7 @@ export const useAIStore = create<AIState>()(
     }),
     {
       name: 'ai-conversation-storage',
-      storage: createJSONStorage(() => AsyncStorage)
+      storage: createJSONStorage(() => storage)
     }
   )
 );

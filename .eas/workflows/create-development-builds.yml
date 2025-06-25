@@ -1,0 +1,6 @@
+name: Create Development Builds
+
+jobs:
+  ios_simulator_development_build:
+    name: Build iOS simulator 
+    

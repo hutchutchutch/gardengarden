@@ -17,16 +17,28 @@ An AI-powered educational garden monitoring app built with React Native, Expo, a
    npm install --legacy-peer-deps
    ```
 
-3. **Start the development server:**
+3. **Set up environment variables:**
+   Create a `.env` file in the root directory (this file is gitignored):
+   ```bash
+   cp .env.example .env
+   ```
+   Then edit `.env` with your actual Supabase credentials:
+   ```bash
+   EXPO_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_actual_anon_key_here
+   ```
+   
+   **Note:** Get your Supabase URL and anon key from your [Supabase project dashboard](https://supabase.com/dashboard) → Settings → API
+
+4. **Start the development server:**
    ```bash
    npx expo start
    ```
 
-4. **Run on iOS Simulator:**
+5. **Run on iOS Simulator:**
    - Press `i` in the terminal to open iOS Simulator
 
-
-5. **Run on Expo Go (physical device):**
+6. **Run on Expo Go (physical device):**
    - Install Expo Go from the App Store
    - Scan the QR code displayed in terminal
 

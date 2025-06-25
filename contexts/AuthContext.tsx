@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/utils/supabase';
 import { Session, AuthError } from '@supabase/supabase-js';
+import { storage } from '@/utils/storage';
 
 export interface AuthContextType {
   user: User | null;
@@ -38,8 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkUser = async () => {
       try {
         // Check for demo mode first
-        const demoMode = await AsyncStorage.getItem('isDemoMode');
-        const storedUser = await AsyncStorage.getItem('user');
+        const demoMode = await storage.getItem('isDemoMode');
+        const storedUser = await storage.getItem('user');
         
         if (demoMode === 'true' && storedUser) {
           const userData = JSON.parse(storedUser);
@@ -66,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await loadUserData(session);
       } else {
         setUser(null);
-        await AsyncStorage.removeItem('user');
+        await storage.removeItem('user');
       }
     });
 
@@ -102,11 +102,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (!insertError) {
           setUser(userData);
-          await AsyncStorage.setItem('user', JSON.stringify(userData));
+          await storage.setItem('user', JSON.stringify(userData));
         }
       } else if (profile) {
         setUser(profile);
-        await AsyncStorage.setItem('user', JSON.stringify(profile));
+        await storage.setItem('user', JSON.stringify(profile));
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -142,8 +142,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(demoUser);
       setIsDemoMode(true);
-      await AsyncStorage.setItem('user', JSON.stringify(demoUser));
-      await AsyncStorage.setItem('isDemoMode', 'true');
+      await storage.setItem('user', JSON.stringify(demoUser));
+      await storage.setItem('isDemoMode', 'true');
     } catch (error) {
       console.error('Demo sign in error:', error);
       throw error;
@@ -211,8 +211,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(null);
       setIsDemoMode(false);
-      await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('isDemoMode');
+      await storage.removeItem('user');
+      await storage.removeItem('isDemoMode');
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
@@ -233,7 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Update local state
         const updatedUser = { ...user, role };
         setUser(updatedUser);
-        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        await storage.setItem('user', JSON.stringify(updatedUser));
       } catch (error) {
         console.error('Error updating user role:', error);
         throw error;

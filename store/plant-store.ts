@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { plants as mockPlants } from '@/mocks/plants';
 import { Plant, PlantImage } from '@/types';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '@/utils/storage';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 interface PlantState {
@@ -109,7 +109,7 @@ export const usePlantStore = create<PlantState>()(
     }),
     {
       name: 'plant-storage',
-      storage: createJSONStorage(() => AsyncStorage)
+      storage: createJSONStorage(() => storage)
     }
   )
 );

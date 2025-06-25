@@ -4,12 +4,6 @@ const { withNativeWind } = require('nativewind/metro');
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Disable problematic serializer plugins that cause compatibility issues
-config.serializer = {
-  ...config.serializer,
-  customSerializer: undefined,
-};
-
 // Mock out react-native-reanimated to prevent babel from trying to load it
 config.resolver = {
   ...config.resolver,
