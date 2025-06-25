@@ -92,20 +92,4 @@ module.exports = {
     },
   },
   plugins: [require('tailwindcss-animate')],
-  corePlugins: {
-    // Disable animations to avoid Reanimated dependency
-    animation: false,
-    transition: false,
-    transform: false,
-    // Disable aspect-ratio to prevent parsing conflicts with ImagePicker
-    aspectRatio: false,
-    // Disable container queries that might conflict
-    container: false,
-    // Disable other plugins that might cause parsing issues
-    backgroundOpacity: false,
-    borderOpacity: false,
-    divideOpacity: false,
-    placeholderOpacity: false,
-    textOpacity: false,
-  },
 }; 

@@ -8,8 +8,6 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ModeProvider } from '@/contexts/ModeContext';
 import { View } from 'react-native';
 import '../global.css';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { trpc, trpcClient } from '@/lib/trpc';
 import { Platform } from 'react-native';
 
 // Import web-specific styles only on web
@@ -34,9 +32,6 @@ export const unstable_settings = {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-// Create a client
-const queryClient = new QueryClient();
-
 export default function RootLayout() {
   // Remove font loading - use system fonts instead
   useEffect(() => {
@@ -50,31 +45,27 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ModeProvider>
-            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-              <View style={{ flex: 1 }}>
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                  }}
-                >
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                  <Stack.Screen name="auth/signin" options={{ headerShown: false }} />
-                  <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
-                  <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="ai-chat" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="plant/[id]" options={{ headerShown: false }} />
-                </Stack>
-              </View>
-              <StatusBar style="auto" />
-            </ThemeProvider>
-          </ModeProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </trpc.Provider>
+    <AuthProvider>
+      <ModeProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <View style={{ flex: 1 }}>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+              }}
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+              <Stack.Screen name="auth/signin" options={{ headerShown: false }} />
+              <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="ai-chat" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="plant/[id]" options={{ headerShown: false }} />
+            </Stack>
+          </View>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </ModeProvider>
+    </AuthProvider>
   );
 }
