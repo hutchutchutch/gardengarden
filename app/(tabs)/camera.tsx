@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Image, Pressable, ActivityIndicator, Alert, Platform, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Image, Pressable, ActivityIndicator, Alert, Platform, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Camera as CameraIcon, RotateCw, Grid3x3, Ghost, Check, X, Grid, Focus, PartyPopper } from 'lucide-react-native';
@@ -8,17 +8,25 @@ import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { usePlantStore } from '@/store/plant-store';
 import { uploadPlantPhoto } from '@/services/photo-service';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Text } from 'react-native-paper';
-import { Progress } from '@/components/ui/progress';
+import { useMode } from '@/contexts/ModeContext';
 import { plants } from '@/mocks/plants';
+import TeacherMessagesScreen from '@/app/screens/teacher-messages';
+import {
+  GSButton,
+  GSCard,
+  Text,
+  Badge,
+  Progress,
+  Button
+} from '@/components/ui';
+
+
 
 export default function CameraScreen() {
   const router = useRouter();
   const cameraRef = useRef<CameraView>(null);
   const { plants, updatePlant } = usePlantStore();
+  const { isTeacherMode } = useMode();
   
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [showGrid, setShowGrid] = useState(true);
@@ -35,6 +43,8 @@ export default function CameraScreen() {
     Math.floor((new Date().getTime() - new Date(activePlant.plantedDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
   const [permission, requestPermission] = useCameraPermissions();
+
+
 
   const handlePermissions = async () => {
     try {
@@ -153,6 +163,14 @@ export default function CameraScreen() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
+  // Filter messages based on search and filter
+
+
+  // Show teacher messages if in teacher mode
+  if (isTeacherMode) {
+    return <TeacherMessagesScreen />;
+  }
+
   if (hasPermission === null) {
     return (
       <SafeAreaView style={styles.centerContainer}>
@@ -165,9 +183,9 @@ export default function CameraScreen() {
     return (
       <SafeAreaView style={[styles.centerContainer, styles.paddingHorizontal]}>
         <Text style={styles.centerText}>Camera permission is required to take plant photos</Text>
-        <Button onPress={handlePermissions}>
+        <GSButton onPress={handlePermissions}>
           Grant Permission
-        </Button>
+        </GSButton>
       </SafeAreaView>
     );
   }
@@ -181,11 +199,8 @@ export default function CameraScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.contentPadding}>
-          <Card>
-            <CardHeader>
-              <CardTitle title="Analysis Complete" />
-            </CardHeader>
-            <CardContent>
+          <GSCard variant="elevated" padding="large">
+            <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 16, color: '#000' }}>Analysis Complete</Text>
               {/* Health Score */}
               <View style={styles.healthScoreContainer}>
                 <View style={[styles.healthScoreCircle, { backgroundColor: `${healthColor}20` }]}>
@@ -228,16 +243,15 @@ export default function CameraScreen() {
                   </View>
                 ))}
               </View>
-            </CardContent>
-          </Card>
+          </GSCard>
 
           <View style={styles.buttonRow}>
-            <Button variant="outline" style={styles.flexButton} onPress={retakePicture}>
+            <GSButton variant="secondary" onPress={retakePicture}>
               Retake Photo
-            </Button>
-            <Button style={styles.flexButton} onPress={continueToHome}>
+            </GSButton>
+            <GSButton variant="primary" onPress={continueToHome}>
               Continue
-            </Button>
+            </GSButton>
           </View>
         </View>
       </SafeAreaView>

@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Image, Pressable, FlatList, Modal, StyleSheet } from 'react-native';
+import { View, ScrollView, Image, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { CheckCircle, Play, Clock, BookOpen } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Text, Button } from 'react-native-paper';
-import { Progress } from '@/components/ui/progress';
-import { GSModeToggle } from '@/components/ui';
+import {
+  GSModeToggle,
+  GSCard,
+  GSButton,
+  GSChip,
+  GSProgressIndicator,
+  GSIconButton,
+  GSSegmentedButtons,
+  Text
+} from '@/components/ui';
 
 // Mock lesson data
 const mockLessons = [
@@ -80,96 +84,31 @@ const mockLessons = [
   },
 ];
 
-interface LessonCardProps {
-  lesson: any;
-  onPress: () => void;
-  showProgress?: boolean;
-}
+// Helper function to get difficulty variant
+const getDifficultyVariant = (difficulty: string) => {
+  switch (difficulty) {
+    case 'Beginner': return 'success';
+    case 'Intermediate': return 'warning';
+    case 'Advanced': return 'destructive';
+    default: return 'default';
+  }
+};
 
-const LessonCard = ({ lesson, onPress, showProgress = false }: LessonCardProps) => {
-  const getDifficultyStyle = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Beginner': return styles.difficultyBeginner;
-      case 'Intermediate': return styles.difficultyIntermediate;
-      case 'Advanced': return styles.difficultyAdvanced;
-      default: return styles.difficultyDefault;
-    }
-  };
-
-  const getStatusIcon = () => {
-    switch (lesson.status) {
-      case 'completed':
-        return <CheckCircle size={20} color="#10B981" />;
-      case 'active':
-        return <Play size={20} color="#3B82F6" />;
-      case 'upcoming':
-        return <Clock size={20} color="#64748B" />;
-      default:
-        return <BookOpen size={20} color="#64748B" />;
-    }
-  };
-
-  return (
-    <Pressable onPress={onPress}>
-      <Card style={styles.lessonCard}>
-        <CardContent style={styles.cardContent}>
-          <View style={styles.lessonRow}>
-            <Image 
-              source={{ uri: lesson.imageUri }} 
-              style={styles.lessonImage}
-              resizeMode="cover"
-            />
-            <View style={styles.lessonInfo}>
-              <View style={styles.lessonHeader}>
-                <Text style={styles.lessonTitle} numberOfLines={1}>
-                  {lesson.title}
-                </Text>
-                {getStatusIcon()}
-              </View>
-              <Text style={styles.lessonDescription} numberOfLines={2}>
-                {lesson.description}
-              </Text>
-              <View style={styles.lessonMeta}>
-                <View style={styles.lessonTags}>
-                  <Badge variant="secondary" style={getDifficultyStyle(lesson.difficulty)}>
-                    <Text style={styles.difficultyText}>{lesson.difficulty}</Text>
-                  </Badge>
-                  <Text style={styles.durationText}>{lesson.duration}</Text>
-                </View>
-                {lesson.status === 'completed' && lesson.completedAt && (
-                  <Text style={styles.completedText}>
-                    Completed {new Date(lesson.completedAt).toLocaleDateString()}
-                  </Text>
-                )}
-                {lesson.status === 'upcoming' && lesson.dueDate && (
-                  <Text style={styles.dueText}>
-                    Due {new Date(lesson.dueDate).toLocaleDateString()}
-                  </Text>
-                )}
-              </View>
-              {showProgress && lesson.progress > 0 && lesson.progress < 100 && (
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View 
-                      style={[styles.progressFill, { width: `${lesson.progress}%` }]}
-                    />
-                  </View>
-                  <Text style={styles.progressText}>{lesson.progress}% complete</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </CardContent>
-      </Card>
-    </Pressable>
-  );
+// Helper function to get status variant
+const getStatusVariant = (status: string) => {
+  switch (status) {
+    case 'completed': return 'success';
+    case 'active': return 'primary';
+    case 'upcoming': return 'default';
+    default: return 'default';
+  }
 };
 
 export default function StudentLessons() {
   const router = useRouter();
   const { user } = useAuth();
   const { isTeacherMode } = useMode();
-  const [selectedTab, setSelectedTab] = useState<'completed' | 'upcoming'>('upcoming');
+  const [selectedTab, setSelectedTab] = useState<'upcoming' | 'completed'>('upcoming');
   
   // Get active lesson (first lesson with progress > 0 and < 100)
   const activeLesson = mockLessons.find(lesson => 
@@ -179,6 +118,7 @@ export default function StudentLessons() {
   // Filter lessons by status
   const completedLessons = mockLessons.filter(lesson => lesson.status === 'completed');
   const upcomingLessons = mockLessons.filter(lesson => lesson.status === 'upcoming');
+  const currentLessons = selectedTab === 'upcoming' ? upcomingLessons : completedLessons;
 
   const handleLessonPress = (lessonId: string) => {
     // Navigate to lesson detail or player
@@ -201,325 +141,149 @@ export default function StudentLessons() {
   }, [isTeacherMode]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
       {/* Fixed Mode Toggle at the top */}
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
         <GSModeToggle />
       </View>
       
-      {/* Active Lesson Section - Top Half */}
-      <View style={styles.flex}>
+      {/* Scrollable Content */}
+      <ScrollView 
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Continue Learning Section */}
         {activeLesson ? (
-          <View style={styles.activeSection}>
-            <Text style={styles.sectionTitle}>Continue Learning</Text>
-            <Card>
-              <CardContent style={styles.activeCardContent}>
-                <Image 
-                  source={{ uri: activeLesson.imageUri }} 
-                  style={styles.activeImage}
-                  resizeMode="cover"
-                />
-                <View style={styles.activeInfo}>
-                  <View style={styles.activeMeta}>
-                    <Badge variant="secondary" style={styles.categoryBadge}>
-                      <Text style={styles.categoryText}>{activeLesson.category}</Text>
-                    </Badge>
-                    <Text style={styles.activeDuration}>{activeLesson.duration}</Text>
-                  </View>
-                  <Text style={styles.activeTitle}>{activeLesson.title}</Text>
-                  <Text style={styles.activeDescription}>{activeLesson.description}</Text>
-                  
-                  {/* Progress Bar */}
-                  <View style={styles.activeProgressContainer}>
-                    <View style={styles.progressHeader}>
-                      <Text style={styles.progressLabel}>Progress</Text>
-                      <Text style={styles.progressValue}>{activeLesson.progress}%</Text>
-                    </View>
-                    <View style={styles.progressBar}>
-                      <View 
-                        style={[styles.progressFill, { width: `${activeLesson.progress}%` }]}
-                      />
-                    </View>
-                  </View>
-                  
-                  <Button 
-                    mode="contained"
-                    onPress={handleContinueLesson}
-                    icon={() => <Play size={16} color="white" />}
-                    style={styles.continueButton}
-                  >
-                    Continue Lesson
-                  </Button>
+          <View style={{ paddingHorizontal: 16, paddingTop: 16, marginBottom: 24 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 16, color: '#000' }}>Continue Learning</Text>
+            
+            <GSCard variant="elevated" padding="none">
+              <Image 
+                source={{ uri: activeLesson.imageUri }} 
+                style={{ width: '100%', height: 192, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}
+                resizeMode="cover"
+              />
+              <View style={{ padding: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <GSChip label={activeLesson.category} variant="primary" />
+                  <Text style={{ fontSize: 14, color: '#666' }}>{activeLesson.duration}</Text>
                 </View>
-              </CardContent>
-            </Card>
+                
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8, color: '#000' }}>{activeLesson.title}</Text>
+                <Text style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>{activeLesson.description}</Text>
+                
+                {/* Progress */}
+                <View style={{ marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text style={{ fontSize: 14, color: '#666' }}>Progress</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: '#000' }}>{activeLesson.progress}%</Text>
+                  </View>
+                  <GSProgressIndicator progress={activeLesson.progress / 100} size="medium" />
+                </View>
+                
+                <GSButton 
+                  variant="primary" 
+                  icon="play" 
+                  fullWidth
+                  onPress={handleContinueLesson}
+                >
+                  Continue Lesson
+                </GSButton>
+              </View>
+            </GSCard>
           </View>
         ) : (
-          <View style={styles.emptyState}>
-            <BookOpen size={48} color="#64748B" />
-            <Text style={styles.emptyTitle}>All caught up!</Text>
-            <Text style={styles.emptyText}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 16, marginBottom: 24, alignItems: 'center', paddingVertical: 48 }}>
+            <GSIconButton icon="book-open" onPress={() => {}} size={48} />
+            <Text style={{ fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8, color: '#000' }}>All caught up!</Text>
+            <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
               You've completed all available lessons. Check back later for new content.
             </Text>
           </View>
         )}
-      </View>
 
-      {/* Tab Section - Bottom Half */}
-      <View style={styles.tabSection}>
-        <View style={styles.tabBar}>
-          <Pressable
-            onPress={() => setSelectedTab('upcoming')}
-            style={[
-              styles.tab,
-              selectedTab === 'upcoming' && styles.activeTab
-            ]}
-          >
-            <Text style={[
-              styles.tabText,
-              selectedTab === 'upcoming' && styles.activeTabText
-            ]}>
-              Upcoming ({upcomingLessons.length})
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setSelectedTab('completed')}
-            style={[
-              styles.tab,
-              selectedTab === 'completed' && styles.activeTab
-            ]}
-          >
-            <Text style={[
-              styles.tabText,
-              selectedTab === 'completed' && styles.activeTabText
-            ]}>
-              Completed ({completedLessons.length})
-            </Text>
-          </Pressable>
+        {/* Tab Selection */}
+        <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+          <GSSegmentedButtons
+            options={[`Upcoming (${upcomingLessons.length})`, `Completed (${completedLessons.length})`]}
+            selectedIndex={selectedTab === 'upcoming' ? 0 : 1}
+            onIndexChange={(index) => setSelectedTab(index === 0 ? 'upcoming' : 'completed')}
+          />
         </View>
 
-        <FlatList
-          data={selectedTab === 'upcoming' ? upcomingLessons : completedLessons}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <LessonCard 
-              lesson={item} 
-              onPress={() => handleLessonPress(item.id)}
-              showProgress={selectedTab === 'upcoming'}
-            />
+        {/* Lessons List */}
+        <View style={{ paddingHorizontal: 16 }}>
+          {currentLessons.map((lesson) => (
+            <Pressable key={lesson.id} onPress={() => handleLessonPress(lesson.id)}>
+              <GSCard variant="elevated" padding="medium" margin="none" style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <Image 
+                    source={{ uri: lesson.imageUri }} 
+                    style={{ width: 64, height: 64, borderRadius: 8 }}
+                    resizeMode="cover"
+                  />
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontWeight: '600', flex: 1, color: '#000' }} numberOfLines={1}>
+                        {lesson.title}
+                      </Text>
+                      <GSIconButton 
+                        icon={lesson.status === 'completed' ? 'check-circle' : lesson.status === 'active' ? 'play' : 'clock'} 
+                        onPress={() => {}} 
+                        size={20} 
+                      />
+                    </View>
+                    <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }} numberOfLines={2}>
+                      {lesson.description}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <GSChip label={lesson.difficulty} variant={getDifficultyVariant(lesson.difficulty)} />
+                        <Text style={{ fontSize: 12, color: '#666' }}>{lesson.duration}</Text>
+                      </View>
+                      {lesson.status === 'completed' && lesson.completedAt && (
+                        <Text style={{ fontSize: 12, color: '#10B981' }}>
+                          Completed {new Date(lesson.completedAt).toLocaleDateString()}
+                        </Text>
+                      )}
+                      {lesson.status === 'upcoming' && lesson.dueDate && (
+                        <Text style={{ fontSize: 12, color: '#F97316' }}>
+                          Due {new Date(lesson.dueDate).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+                    {selectedTab === 'upcoming' && lesson.progress > 0 && lesson.progress < 100 && (
+                      <View style={{ marginTop: 8 }}>
+                        <GSProgressIndicator progress={lesson.progress / 100} size="small" />
+                        <Text style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                          {lesson.progress}% complete
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </GSCard>
+            </Pressable>
+          ))}
+          
+          {currentLessons.length === 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+              <GSIconButton icon="book" onPress={() => {}} size={48} />
+              <Text style={{ fontSize: 16, fontWeight: '500', marginTop: 16, marginBottom: 8, color: '#000' }}>
+                No {selectedTab} lessons
+              </Text>
+              <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+                {selectedTab === 'upcoming' 
+                  ? 'All lessons are complete or in progress!' 
+                  : 'Complete some lessons to see them here.'}
+              </Text>
+            </View>
           )}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  flex: {
-    flex: 1,
-  },
-  activeSection: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  activeCardContent: {
-    padding: 0,
-  },
-  activeImage: {
-    width: '100%',
-    height: 192,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-  },
-  activeInfo: {
-    padding: 16,
-  },
-  activeMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  categoryBadge: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-  },
-  categoryText: {
-    color: '#3B82F6',
-  },
-  activeDuration: {
-    fontSize: 14,
-    color: '#64748B',
-  },
-  activeTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  activeDescription: {
-    color: '#64748B',
-    marginBottom: 16,
-  },
-  activeProgressContainer: {
-    marginBottom: 16,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  progressLabel: {
-    fontSize: 14,
-    color: '#64748B',
-  },
-  progressValue: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-  },
-  progressFill: {
-    height: 8,
-    backgroundColor: '#3B82F6',
-    borderRadius: 4,
-  },
-  continueButton: {
-    width: '100%',
-  },
-  emptyState: {
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    color: '#64748B',
-    textAlign: 'center',
-  },
-  tabSection: {
-    flex: 1,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  activeTab: {
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 2,
-    borderTopColor: '#3B82F6',
-  },
-  tabText: {
-    fontWeight: '500',
-    color: '#64748B',
-  },
-  activeTabText: {
-    color: '#3B82F6',
-  },
-  listContent: {
-    padding: 16,
-  },
-  lessonCard: {
-    marginBottom: 12,
-  },
-  cardContent: {
-    padding: 16,
-  },
-  lessonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  lessonImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
-  },
-  lessonInfo: {
-    flex: 1,
-  },
-  lessonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  lessonTitle: {
-    fontWeight: '600',
-    flex: 1,
-  },
-  lessonDescription: {
-    fontSize: 14,
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  lessonMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  lessonTags: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  difficultyBeginner: {
-    backgroundColor: '#D1FAE5',
-  },
-  difficultyIntermediate: {
-    backgroundColor: '#FEF3C7',
-  },
-  difficultyAdvanced: {
-    backgroundColor: '#FEE2E2',
-  },
-  difficultyDefault: {
-    backgroundColor: '#F3F4F6',
-  },
-  difficultyText: {
-    fontSize: 12,
-    color: '#374151',
-  },
-  durationText: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  completedText: {
-    fontSize: 12,
-    color: '#10B981',
-  },
-  dueText: {
-    fontSize: 12,
-    color: '#F97316',
-  },
-  progressContainer: {
-    marginTop: 8,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-  },
-}); 
+ 

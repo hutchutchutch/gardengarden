@@ -1,9 +1,11 @@
 import { Tabs } from 'expo-router';
-import { Home, Sprout, Camera, Bot, TrendingUp, User } from 'lucide-react-native';
+import { Home, Sprout, Camera, Bot, TrendingUp, User, MessageCircle } from 'lucide-react-native';
 import { useColorScheme, View } from 'react-native';
+import { useMode } from '@/contexts/ModeContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { isTeacherMode } = useMode();
 
   return (
     <Tabs
@@ -42,9 +44,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="camera"
         options={{
-          title: 'Camera',
+          title: isTeacherMode ? 'Messages' : 'Camera',
           tabBarIcon: ({ color, focused }) => (
-            <Camera size={24} color={color} />
+            isTeacherMode ? <MessageCircle size={24} color={color} /> : <Camera size={24} color={color} />
           ),
         }}
       />

@@ -1,25 +1,24 @@
-import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Image, Pressable, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect } from 'react';
+import { View, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { 
-  TrendingUp, 
-  Droplets, 
-  Sun, 
-  MessageCircle, 
-  CheckCircle, 
-  AlertTriangle,
-  Calendar,
-  Lightbulb,
-  Target,
-  HelpCircle
-} from 'lucide-react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { usePlantStore } from '@/store/plant-store';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Text, Button } from 'react-native-paper';
+import { useMode } from '@/contexts/ModeContext';
+import {
+  GSScreenLayout,
+  GSCard,
+  GSButton,
+  GSBadge,
+  GSChip,
+  GSProgressIndicator,
+  GSEmptyState,
+  GSIconButton,
+  GSStatCard,
+  Text,
+  SectionHeader,
+  GSHealthBadge,
+} from '@/components/ui';
 
 // Mock weekly task data
 const weeklyTasks = [
@@ -38,40 +37,45 @@ const plantTips = [
     id: '1',
     category: 'Watering',
     tip: 'Your tomato plant needs deep, infrequent watering. Check soil moisture 2 inches down.',
-    icon: '💧',
-    priority: 'high'
+    icon: 'water',
+    priority: 'high',
   },
   {
     id: '2',
     category: 'Growth',
     tip: 'At 3 weeks old, your plant should start showing its second set of true leaves.',
-    icon: '🌱',
-    priority: 'medium'
+    icon: 'sprout',
+    priority: 'medium',
   },
   {
     id: '3',
     category: 'Light',
     tip: 'Tomatoes need 6-8 hours of direct sunlight. Consider rotating your plant for even growth.',
-    icon: '☀️',
-    priority: 'medium'
+    icon: 'white-balance-sunny',
+    priority: 'medium',
   },
   {
     id: '4',
     category: 'Problem',
     tip: 'Yellow lower leaves are normal as your plant grows. Remove them to encourage new growth.',
-    icon: '🍃',
-    priority: 'low'
-  }
+    icon: 'leaf',
+    priority: 'low',
+  },
 ];
 
 export default function StudentProgressScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { } = useAuth();
+  const { isTeacherMode } = useMode();
   const { plants, fetchPlants } = usePlantStore();
-  
+
   const activePlant = plants[0];
-  const plantAge = activePlant ? 
-    Math.floor((new Date().getTime() - new Date(activePlant.plantedDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  const plantAge = activePlant
+    ? Math.floor(
+        (new Date().getTime() - new Date(activePlant.plantedDate).getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : 0;
 
   const completedDays = weeklyTasks.filter(day => day.completed).length;
   const completionRate = Math.round((completedDays / weeklyTasks.length) * 100);
@@ -80,389 +84,213 @@ export default function StudentProgressScreen() {
     fetchPlants();
   }, []);
 
+  useEffect(() => {
+    if (isTeacherMode) {
+      router.replace('/screens/teacher-progress');
+    }
+  }, [isTeacherMode]);
+
   const handleAskQuestion = (context?: string) => {
     router.push({
       pathname: '/ai-chat',
-      params: { context: context || 'general' }
+      params: { context: context || 'general' },
     });
+  };
+
+  const getCompletionVariant = (rate: number) => {
+    if (rate >= 80) return 'success';
+    if (rate >= 60) return 'warning';
+    return 'destructive';
+  };
+
+  const getTipPriorityVariant = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'warning';
+      case 'low':
+        return 'primary';
+      default:
+        return 'default';
+    }
   };
 
   if (!activePlant) {
     return (
-      <SafeAreaView style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No plant data available</Text>
-        <Button mode="contained" onPress={() => router.push('/(tabs)/camera')} style={styles.emptyButton}>
-          Start Your Garden
-        </Button>
-      </SafeAreaView>
+      <GSScreenLayout>
+        <GSEmptyState
+          icon="sprout"
+          title="No plant data available"
+          description="Start your garden journey by taking your first photo!"
+          actionLabel="Start Your Garden"
+          onAction={() => router.push('/(tabs)/camera')}
+        />
+      </GSScreenLayout>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          
+    <GSScreenLayout>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 80 }}
+      >
+        <View className="p-4 space-y-6">
+          {/* Header */}
+          <View>
+            <Text className="text-3xl font-bold text-foreground">Your Progress</Text>
+            <Text className="text-base text-muted-foreground">
+              Track your plant's journey
+            </Text>
+          </View>
+
           {/* Weekly Progress Calendar */}
-          <Card>
-            <CardHeader>
-              <View style={styles.headerRow}>
-                <View>
-                  <CardTitle 
-                    title="This Week's Progress"
-                    left={() => <Calendar size={20} color="#10B981" />}
-                    style={styles.titleRow}
+          <GSCard padding="medium">
+            <SectionHeader title="This Week's Progress">
+              <GSBadge
+                label={`${completionRate}%`}
+                variant={getCompletionVariant(completionRate) as any}
+              />
+            </SectionHeader>
+            <Text className="text-sm text-muted-foreground mb-4">
+              {completedDays}/7 days completed
+            </Text>
+
+            <View className="flex-row justify-between mb-4">
+              {weeklyTasks.map((day, index) => (
+                <View key={index} className="items-center">
+                  <Text className="text-xs text-muted-foreground mb-1">{day.day}</Text>
+                  <GSIconButton
+                    icon={day.completed ? 'check-circle' : 'alert-circle'}
+                    size={24}
+                    color={day.completed ? '#4CAF50' : '#F44336'}
+                    onPress={() => {}}
                   />
-                  <CardDescription>
-                    <Text>{completedDays}/7 days completed ({completionRate}%)</Text>
-                  </CardDescription>
+                  <Text className="text-xs font-medium mt-1">{day.date}</Text>
                 </View>
-                <Badge style={[
-                  styles.badge,
-                  completionRate >= 80 ? styles.badgeGreen :
-                  completionRate >= 60 ? styles.badgeAmber : styles.badgeRed
-                ]}>
-                  <Text style={styles.badgeText}>{completionRate}%</Text>
-                </Badge>
-              </View>
-            </CardHeader>
-            <CardContent>
-              <View style={styles.weekRow}>
-                {weeklyTasks.map((day, index) => (
-                  <View key={index} style={styles.dayItem}>
-                    <Text style={styles.dayLabel}>{day.day}</Text>
-                    <View style={[
-                      styles.dayCircle,
-                      day.completed ? styles.dayCircleCompleted : styles.dayCircleIncomplete
-                    ]}>
-                      {day.completed ? (
-                        <CheckCircle size={24} color="#10B981" />
-                      ) : (
-                        <AlertTriangle size={24} color="#EF4444" />
-                      )}
-                    </View>
-                    <Text style={styles.dayDate}>{day.date}</Text>
-                  </View>
-                ))}
-              </View>
-              <Progress value={completionRate} style={styles.progressBar} />
-            </CardContent>
-          </Card>
+              ))}
+            </View>
+            <GSProgressIndicator progress={completionRate / 100} size="medium" />
+          </GSCard>
 
           {/* Plant Status Card */}
-          <Card>
-            <CardHeader>
-              <View style={styles.plantHeaderRow}>
-                <View style={styles.flex}>
-                  <CardTitle title={activePlant.name || 'My Plant'} />
-                  <CardDescription>
-                    <Text>{activePlant.species} • {plantAge} days old</Text>
-                  </CardDescription>
-                </View>
-                {activePlant.images.length > 0 && (
-                  <Image 
-                    source={{ uri: activePlant.images[0].uri }}
-                    style={styles.plantImage}
-                    resizeMode="cover"
-                  />
-                )}
-              </View>
-            </CardHeader>
-            <CardContent>
-              <View style={styles.gap4}>
-                {/* Health Status */}
-                <View>
-                  <View style={styles.healthRow}>
-                    <Text style={styles.labelText}>Plant Health</Text>
-                    <Text style={styles.boldText}>{activePlant.healthScore}%</Text>
-                  </View>
-                  <Progress value={activePlant.healthScore} style={styles.healthProgress} />
-                  <Text style={styles.healthDescription}>
-                    {activePlant.healthScore >= 80 ? 'Excellent condition!' : 
-                     activePlant.healthScore >= 70 ? 'Good health' : 
-                     activePlant.healthScore >= 60 ? 'Needs attention' : 'Requires immediate care'}
+          <GSCard padding="medium">
+            <View className="flex-row justify-between items-start mb-4">
+              <View className="flex-1">
+                <SectionHeader title={activePlant.name || 'My Plant'} />
+                <View className="flex-row items-center gap-2">
+                  <GSChip label={activePlant.species} variant="primary" size="small" />
+                  <Text className="text-sm text-muted-foreground">
+                    {plantAge} days old
                   </Text>
                 </View>
-
-                {/* Growth Comparison */}
-                <View>
-                  <Text style={styles.sectionTitle}>Growth vs Expected</Text>
-                  <View style={styles.growthRow}>
-                    <View style={styles.flex}>
-                      <Text style={styles.statLabel}>Height</Text>
-                      <Text style={styles.statValue}>15 inches</Text>
-                      <Text style={styles.statAhead}>+2" ahead</Text>
-                    </View>
-                    <View style={styles.flex}>
-                      <Text style={styles.statLabel}>Leaves</Text>
-                      <Text style={styles.statValue}>12 leaves</Text>
-                      <Text style={styles.statOnTrack}>On track</Text>
-                    </View>
-                    <View style={styles.flex}>
-                      <Text style={styles.statLabel}>Stage</Text>
-                      <Text style={styles.statValue}>Vegetative</Text>
-                      <Text style={styles.statAhead}>Early</Text>
-                    </View>
-                  </View>
-                </View>
               </View>
-            </CardContent>
-          </Card>
+              {activePlant.images.length > 0 && (
+                <Image
+                  source={{ uri: activePlant.images[0].uri }}
+                  className="w-20 h-20 rounded-lg ml-4"
+                  resizeMode="cover"
+                />
+              )}
+            </View>
+
+            {/* Health Status */}
+            <View className="mb-6">
+              <SectionHeader title="Plant Health" />
+              <View className="flex-row items-center justify-between">
+                <GSHealthBadge score={activePlant.healthScore} size="medium" />
+                <Text className="text-2xl font-bold text-primary">
+                  {activePlant.healthScore}%
+                </Text>
+              </View>
+              <GSProgressIndicator
+                progress={activePlant.healthScore / 100}
+                size="medium"
+                className="mt-2"
+              />
+            </View>
+
+            {/* Growth Comparison */}
+            <View>
+              <SectionHeader title="Growth vs Expected" />
+              <View className="flex-row gap-3 mt-2">
+                <GSStatCard label="Height" value="15 in" icon="ruler" className="flex-1" />
+                <GSStatCard label="Leaves" value="12" icon="leaf" className="flex-1" />
+                <GSStatCard
+                  label="Stage"
+                  value="Vegetative"
+                  icon="sprout"
+                  className="flex-1"
+                />
+              </View>
+            </View>
+          </GSCard>
 
           {/* Plant-Specific Tips */}
-          <Card>
-            <CardHeader>
-              <CardTitle 
-                title={`Tips for Your ${activePlant.species}`}
-                left={() => <Lightbulb size={20} color="#EAB308" />}
-              />
-              <CardDescription>
-                <Text>Personalized advice based on your plant's progress</Text>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <View style={styles.gap3}>
-                {plantTips.map((tip) => (
-                  <View key={tip.id} style={[
-                    styles.tipCard,
-                    tip.priority === 'high' ? styles.tipCardHigh :
-                    tip.priority === 'medium' ? styles.tipCardMedium : 
-                    styles.tipCardLow
-                  ]}>
-                    <View style={styles.tipContent}>
-                      <Text style={styles.tipIcon}>{tip.icon}</Text>
-                      <View style={styles.flex}>
-                        <Text style={styles.tipCategory}>{tip.category}</Text>
-                        <Text style={styles.tipText}>{tip.tip}</Text>
-                      </View>
+          <GSCard padding="medium">
+            <SectionHeader title={`Tips for Your ${activePlant.species}`} />
+            <Text className="text-sm text-muted-foreground mb-4">
+              Personalized advice based on your plant's progress
+            </Text>
+            <View className="gap-3">
+              {plantTips.map(tip => (
+                <View
+                  key={tip.id}
+                  className="flex-row items-start p-3 bg-muted rounded-lg border-l-4"
+                  style={{
+                    borderLeftColor:
+                      tip.priority === 'high'
+                        ? '#F44336'
+                        : tip.priority === 'medium'
+                        ? '#FFB74D'
+                        : '#4CAF50',
+                  }}
+                >
+                  <GSIconButton icon={tip.icon} size={24} onPress={() => {}} />
+                  <View className="flex-1 ml-3">
+                    <View className="flex-row justify-between items-center mb-1">
+                      <Text className="font-semibold">{tip.category}</Text>
+                      <GSChip
+                        label={tip.priority}
+                        variant={getTipPriorityVariant(tip.priority)}
+                        size="small"
+                      />
                     </View>
+                    <Text className="text-sm text-muted-foreground">{tip.tip}</Text>
                   </View>
-                ))}
-              </View>
-            </CardContent>
-          </Card>
+                </View>
+              ))}
+            </View>
+          </GSCard>
 
           {/* Ask Questions Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle title="Need Help?" />
-              <CardDescription>
-                <Text>Ask questions about your plant or assignments</Text>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <View style={styles.gap3}>
-                <Button 
-                  mode="contained"
-                  icon={() => <MessageCircle size={16} color="white" />}
-                  onPress={() => handleAskQuestion('plant-care')}
-                >
-                  Ask About Plant Care
-                </Button>
-                
-                <Button 
-                  mode="outlined"
-                  icon={() => <Target size={16} color="#3B82F6" />}
-                  onPress={() => handleAskQuestion('assignments')}
-                >
-                  Help with Assignments
-                </Button>
-                
-                <Button 
-                  mode="outlined"
-                  icon={() => <HelpCircle size={16} color="#3B82F6" />}
-                  onPress={() => handleAskQuestion('general')}
-                >
-                  General Questions
-                </Button>
-              </View>
-            </CardContent>
-          </Card>
-
+          <GSCard padding="medium">
+            <SectionHeader title="Need Help?" />
+            <Text className="text-sm text-muted-foreground mb-4">
+              Ask questions about your plant or assignments
+            </Text>
+            <View className="gap-3">
+              <GSButton
+                variant="primary"
+                icon="message-text-outline"
+                fullWidth
+                onPress={() => handleAskQuestion('plant-care')}
+              >
+                Ask About Plant Care
+              </GSButton>
+              <GSButton
+                variant="secondary"
+                icon="target-account"
+                fullWidth
+                onPress={() => handleAskQuestion('assignments')}
+              >
+                Help with Assignments
+              </GSButton>
+            </View>
+          </GSCard>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </GSScreenLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  emptyContainer: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyText: {
-    color: '#64748B',
-  },
-  emptyButton: {
-    marginTop: 16,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  badgeGreen: {
-    backgroundColor: '#10B981',
-  },
-  badgeAmber: {
-    backgroundColor: '#F59E0B',
-  },
-  badgeRed: {
-    backgroundColor: '#EF4444',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-  },
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dayItem: {
-    alignItems: 'center',
-  },
-  dayLabel: {
-    fontSize: 12,
-    color: '#64748B',
-    marginBottom: 4,
-  },
-  dayCircle: {
-    height: 40,
-    width: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  dayCircleCompleted: {
-    backgroundColor: '#D1FAE5',
-  },
-  dayCircleIncomplete: {
-    backgroundColor: '#FEE2E2',
-  },
-  dayDate: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  progressBar: {
-    marginTop: 16,
-  },
-  plantHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  flex: {
-    flex: 1,
-  },
-  plantImage: {
-    height: 64,
-    width: 64,
-    borderRadius: 8,
-  },
-  gap4: {
-    gap: 16,
-  },
-  gap3: {
-    gap: 12,
-  },
-  healthRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  labelText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  boldText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  healthProgress: {
-    marginBottom: 4,
-  },
-  healthDescription: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  growthRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  statValue: {
-    fontWeight: '600',
-  },
-  statAhead: {
-    fontSize: 12,
-    color: '#10B981',
-  },
-  statOnTrack: {
-    fontSize: 12,
-    color: '#F59E0B',
-  },
-  tipCard: {
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-  },
-  tipCardHigh: {
-    backgroundColor: '#FEF2F2',
-    borderLeftColor: '#EF4444',
-  },
-  tipCardMedium: {
-    backgroundColor: '#FFFBEB',
-    borderLeftColor: '#F59E0B',
-  },
-  tipCardLow: {
-    backgroundColor: '#EFF6FF',
-    borderLeftColor: '#3B82F6',
-  },
-  tipContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  tipIcon: {
-    fontSize: 18,
-  },
-  tipCategory: {
-    fontWeight: '500',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  tipText: {
-    fontSize: 14,
-    color: '#64748B',
-  },
-}); 
