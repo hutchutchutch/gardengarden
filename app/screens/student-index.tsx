@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,10 +11,10 @@ import { Text } from '@/components/ui/text';
 import PlantStories from '@/components/PlantStories';
 import { useMode } from '@/contexts/ModeContext';
 
-export default function StudentIndex() {
+export default function StudentIndexScreen() {
   const router = useRouter();
+  const { plants } = usePlantStore();
   const { user } = useAuth();
-  const { plants, loading } = usePlantStore();
   const { isTeacherMode, setIsTeacherMode } = useMode();
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   const [showPreviousTips, setShowPreviousTips] = useState(false);
@@ -26,14 +26,11 @@ export default function StudentIndex() {
     "A new leaf is unfurling. Great progress!"
   ];
 
-  if (isTeacherMode) {
-    router.replace('/teacher-index');
-    return null;
-  }
-  
-  if (loading) {
-    return <SafeAreaView className="flex-1 justify-center items-center"><Text>Loading...</Text></SafeAreaView>;
-  }
+  useEffect(() => {
+    if (isTeacherMode) {
+      router.replace('/screens/teacher-index');
+    }
+  }, [isTeacherMode]);
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -81,7 +78,7 @@ export default function StudentIndex() {
           {activePlant && (
             <Card>
               <CardHeader>
-                <CardTitle>{activePlant.name}</CardTitle>
+                <CardTitle title={activePlant.name} />
               </CardHeader>
               <CardContent>
                 <Text className="text-muted-foreground mb-4">

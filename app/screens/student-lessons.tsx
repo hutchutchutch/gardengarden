@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Image, Pressable, FlatList, Modal } from 'react-native';
+import { View, ScrollView, Image, Pressable, FlatList, Modal, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { CheckCircle, Play, Clock, BookOpen } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
+import { Text, Button } from 'react-native-paper';
 import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
 
 // Mock lesson data
 const mockLessons = [
@@ -87,12 +85,12 @@ interface LessonCardProps {
 }
 
 const LessonCard = ({ lesson, onPress, showProgress = false }: LessonCardProps) => {
-  const getDifficultyColor = (difficulty: string) => {
+  const getDifficultyStyle = (difficulty: string) => {
     switch (difficulty) {
-      case 'Beginner': return 'bg-green-100 text-green-800';
-      case 'Intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'Advanced': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'Beginner': return styles.difficultyBeginner;
+      case 'Intermediate': return styles.difficultyIntermediate;
+      case 'Advanced': return styles.difficultyAdvanced;
+      default: return styles.difficultyDefault;
     }
   };
 
@@ -111,51 +109,50 @@ const LessonCard = ({ lesson, onPress, showProgress = false }: LessonCardProps) 
 
   return (
     <Pressable onPress={onPress}>
-      <Card className="mb-3">
-        <CardContent className="p-4">
-          <View className="flex-row gap-3">
+      <Card style={styles.lessonCard}>
+        <CardContent style={styles.cardContent}>
+          <View style={styles.lessonRow}>
             <Image 
               source={{ uri: lesson.imageUri }} 
-              className="w-16 h-16 rounded-lg"
+              style={styles.lessonImage}
               resizeMode="cover"
             />
-            <View className="flex-1">
-              <View className="flex-row items-center justify-between mb-1">
-                <Text className="font-semibold flex-1" numberOfLines={1}>
+            <View style={styles.lessonInfo}>
+              <View style={styles.lessonHeader}>
+                <Text style={styles.lessonTitle} numberOfLines={1}>
                   {lesson.title}
                 </Text>
                 {getStatusIcon()}
               </View>
-              <Text className="text-sm text-muted-foreground mb-2" numberOfLines={2}>
+              <Text style={styles.lessonDescription} numberOfLines={2}>
                 {lesson.description}
               </Text>
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center gap-2">
-                  <Badge variant="secondary" className={cn("text-xs", getDifficultyColor(lesson.difficulty))}>
-                    <Text className="text-xs">{lesson.difficulty}</Text>
+              <View style={styles.lessonMeta}>
+                <View style={styles.lessonTags}>
+                  <Badge variant="secondary" style={getDifficultyStyle(lesson.difficulty)}>
+                    <Text style={styles.difficultyText}>{lesson.difficulty}</Text>
                   </Badge>
-                  <Text className="text-xs text-muted-foreground">{lesson.duration}</Text>
+                  <Text style={styles.durationText}>{lesson.duration}</Text>
                 </View>
                 {lesson.status === 'completed' && lesson.completedAt && (
-                  <Text className="text-xs text-green-600">
+                  <Text style={styles.completedText}>
                     Completed {new Date(lesson.completedAt).toLocaleDateString()}
                   </Text>
                 )}
                 {lesson.status === 'upcoming' && lesson.dueDate && (
-                  <Text className="text-xs text-orange-600">
+                  <Text style={styles.dueText}>
                     Due {new Date(lesson.dueDate).toLocaleDateString()}
                   </Text>
                 )}
               </View>
               {showProgress && lesson.progress > 0 && lesson.progress < 100 && (
-                <View className="mt-2">
-                  <View className="h-2 bg-gray-200 rounded-full">
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressBar}>
                     <View 
-                      className="h-2 bg-primary rounded-full" 
-                      style={{ width: `${lesson.progress}%` }}
+                      style={[styles.progressFill, { width: `${lesson.progress}%` }]}
                     />
                   </View>
-                  <Text className="text-xs text-muted-foreground mt-1">{lesson.progress}% complete</Text>
+                  <Text style={styles.progressText}>{lesson.progress}% complete</Text>
                 </View>
               )}
             </View>
@@ -195,56 +192,59 @@ export default function StudentLessons() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView style={styles.container}>
       {/* Active Lesson Section - Top Half */}
-      <View className="flex-1">
+      <View style={styles.flex}>
         {activeLesson ? (
-          <View className="p-4">
-            <Text className="text-xl font-bold mb-4">Continue Learning</Text>
+          <View style={styles.activeSection}>
+            <Text style={styles.sectionTitle}>Continue Learning</Text>
             <Card>
-              <CardContent className="p-0">
+              <CardContent style={styles.activeCardContent}>
                 <Image 
                   source={{ uri: activeLesson.imageUri }} 
-                  className="w-full h-48 rounded-t-lg"
+                  style={styles.activeImage}
                   resizeMode="cover"
                 />
-                <View className="p-4">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <Badge variant="secondary" className="bg-primary/10 text-primary">
-                      <Text className="text-primary">{activeLesson.category}</Text>
+                <View style={styles.activeInfo}>
+                  <View style={styles.activeMeta}>
+                    <Badge variant="secondary" style={styles.categoryBadge}>
+                      <Text style={styles.categoryText}>{activeLesson.category}</Text>
                     </Badge>
-                    <Text className="text-sm text-muted-foreground">{activeLesson.duration}</Text>
+                    <Text style={styles.activeDuration}>{activeLesson.duration}</Text>
                   </View>
-                  <Text className="text-lg font-semibold mb-2">{activeLesson.title}</Text>
-                  <Text className="text-muted-foreground mb-4">{activeLesson.description}</Text>
+                  <Text style={styles.activeTitle}>{activeLesson.title}</Text>
+                  <Text style={styles.activeDescription}>{activeLesson.description}</Text>
                   
                   {/* Progress Bar */}
-                  <View className="mb-4">
-                    <View className="flex-row justify-between mb-1">
-                      <Text className="text-sm text-muted-foreground">Progress</Text>
-                      <Text className="text-sm font-medium">{activeLesson.progress}%</Text>
+                  <View style={styles.activeProgressContainer}>
+                    <View style={styles.progressHeader}>
+                      <Text style={styles.progressLabel}>Progress</Text>
+                      <Text style={styles.progressValue}>{activeLesson.progress}%</Text>
                     </View>
-                    <View className="h-2 bg-gray-200 rounded-full">
+                    <View style={styles.progressBar}>
                       <View 
-                        className="h-2 bg-primary rounded-full" 
-                        style={{ width: `${activeLesson.progress}%` }}
+                        style={[styles.progressFill, { width: `${activeLesson.progress}%` }]}
                       />
                     </View>
                   </View>
                   
-                  <Button onPress={handleContinueLesson} className="w-full">
-                    <Play size={16} color="white" />
-                    <Text className="text-primary-foreground ml-2">Continue Lesson</Text>
+                  <Button 
+                    mode="contained"
+                    onPress={handleContinueLesson}
+                    icon={() => <Play size={16} color="white" />}
+                    style={styles.continueButton}
+                  >
+                    Continue Lesson
                   </Button>
                 </View>
               </CardContent>
             </Card>
           </View>
         ) : (
-          <View className="p-4 items-center justify-center flex-1">
+          <View style={styles.emptyState}>
             <BookOpen size={48} color="#64748B" />
-            <Text className="text-lg font-semibold mt-4 mb-2">All caught up!</Text>
-            <Text className="text-muted-foreground text-center">
+            <Text style={styles.emptyTitle}>All caught up!</Text>
+            <Text style={styles.emptyText}>
               You've completed all available lessons. Check back later for new content.
             </Text>
           </View>
@@ -252,33 +252,33 @@ export default function StudentLessons() {
       </View>
 
       {/* Tab Section - Bottom Half */}
-      <View className="flex-1 border-t border-border">
-        <View className="flex-row bg-muted">
+      <View style={styles.tabSection}>
+        <View style={styles.tabBar}>
           <Pressable
             onPress={() => setSelectedTab('upcoming')}
-            className={cn(
-              "flex-1 py-3 items-center",
-              selectedTab === 'upcoming' ? 'bg-background border-t-2 border-primary' : ''
-            )}
+            style={[
+              styles.tab,
+              selectedTab === 'upcoming' && styles.activeTab
+            ]}
           >
-            <Text className={cn(
-              "font-medium",
-              selectedTab === 'upcoming' ? 'text-primary' : 'text-muted-foreground'
-            )}>
+            <Text style={[
+              styles.tabText,
+              selectedTab === 'upcoming' && styles.activeTabText
+            ]}>
               Upcoming ({upcomingLessons.length})
             </Text>
           </Pressable>
           <Pressable
             onPress={() => setSelectedTab('completed')}
-            className={cn(
-              "flex-1 py-3 items-center",
-              selectedTab === 'completed' ? 'bg-background border-t-2 border-primary' : ''
-            )}
+            style={[
+              styles.tab,
+              selectedTab === 'completed' && styles.activeTab
+            ]}
           >
-            <Text className={cn(
-              "font-medium",
-              selectedTab === 'completed' ? 'text-primary' : 'text-muted-foreground'
-            )}>
+            <Text style={[
+              styles.tabText,
+              selectedTab === 'completed' && styles.activeTabText
+            ]}>
               Completed ({completedLessons.length})
             </Text>
           </Pressable>
@@ -294,10 +294,218 @@ export default function StudentLessons() {
               showProgress={selectedTab === 'upcoming'}
             />
           )}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
       </View>
     </SafeAreaView>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  flex: {
+    flex: 1,
+  },
+  activeSection: {
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  activeCardContent: {
+    padding: 0,
+  },
+  activeImage: {
+    width: '100%',
+    height: 192,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  activeInfo: {
+    padding: 16,
+  },
+  activeMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  categoryBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  categoryText: {
+    color: '#3B82F6',
+  },
+  activeDuration: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  activeTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  activeDescription: {
+    color: '#64748B',
+    marginBottom: 16,
+  },
+  activeProgressContainer: {
+    marginBottom: 16,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  progressLabel: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  progressValue: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+  },
+  progressFill: {
+    height: 8,
+    backgroundColor: '#3B82F6',
+    borderRadius: 4,
+  },
+  continueButton: {
+    width: '100%',
+  },
+  emptyState: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  tabSection: {
+    flex: 1,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  activeTab: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 2,
+    borderTopColor: '#3B82F6',
+  },
+  tabText: {
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  activeTabText: {
+    color: '#3B82F6',
+  },
+  listContent: {
+    padding: 16,
+  },
+  lessonCard: {
+    marginBottom: 12,
+  },
+  cardContent: {
+    padding: 16,
+  },
+  lessonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  lessonImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+  },
+  lessonInfo: {
+    flex: 1,
+  },
+  lessonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  lessonTitle: {
+    fontWeight: '600',
+    flex: 1,
+  },
+  lessonDescription: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  lessonMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lessonTags: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  difficultyBeginner: {
+    backgroundColor: '#D1FAE5',
+  },
+  difficultyIntermediate: {
+    backgroundColor: '#FEF3C7',
+  },
+  difficultyAdvanced: {
+    backgroundColor: '#FEE2E2',
+  },
+  difficultyDefault: {
+    backgroundColor: '#F3F4F6',
+  },
+  difficultyText: {
+    fontSize: 12,
+    color: '#374151',
+  },
+  durationText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  completedText: {
+    fontSize: 12,
+    color: '#10B981',
+  },
+  dueText: {
+    fontSize: 12,
+    color: '#F97316',
+  },
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+  },
+}); 

@@ -191,7 +191,7 @@ const TeacherLessonCard = ({ lesson, isExpanded, onToggleExpand, onEdit }: Teach
                 <MaterialCommunityIcons name="chevron-right" size={20} color="#64748B" />
               )}
               <View className="flex-1 ml-2">
-                <CardTitle className="text-base">{lesson.title}</CardTitle>
+                <CardTitle title={lesson.title} titleStyle={{ fontSize: 16 }} />
                 <View className="flex-row items-center gap-2 mt-1">
                   <Text className="text-xs text-muted-foreground">{lesson.category}</Text>
                   <Text className="text-xs text-muted-foreground">•</Text>

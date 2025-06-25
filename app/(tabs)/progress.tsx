@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Image, Pressable, TextInput, Alert } from 'react-native';
+import { View, ScrollView, Image, Pressable, TextInput, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,9 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Text, Button } from 'react-native-paper';
 import { Award, TrendingUp, Calendar } from 'lucide-react-native';
 import colors from '@/constants/colors';
 import { useTaskStore } from '@/store/task-store';
@@ -51,10 +49,10 @@ export default function ProgressScreen() {
   }, []);
 
   const getHealthColor = (score: number) => {
-    if (score >= 80) return 'text-health-excellent';
-    if (score >= 70) return 'text-health-good';
-    if (score >= 60) return 'text-health-warning';
-    return 'text-health-danger';
+    if (score >= 80) return '#10B981';
+    if (score >= 70) return '#059669';
+    if (score >= 60) return '#F59E0B';
+    return '#EF4444';
   };
 
   // Mock health history data
@@ -65,30 +63,32 @@ export default function ProgressScreen() {
 
   if (!activePlant) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <Text className="text-muted-foreground">No plant data available</Text>
-        <Button className="mt-4" onPress={() => router.push('/(tabs)/camera')}>
-          <Text>Start Your Garden</Text>
+      <SafeAreaView style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No plant data available</Text>
+        <Button mode="contained" onPress={() => router.push('/(tabs)/camera')} style={styles.emptyButton}>
+          Start Your Garden
         </Button>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View className="px-4 py-4 gap-4">
+        <View style={styles.content}>
           {/* Plant Profile Card */}
           <Card>
             <CardHeader>
-              <View className="flex-row items-start justify-between">
-                <View className="flex-1">
-                  <CardTitle className="flex-row items-center gap-2">
-                    <Text>{activePlant.name || 'My Plant'}</Text>
-                    <Pressable onPress={() => setEditingNickname(true)}>
-                      <Feather name="edit-2" size={16} color="#64748B" />
-                    </Pressable>
-                  </CardTitle>
+              <View style={styles.plantHeader}>
+                <View style={styles.flex}>
+                  <CardTitle 
+                    title={activePlant.name || 'My Plant'}
+                    right={() => (
+                      <Pressable onPress={() => setEditingNickname(true)}>
+                        <Feather name="edit-2" size={16} color="#64748B" />
+                      </Pressable>
+                    )}
+                  />
                   <CardDescription>
                     <Text>{activePlant.species}</Text>
                   </CardDescription>
@@ -96,26 +96,25 @@ export default function ProgressScreen() {
                 {activePlant.images.length > 0 && (
                   <Image 
                     source={{ uri: activePlant.images[0].uri }}
-                    className="h-16 w-16 rounded-lg"
+                    style={styles.plantImage}
                     resizeMode="cover"
                   />
                 )}
               </View>
             </CardHeader>
             <CardContent>
-              <View className="flex-row flex-wrap gap-2">
+              <View style={styles.badgeRow}>
                 <Badge variant="secondary">
                   <Text>Age: {plantAge} days</Text>
                 </Badge>
                 <Badge variant="secondary">
                   <Text>Stage: {activePlant.growthStage}</Text>
                 </Badge>
-                <Badge className={cn(
-                  activePlant.healthScore >= 80 ? "bg-health-excellent" :
-                  activePlant.healthScore >= 70 ? "bg-health-good" :
-                  activePlant.healthScore >= 60 ? "bg-health-warning" : "bg-health-danger"
-                )}>
-                  <Text className="text-white">Health: {activePlant.healthScore}%</Text>
+                <Badge style={[
+                  styles.healthBadge,
+                  { backgroundColor: getHealthColor(activePlant.healthScore) }
+                ]}>
+                  <Text style={styles.healthBadgeText}>Health: {activePlant.healthScore}%</Text>
                 </Badge>
               </View>
             </CardContent>
@@ -124,17 +123,15 @@ export default function ProgressScreen() {
           {/* Plant Journey Timeline */}
           <Card>
             <CardHeader>
-              <CardTitle>
-                <Text>Plant Journey</Text>
-              </CardTitle>
+              <CardTitle title="Plant Journey" />
               <CardDescription>
                 <Text>Track your progress from seed to harvest</Text>
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <View className="relative">
+              <View style={styles.timeline}>
                 {/* Timeline line */}
-                <View className="absolute left-4 top-4 bottom-4 w-0.5 bg-border" />
+                <View style={styles.timelineLine} />
                 
                 {/* Milestones */}
                 {milestones.map((milestone, index) => {
@@ -142,28 +139,28 @@ export default function ProgressScreen() {
                   const isCurrent = index > 0 && plantAge >= milestones[index - 1].day && plantAge < milestone.day;
                   
                   return (
-                    <View key={milestone.stage} className="flex-row items-center mb-6">
-                      <View className={cn(
-                        "h-8 w-8 rounded-full items-center justify-center z-10",
-                        isReached ? "bg-primary" : 
-                        isCurrent ? "bg-primary/50" : "bg-muted"
-                      )}>
-                        <Text className={cn(
-                          "text-xs font-bold",
-                          isReached || isCurrent ? "text-primary-foreground" : "text-muted-foreground"
-                        )}>
+                    <View key={milestone.stage} style={styles.milestoneRow}>
+                      <View style={[
+                        styles.milestoneCircle,
+                        isReached ? styles.milestoneReached : 
+                        isCurrent ? styles.milestoneCurrent : styles.milestoneFuture
+                      ]}>
+                        <Text style={[
+                          styles.milestoneDay,
+                          (isReached || isCurrent) && styles.milestoneDayActive
+                        ]}>
                           {milestone.day}
                         </Text>
                       </View>
-                      <View className="ml-4 flex-1">
-                        <Text className={cn(
-                          "font-semibold",
-                          isReached ? "text-foreground" : "text-muted-foreground"
-                        )}>
+                      <View style={styles.milestoneContent}>
+                        <Text style={[
+                          styles.milestoneStage,
+                          !isReached && styles.milestoneStageFuture
+                        ]}>
                           {milestone.stage}
                         </Text>
                         {milestone.predicted && !isReached && (
-                          <Text className="text-xs text-muted-foreground">
+                          <Text style={styles.milestonePrediction}>
                             Expected in ~{milestone.day - plantAge} days
                           </Text>
                         )}
@@ -178,27 +175,25 @@ export default function ProgressScreen() {
           {/* Growth Metrics Dashboard */}
           <Card>
             <CardHeader>
-              <CardTitle>
-                <Text>Growth Metrics</Text>
-              </CardTitle>
+              <CardTitle title="Growth Metrics" />
             </CardHeader>
-            <CardContent className="gap-4">
+            <CardContent style={styles.metricsContent}>
               {/* Health Trend */}
               <View>
-                <Text className="text-sm font-medium mb-2">Health Trend (7 days)</Text>
-                <View className="flex-row items-end justify-between h-20">
+                <Text style={styles.metricsLabel}>Health Trend (7 days)</Text>
+                <View style={styles.healthChart}>
                   {healthHistory.map((data, index) => (
-                    <View key={index} className="flex-1 items-center">
+                    <View key={index} style={styles.healthBar}>
                       <View 
-                        className={cn(
-                          "w-6 rounded-t",
-                          data.score >= 80 ? "bg-health-excellent" :
-                          data.score >= 70 ? "bg-health-good" :
-                          data.score >= 60 ? "bg-health-warning" : "bg-health-danger"
-                        )}
-                        style={{ height: `${(data.score / 100) * 80}%` }}
+                        style={[
+                          styles.healthBarFill,
+                          { 
+                            height: `${(data.score / 100) * 80}%`,
+                            backgroundColor: getHealthColor(data.score)
+                          }
+                        ]}
                       />
-                      <Text className="text-xs text-muted-foreground mt-1">
+                      <Text style={styles.healthBarLabel}>
                         {index === 6 ? 'Today' : `${6 - index}d`}
                       </Text>
                     </View>
@@ -207,30 +202,30 @@ export default function ProgressScreen() {
               </View>
 
               {/* Growth Stats */}
-              <View className="flex-row gap-4">
-                <View className="flex-1">
-                  <View className="flex-row items-center gap-2 mb-1">
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <View style={styles.statHeader}>
                     <Feather name="trending-up" size={16} color="#10B981" />
-                    <Text className="text-sm text-muted-foreground">Height</Text>
+                    <Text style={styles.statLabel}>Height</Text>
                   </View>
-                  <Text className="text-lg font-semibold">18 inches</Text>
-                  <Text className="text-xs text-muted-foreground">+1.2"/week</Text>
+                  <Text style={styles.statValue}>18 inches</Text>
+                  <Text style={styles.statSubtext}>+1.2"/week</Text>
                 </View>
-                <View className="flex-1">
-                  <View className="flex-row items-center gap-2 mb-1">
+                <View style={styles.statItem}>
+                  <View style={styles.statHeader}>
                     <Feather name="sun" size={16} color="#EAB308" />
-                    <Text className="text-sm text-muted-foreground">Light</Text>
+                    <Text style={styles.statLabel}>Light</Text>
                   </View>
-                  <Text className="text-lg font-semibold">6-8 hrs</Text>
-                  <Text className="text-xs text-muted-foreground">Optimal</Text>
+                  <Text style={styles.statValue}>6-8 hrs</Text>
+                  <Text style={styles.statSubtext}>Optimal</Text>
                 </View>
-                <View className="flex-1">
-                  <View className="flex-row items-center gap-2 mb-1">
+                <View style={styles.statItem}>
+                  <View style={styles.statHeader}>
                     <MaterialCommunityIcons name="water-outline" size={16} color="#3B82F6" />
-                    <Text className="text-sm text-muted-foreground">Water</Text>
+                    <Text style={styles.statLabel}>Water</Text>
                   </View>
-                  <Text className="text-lg font-semibold">2x/week</Text>
-                  <Text className="text-xs text-muted-foreground">Good</Text>
+                  <Text style={styles.statValue}>2x/week</Text>
+                  <Text style={styles.statSubtext}>Good</Text>
                 </View>
               </View>
             </CardContent>
@@ -239,33 +234,31 @@ export default function ProgressScreen() {
           {/* Achievement Center */}
           <Card>
             <CardHeader>
-              <CardTitle>
-                <Text>Achievements</Text>
-              </CardTitle>
+              <CardTitle title="Achievements" />
               <CardDescription>
                 <Text>Unlock badges as you grow</Text>
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <View className="flex-row flex-wrap gap-3">
+              <View style={styles.achievementsGrid}>
                 {achievements.map((achievement) => (
                   <Pressable
                     key={achievement.id}
-                    className={cn(
-                      "w-20 items-center p-3 rounded-lg",
-                      achievement.earned ? "bg-primary/10" : "bg-muted"
-                    )}
+                    style={[
+                      styles.achievementItem,
+                      achievement.earned ? styles.achievementEarned : styles.achievementLocked
+                    ]}
                   >
-                    <Text className="text-2xl mb-1">{achievement.icon}</Text>
-                    <Text className={cn(
-                      "text-xs text-center",
-                      achievement.earned ? "font-semibold" : "text-muted-foreground"
-                    )}>
+                    <Text style={styles.achievementIcon}>{achievement.icon}</Text>
+                    <Text style={[
+                      styles.achievementName,
+                      achievement.earned && styles.achievementNameEarned
+                    ]}>
                       {achievement.name}
                     </Text>
                     {!achievement.earned && achievement.progress && (
-                      <View className="w-full mt-1">
-                        <Progress value={achievement.progress} className="h-1" />
+                      <View style={styles.achievementProgressBar}>
+                        <Progress value={achievement.progress} style={styles.achievementProgress} />
                       </View>
                     )}
                   </Pressable>
@@ -277,24 +270,22 @@ export default function ProgressScreen() {
           {/* Class Ranking (Optional) */}
           <Card>
             <CardHeader>
-              <CardTitle>
-                <Text>Class Ranking</Text>
-              </CardTitle>
+              <CardTitle title="Class Ranking" />
             </CardHeader>
             <CardContent>
-              <View className="gap-3">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm">Plant Health</Text>
-                  <View className="flex-row items-center gap-2">
+              <View style={styles.rankingContainer}>
+                <View style={styles.rankingRow}>
+                  <Text style={styles.rankingLabel}>Plant Health</Text>
+                  <View style={styles.rankingValue}>
                     <Feather name="award" size={16} color="#10B981" />
-                    <Text className="font-semibold">#3 of 25</Text>
+                    <Text style={styles.rankingText}>#3 of 25</Text>
                   </View>
                 </View>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm">Photo Streak</Text>
-                  <View className="flex-row items-center gap-2">
+                <View style={styles.rankingRow}>
+                  <Text style={styles.rankingLabel}>Photo Streak</Text>
+                  <View style={styles.rankingValue}>
                     <Feather name="award" size={16} color="#EAB308" />
-                    <Text className="font-semibold">#5 of 25</Text>
+                    <Text style={styles.rankingText}>#5 of 25</Text>
                   </View>
                 </View>
               </View>
@@ -305,3 +296,221 @@ export default function ProgressScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  emptyContainer: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    color: '#64748B',
+  },
+  emptyButton: {
+    marginTop: 16,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 16,
+  },
+  plantHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  flex: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  plantImage: {
+    height: 64,
+    width: 64,
+    borderRadius: 8,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  healthBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  healthBadgeText: {
+    color: '#FFFFFF',
+  },
+  timeline: {
+    position: 'relative',
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 16,
+    top: 16,
+    bottom: 16,
+    width: 2,
+    backgroundColor: '#E5E7EB',
+  },
+  milestoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  milestoneCircle: {
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  milestoneReached: {
+    backgroundColor: '#3B82F6',
+  },
+  milestoneCurrent: {
+    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+  },
+  milestoneFuture: {
+    backgroundColor: '#F3F4F6',
+  },
+  milestoneDay: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#64748B',
+  },
+  milestoneDayActive: {
+    color: '#FFFFFF',
+  },
+  milestoneContent: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  milestoneStage: {
+    fontWeight: '600',
+  },
+  milestoneStageFuture: {
+    color: '#64748B',
+  },
+  milestonePrediction: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  metricsContent: {
+    gap: 16,
+  },
+  metricsLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  healthChart: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 80,
+  },
+  healthBar: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  healthBarFill: {
+    width: 24,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+  },
+  healthBarLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statItem: {
+    flex: 1,
+  },
+  statHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  statSubtext: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  achievementsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  achievementItem: {
+    width: 80,
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+  },
+  achievementEarned: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  achievementLocked: {
+    backgroundColor: '#F3F4F6',
+  },
+  achievementIcon: {
+    fontSize: 32,
+    marginBottom: 4,
+  },
+  achievementName: {
+    fontSize: 12,
+    textAlign: 'center',
+    color: '#64748B',
+  },
+  achievementNameEarned: {
+    fontWeight: '600',
+    color: '#000000',
+  },
+  achievementProgressBar: {
+    width: '100%',
+    marginTop: 4,
+  },
+  achievementProgress: {
+    height: 4,
+  },
+  rankingContainer: {
+    gap: 12,
+  },
+  rankingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  rankingLabel: {
+    fontSize: 14,
+  },
+  rankingValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rankingText: {
+    fontWeight: '600',
+  },
+});

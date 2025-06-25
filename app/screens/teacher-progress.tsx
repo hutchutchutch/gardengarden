@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, FlatList, Pressable, Image, TextInput } from 'react-native';
+import { View, ScrollView, FlatList, Pressable, Image, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -206,10 +206,10 @@ export default function TeacherProgressScreen() {
           {/* Class Overview */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex-row items-center gap-2">
-                <MaterialCommunityIcons name="chart-bar" size={20} color="#10B981" />
-                <Text>Class Overview</Text>
-              </CardTitle>
+              <CardTitle 
+                title="Class Overview"
+                left={() => <MaterialCommunityIcons name="chart-bar" size={20} color="#10B981" />}
+              />
             </CardHeader>
             <CardContent>
               <View className="flex-row gap-4">
@@ -252,10 +252,10 @@ export default function TeacherProgressScreen() {
           {/* Upcoming Assignments */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex-row items-center gap-2">
-                <MaterialCommunityIcons name="clipboard-list" size={20} color="#EAB308" />
-                <Text>Upcoming Assignments</Text>
-              </CardTitle>
+              <CardTitle 
+                title="Current Assignments"
+                left={() => <MaterialCommunityIcons name="clipboard-list" size={20} color="#3B82F6" />}
+              />
             </CardHeader>
             <CardContent>
               <View className="gap-3">
@@ -289,10 +289,10 @@ export default function TeacherProgressScreen() {
           <Card>
             <CardHeader>
               <View className="flex-row items-center justify-between">
-                <CardTitle className="flex-row items-center gap-2">
-                  <MaterialCommunityIcons name="account-group" size={20} color="#3B82F6" />
-                  <Text>Students ({filteredStudents.length})</Text>
-                </CardTitle>
+                <CardTitle 
+                  title={`Students (${filteredStudents.length})`}
+                  left={() => <MaterialCommunityIcons name="account-group" size={20} color="#8B5CF6" />}
+                />
                 <View className="flex-row gap-2">
                   <Button
                     size="sm"
@@ -334,9 +334,7 @@ export default function TeacherProgressScreen() {
           {/* Quick Actions */}
           <Card>
             <CardHeader>
-              <CardTitle>
-                <Text>Quick Actions</Text>
-              </CardTitle>
+              <CardTitle title="Quick Actions" />
             </CardHeader>
             <CardContent>
               <View className="gap-3">

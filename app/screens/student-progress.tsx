@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Image, Pressable } from 'react-native';
+import { View, ScrollView, Image, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { 
@@ -19,9 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Text, Button } from 'react-native-paper';
 
 // Mock weekly task data
 const weeklyTasks = [
@@ -91,72 +89,72 @@ export default function StudentProgressScreen() {
 
   if (!activePlant) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <Text className="text-muted-foreground">No plant data available</Text>
-        <Button className="mt-4" onPress={() => router.push('/(tabs)/camera')}>
-          <Text>Start Your Garden</Text>
+      <SafeAreaView style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No plant data available</Text>
+        <Button mode="contained" onPress={() => router.push('/(tabs)/camera')} style={styles.emptyButton}>
+          Start Your Garden
         </Button>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View className="px-4 py-4 gap-4">
+        <View style={styles.content}>
           
           {/* Weekly Progress Calendar */}
           <Card>
             <CardHeader>
-              <View className="flex-row items-center justify-between">
+              <View style={styles.headerRow}>
                 <View>
-                  <CardTitle className="flex-row items-center gap-2">
-                    <Calendar size={20} color="#10B981" />
-                    <Text>This Week's Progress</Text>
-                  </CardTitle>
+                  <CardTitle 
+                    title="This Week's Progress"
+                    left={() => <Calendar size={20} color="#10B981" />}
+                    style={styles.titleRow}
+                  />
                   <CardDescription>
                     <Text>{completedDays}/7 days completed ({completionRate}%)</Text>
                   </CardDescription>
                 </View>
-                <Badge className={cn(
-                  completionRate >= 80 ? "bg-green-500" :
-                  completionRate >= 60 ? "bg-amber-500" : "bg-red-500"
-                )}>
-                  <Text className="text-white">{completionRate}%</Text>
+                <Badge style={[
+                  styles.badge,
+                  completionRate >= 80 ? styles.badgeGreen :
+                  completionRate >= 60 ? styles.badgeAmber : styles.badgeRed
+                ]}>
+                  <Text style={styles.badgeText}>{completionRate}%</Text>
                 </Badge>
               </View>
             </CardHeader>
             <CardContent>
-              <View className="flex-row justify-between">
+              <View style={styles.weekRow}>
                 {weeklyTasks.map((day, index) => (
-                  <View key={index} className="items-center">
-                    <Text className="text-xs text-muted-foreground mb-1">{day.day}</Text>
-                    <View className={cn(
-                      "h-10 w-10 rounded-full items-center justify-center mb-1",
-                      day.completed ? "bg-green-100" : "bg-red-100"
-                    )}>
+                  <View key={index} style={styles.dayItem}>
+                    <Text style={styles.dayLabel}>{day.day}</Text>
+                    <View style={[
+                      styles.dayCircle,
+                      day.completed ? styles.dayCircleCompleted : styles.dayCircleIncomplete
+                    ]}>
                       {day.completed ? (
                         <CheckCircle size={24} color="#10B981" />
                       ) : (
                         <AlertTriangle size={24} color="#EF4444" />
                       )}
                     </View>
-                    <Text className="text-xs font-medium">{day.date}</Text>
+                    <Text style={styles.dayDate}>{day.date}</Text>
                   </View>
                 ))}
               </View>
-              <Progress value={completionRate} className="mt-4" />
+              <Progress value={completionRate} style={styles.progressBar} />
             </CardContent>
           </Card>
 
           {/* Plant Status Card */}
           <Card>
             <CardHeader>
-              <View className="flex-row items-start justify-between">
-                <View className="flex-1">
-                  <CardTitle>
-                    <Text>{activePlant.name || 'My Plant'}</Text>
-                  </CardTitle>
+              <View style={styles.plantHeaderRow}>
+                <View style={styles.flex}>
+                  <CardTitle title={activePlant.name || 'My Plant'} />
                   <CardDescription>
                     <Text>{activePlant.species} • {plantAge} days old</Text>
                   </CardDescription>
@@ -164,22 +162,22 @@ export default function StudentProgressScreen() {
                 {activePlant.images.length > 0 && (
                   <Image 
                     source={{ uri: activePlant.images[0].uri }}
-                    className="h-16 w-16 rounded-lg"
+                    style={styles.plantImage}
                     resizeMode="cover"
                   />
                 )}
               </View>
             </CardHeader>
             <CardContent>
-              <View className="gap-4">
+              <View style={styles.gap4}>
                 {/* Health Status */}
                 <View>
-                  <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-sm font-medium">Plant Health</Text>
-                    <Text className="text-sm font-bold">{activePlant.healthScore}%</Text>
+                  <View style={styles.healthRow}>
+                    <Text style={styles.labelText}>Plant Health</Text>
+                    <Text style={styles.boldText}>{activePlant.healthScore}%</Text>
                   </View>
-                  <Progress value={activePlant.healthScore} className="mb-1" />
-                  <Text className="text-xs text-muted-foreground">
+                  <Progress value={activePlant.healthScore} style={styles.healthProgress} />
+                  <Text style={styles.healthDescription}>
                     {activePlant.healthScore >= 80 ? 'Excellent condition!' : 
                      activePlant.healthScore >= 70 ? 'Good health' : 
                      activePlant.healthScore >= 60 ? 'Needs attention' : 'Requires immediate care'}
@@ -188,22 +186,22 @@ export default function StudentProgressScreen() {
 
                 {/* Growth Comparison */}
                 <View>
-                  <Text className="text-sm font-medium mb-2">Growth vs Expected</Text>
-                  <View className="flex-row gap-4">
-                    <View className="flex-1">
-                      <Text className="text-xs text-muted-foreground">Height</Text>
-                      <Text className="font-semibold">15 inches</Text>
-                      <Text className="text-xs text-green-600">+2" ahead</Text>
+                  <Text style={styles.sectionTitle}>Growth vs Expected</Text>
+                  <View style={styles.growthRow}>
+                    <View style={styles.flex}>
+                      <Text style={styles.statLabel}>Height</Text>
+                      <Text style={styles.statValue}>15 inches</Text>
+                      <Text style={styles.statAhead}>+2" ahead</Text>
                     </View>
-                    <View className="flex-1">
-                      <Text className="text-xs text-muted-foreground">Leaves</Text>
-                      <Text className="font-semibold">12 leaves</Text>
-                      <Text className="text-xs text-amber-600">On track</Text>
+                    <View style={styles.flex}>
+                      <Text style={styles.statLabel}>Leaves</Text>
+                      <Text style={styles.statValue}>12 leaves</Text>
+                      <Text style={styles.statOnTrack}>On track</Text>
                     </View>
-                    <View className="flex-1">
-                      <Text className="text-xs text-muted-foreground">Stage</Text>
-                      <Text className="font-semibold">Vegetative</Text>
-                      <Text className="text-xs text-green-600">Early</Text>
+                    <View style={styles.flex}>
+                      <Text style={styles.statLabel}>Stage</Text>
+                      <Text style={styles.statValue}>Vegetative</Text>
+                      <Text style={styles.statAhead}>Early</Text>
                     </View>
                   </View>
                 </View>
@@ -214,28 +212,28 @@ export default function StudentProgressScreen() {
           {/* Plant-Specific Tips */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex-row items-center gap-2">
-                <Lightbulb size={20} color="#EAB308" />
-                <Text>Tips for Your {activePlant.species}</Text>
-              </CardTitle>
+              <CardTitle 
+                title={`Tips for Your ${activePlant.species}`}
+                left={() => <Lightbulb size={20} color="#EAB308" />}
+              />
               <CardDescription>
                 <Text>Personalized advice based on your plant's progress</Text>
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <View className="gap-3">
+              <View style={styles.gap3}>
                 {plantTips.map((tip) => (
-                  <View key={tip.id} className={cn(
-                    "p-3 rounded-lg border-l-4",
-                    tip.priority === 'high' ? "bg-red-50 border-red-500" :
-                    tip.priority === 'medium' ? "bg-amber-50 border-amber-500" : 
-                    "bg-blue-50 border-blue-500"
-                  )}>
-                    <View className="flex-row items-start gap-3">
-                      <Text className="text-lg">{tip.icon}</Text>
-                      <View className="flex-1">
-                        <Text className="font-medium text-sm mb-1">{tip.category}</Text>
-                        <Text className="text-sm text-muted-foreground">{tip.tip}</Text>
+                  <View key={tip.id} style={[
+                    styles.tipCard,
+                    tip.priority === 'high' ? styles.tipCardHigh :
+                    tip.priority === 'medium' ? styles.tipCardMedium : 
+                    styles.tipCardLow
+                  ]}>
+                    <View style={styles.tipContent}>
+                      <Text style={styles.tipIcon}>{tip.icon}</Text>
+                      <View style={styles.flex}>
+                        <Text style={styles.tipCategory}>{tip.category}</Text>
+                        <Text style={styles.tipText}>{tip.tip}</Text>
                       </View>
                     </View>
                   </View>
@@ -247,40 +245,35 @@ export default function StudentProgressScreen() {
           {/* Ask Questions Section */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex-row items-center gap-2">
-                <HelpCircle size={20} color="#3B82F6" />
-                <Text>Need Help?</Text>
-              </CardTitle>
+              <CardTitle title="Need Help?" />
               <CardDescription>
                 <Text>Ask questions about your plant or assignments</Text>
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <View className="gap-3">
+              <View style={styles.gap3}>
                 <Button 
-                  className="flex-row items-center gap-2"
+                  mode="contained"
+                  icon={() => <MessageCircle size={16} color="white" />}
                   onPress={() => handleAskQuestion('plant-care')}
                 >
-                  <MessageCircle size={16} color="white" />
-                  <Text className="text-white">Ask About Plant Care</Text>
+                  Ask About Plant Care
                 </Button>
                 
                 <Button 
-                  variant="outline" 
-                  className="flex-row items-center gap-2"
+                  mode="outlined"
+                  icon={() => <Target size={16} color="#3B82F6" />}
                   onPress={() => handleAskQuestion('assignments')}
                 >
-                  <Target size={16} color="#3B82F6" />
-                  <Text>Help with Assignments</Text>
+                  Help with Assignments
                 </Button>
                 
                 <Button 
-                  variant="outline" 
-                  className="flex-row items-center gap-2"
+                  mode="outlined"
+                  icon={() => <HelpCircle size={16} color="#3B82F6" />}
                   onPress={() => handleAskQuestion('general')}
                 >
-                  <HelpCircle size={16} color="#3B82F6" />
-                  <Text>General Questions</Text>
+                  General Questions
                 </Button>
               </View>
             </CardContent>
@@ -290,4 +283,186 @@ export default function StudentProgressScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  emptyContainer: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    color: '#64748B',
+  },
+  emptyButton: {
+    marginTop: 16,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  badgeGreen: {
+    backgroundColor: '#10B981',
+  },
+  badgeAmber: {
+    backgroundColor: '#F59E0B',
+  },
+  badgeRed: {
+    backgroundColor: '#EF4444',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dayItem: {
+    alignItems: 'center',
+  },
+  dayLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  dayCircle: {
+    height: 40,
+    width: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  dayCircleCompleted: {
+    backgroundColor: '#D1FAE5',
+  },
+  dayCircleIncomplete: {
+    backgroundColor: '#FEE2E2',
+  },
+  dayDate: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  progressBar: {
+    marginTop: 16,
+  },
+  plantHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  flex: {
+    flex: 1,
+  },
+  plantImage: {
+    height: 64,
+    width: 64,
+    borderRadius: 8,
+  },
+  gap4: {
+    gap: 16,
+  },
+  gap3: {
+    gap: 12,
+  },
+  healthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  labelText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  boldText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  healthProgress: {
+    marginBottom: 4,
+  },
+  healthDescription: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  growthRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  statValue: {
+    fontWeight: '600',
+  },
+  statAhead: {
+    fontSize: 12,
+    color: '#10B981',
+  },
+  statOnTrack: {
+    fontSize: 12,
+    color: '#F59E0B',
+  },
+  tipCard: {
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+  },
+  tipCardHigh: {
+    backgroundColor: '#FEF2F2',
+    borderLeftColor: '#EF4444',
+  },
+  tipCardMedium: {
+    backgroundColor: '#FFFBEB',
+    borderLeftColor: '#F59E0B',
+  },
+  tipCardLow: {
+    backgroundColor: '#EFF6FF',
+    borderLeftColor: '#3B82F6',
+  },
+  tipContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  tipIcon: {
+    fontSize: 18,
+  },
+  tipCategory: {
+    fontWeight: '500',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  tipText: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+}); 

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Pressable, Image } from 'react-native';
+import { View, ScrollView, Pressable, Image, StyleSheet } from 'react-native';
 import { Heart, MessageCircle, Camera, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import StoryCard from './StoryCard';
 
@@ -103,7 +102,6 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
     return '#EF4444'; // red
   };
 
-
   const handleStoryPress = (story: PlantStory) => {
     onStoryPress?.(story);
   };
@@ -118,17 +116,17 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
 
   const AddStoryButton = () => (
     <Pressable 
-      className="items-center mr-4 min-w-[90px]"
+      style={styles.storyItem}
       onPress={handleAddPhoto}
     >
-      <View className="relative">
-        <View className="w-20 h-20 rounded-full bg-muted border-2 border-dashed border-border items-center justify-center">
+      <View style={styles.relative}>
+        <View style={styles.addPhotoCircle}>
           <Plus size={24} color="#64748B" />
         </View>
       </View>
-      <View className="items-center mt-2">
-        <Text className="text-xs font-medium text-foreground">Add Photo</Text>
-        <Text className="text-xs text-muted-foreground">Day 23</Text>
+      <View style={styles.storyTextContainer}>
+        <Text variant="labelSmall" style={styles.storyName}>Add Photo</Text>
+        <Text variant="bodySmall" style={styles.storyDay}>Day 23</Text>
       </View>
     </Pressable>
   );
@@ -146,19 +144,18 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
 
     return (
       <Pressable 
-        className="items-center mr-4 min-w-[90px]"
+        style={styles.storyItem}
         onPress={() => handleStoryPress(story)}
       >
-        <View className="relative">
+        <View style={styles.relative}>
           {/* Health ring */}
           <View 
-            className="w-20 h-20 rounded-full p-0.5 items-center justify-center"
-            style={{ backgroundColor: healthColor }}
+            style={[styles.healthRing, { backgroundColor: healthColor }]}
           >
-            <View className="w-full h-full rounded-full bg-background p-1">
+            <View style={styles.imageContainer}>
               <Image
                 source={{ uri: story.photoUrl }}
-                className="w-full h-full rounded-full"
+                style={styles.storyImage}
                 resizeMode="cover"
               />
             </View>
@@ -166,20 +163,19 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
           
           {/* Health score badge */}
           <View 
-            className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-background items-center justify-center"
-            style={{ backgroundColor: healthColor }}
+            style={[styles.healthBadge, { backgroundColor: healthColor }]}
           >
-            <Text className="text-xs font-bold text-white">
+            <Text variant="labelSmall" style={styles.healthBadgeText}>
               {story.healthScore}
             </Text>
           </View>
         </View>
         
-        <View className="items-center mt-2">
-          <Text className="text-xs font-medium text-foreground max-w-[80px]" numberOfLines={1}>
+        <View style={styles.storyTextContainer}>
+          <Text variant="labelSmall" style={styles.storyName} numberOfLines={1}>
             {story.isCurrentUser ? 'You' : formatName(story.studentName)}
           </Text>
-          <Text className="text-xs text-muted-foreground">Day {story.plantDay}</Text>
+          <Text variant="bodySmall" style={styles.storyDay}>Day {story.plantDay}</Text>
         </View>
       </Pressable>
     );
@@ -191,17 +187,17 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
     .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
   return (
-    <View className="bg-background">
-      <View className="px-4 py-3">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-lg font-semibold text-foreground">Plant Stories</Text>
-          <Text className="text-sm text-muted-foreground">24h</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <Text variant="titleMedium" style={styles.title}>Plant Stories</Text>
+          <Text variant="bodySmall" style={styles.timeLabel}>24h</Text>
         </View>
         
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingRight: 16 }}
+          contentContainerStyle={styles.scrollContent}
           scrollEventThrottle={16}
           decelerationRate="fast"
           snapToInterval={110}
@@ -222,4 +218,97 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
       </View>
     </View>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  title: {
+    fontWeight: '600',
+  },
+  timeLabel: {
+    color: '#64748B',
+  },
+  scrollContent: {
+    paddingRight: 16,
+  },
+  storyItem: {
+    alignItems: 'center',
+    marginRight: 16,
+    minWidth: 90,
+  },
+  relative: {
+    position: 'relative',
+  },
+  addPhotoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageContainer: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+    backgroundColor: '#FFFFFF',
+    padding: 4,
+  },
+  storyImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+  },
+  healthBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthBadgeText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 10,
+  },
+  storyTextContainer: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  storyName: {
+    fontWeight: '500',
+    maxWidth: 80,
+  },
+  storyDay: {
+    color: '#64748B',
+    fontSize: 12,
+  },
+}); 

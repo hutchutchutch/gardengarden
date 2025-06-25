@@ -11,9 +11,8 @@ import { uploadPlantPhoto } from '@/services/photo-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Text } from '@/components/ui/text';
+import { Text } from 'react-native-paper';
 import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
 import { plants } from '@/mocks/plants';
 
 export default function CameraScreen() {
@@ -28,7 +27,7 @@ export default function CameraScreen() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
-  const [facing, setFacing] = useState<CameraType>(CameraType.back);
+  const [facing, setFacing] = useState<CameraType>('back');
   
   const activePlant = plants[0];
   const previousImage = activePlant?.images[0]?.uri;
@@ -151,12 +150,12 @@ export default function CameraScreen() {
   };
 
   const toggleCameraFacing = () => {
-    setFacing(current => (current === CameraType.back ? CameraType.front : CameraType.back));
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
   if (hasPermission === null) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center">
+      <SafeAreaView style={styles.centerContainer}>
         <ActivityIndicator size="large" />
       </SafeAreaView>
     );
@@ -164,10 +163,10 @@ export default function CameraScreen() {
 
   if (hasPermission === false) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center px-4">
-        <Text className="text-center mb-4">Camera permission is required to take plant photos</Text>
+      <SafeAreaView style={[styles.centerContainer, styles.paddingHorizontal]}>
+        <Text style={styles.centerText}>Camera permission is required to take plant photos</Text>
         <Button onPress={handlePermissions}>
-          <Text>Grant Permission</Text>
+          Grant Permission
         </Button>
       </SafeAreaView>
     );
@@ -175,34 +174,26 @@ export default function CameraScreen() {
 
   // Analysis Results Screen
   if (analysisResult) {
+    const healthColor = analysisResult.healthScore >= 80 ? '#10B981' :
+                       analysisResult.healthScore >= 70 ? '#059669' :
+                       analysisResult.healthScore >= 60 ? '#F59E0B' : '#EF4444';
+
     return (
-      <SafeAreaView className="flex-1 bg-background">
-        <View className="flex-1 px-4 py-4">
+      <SafeAreaView style={styles.container}>
+        <View style={styles.contentPadding}>
           <Card>
             <CardHeader>
-              <CardTitle>
-                <Text>Analysis Complete</Text>
-              </CardTitle>
+              <CardTitle title="Analysis Complete" />
             </CardHeader>
-            <CardContent className="gap-4">
+            <CardContent>
               {/* Health Score */}
-              <View className="items-center py-4">
-                <View className={cn(
-                  "h-24 w-24 rounded-full items-center justify-center",
-                  analysisResult.healthScore >= 80 ? "bg-health-excellent/20" :
-                  analysisResult.healthScore >= 70 ? "bg-health-good/20" :
-                  analysisResult.healthScore >= 60 ? "bg-health-warning/20" : "bg-health-danger/20"
-                )}>
-                  <Text className={cn(
-                    "text-3xl font-bold",
-                    analysisResult.healthScore >= 80 ? "text-health-excellent" :
-                    analysisResult.healthScore >= 70 ? "text-health-good" :
-                    analysisResult.healthScore >= 60 ? "text-health-warning" : "text-health-danger"
-                  )}>
+              <View style={styles.healthScoreContainer}>
+                <View style={[styles.healthScoreCircle, { backgroundColor: `${healthColor}20` }]}>
+                  <Text variant="headlineMedium" style={[styles.healthScoreText, { color: healthColor }]}>
                     {analysisResult.healthScore}%
                   </Text>
                 </View>
-                <Text className="text-sm text-muted-foreground mt-2">
+                <Text variant="bodySmall" style={styles.healthScoreChange}>
                   {analysisResult.healthScore > activePlant.healthScore ? '↑' : '↓'} 
                   {Math.abs(analysisResult.healthScore - activePlant.healthScore)}% from yesterday
                 </Text>
@@ -210,42 +201,42 @@ export default function CameraScreen() {
 
               {/* Issues Detected */}
               {analysisResult.issues.length > 0 && (
-                <View>
-                  <Text className="font-semibold mb-2">Issues Detected</Text>
+                <View style={styles.section}>
+                  <Text variant="titleSmall" style={styles.sectionTitle}>Issues Detected</Text>
                   {analysisResult.issues.map((issue: string, index: number) => (
-                    <View key={index} className="flex-row items-start gap-2 mb-1">
-                      <Text className="text-health-warning">•</Text>
-                      <Text className="flex-1 text-sm">{issue}</Text>
+                    <View key={index} style={styles.listItem}>
+                      <Text style={styles.bulletPoint}>•</Text>
+                      <Text variant="bodySmall" style={styles.listText}>{issue}</Text>
                     </View>
                   ))}
                 </View>
               )}
 
               {/* Growth Progress */}
-              <View>
-                <Text className="font-semibold mb-2">Growth Progress</Text>
-                <Text className="text-sm text-muted-foreground">{analysisResult.growthProgress}</Text>
+              <View style={styles.section}>
+                <Text variant="titleSmall" style={styles.sectionTitle}>Growth Progress</Text>
+                <Text variant="bodySmall" style={styles.mutedText}>{analysisResult.growthProgress}</Text>
               </View>
 
               {/* Recommendations */}
-              <View>
-                <Text className="font-semibold mb-2">Today's Care Tips</Text>
+              <View style={styles.section}>
+                <Text variant="titleSmall" style={styles.sectionTitle}>Today's Care Tips</Text>
                 {analysisResult.recommendations.map((tip: string, index: number) => (
-                  <View key={index} className="flex-row items-start gap-2 mb-1">
-                    <Text className="text-primary">•</Text>
-                    <Text className="flex-1 text-sm">{tip}</Text>
+                  <View key={index} style={styles.listItem}>
+                    <Text style={[styles.bulletPoint, { color: '#10B981' }]}>•</Text>
+                    <Text variant="bodySmall" style={styles.listText}>{tip}</Text>
                   </View>
                 ))}
               </View>
             </CardContent>
           </Card>
 
-          <View className="flex-row gap-3 mt-4">
-            <Button variant="outline" className="flex-1" onPress={retakePicture}>
-              <Text>Retake Photo</Text>
+          <View style={styles.buttonRow}>
+            <Button variant="outline" style={styles.flexButton} onPress={retakePicture}>
+              Retake Photo
             </Button>
-            <Button className="flex-1" onPress={continueToHome}>
-              <Text>Continue</Text>
+            <Button style={styles.flexButton} onPress={continueToHome}>
+              Continue
             </Button>
           </View>
         </View>
@@ -256,36 +247,36 @@ export default function CameraScreen() {
   // Photo Preview Screen
   if (capturedImage) {
     return (
-      <SafeAreaView className="flex-1 bg-black">
-        <View className="flex-1">
-          <Image source={{ uri: capturedImage }} className="flex-1" resizeMode="contain" />
+      <SafeAreaView style={styles.blackContainer}>
+        <View style={styles.flex}>
+          <Image source={{ uri: capturedImage }} style={styles.flex} resizeMode="contain" />
           
           {isAnalyzing && (
-            <View className="absolute inset-0 bg-black/50 items-center justify-center">
+            <View style={styles.analyzingOverlay}>
               <ActivityIndicator size="large" color="white" />
-              <Text className="text-white mt-4">Analyzing your plant...</Text>
-              <Progress value={66} className="w-48 mt-2" />
+              <Text style={styles.analyzingText}>Analyzing your plant...</Text>
+              <Progress value={66} style={styles.progressBar} />
             </View>
           )}
           
-          <View className="absolute bottom-0 left-0 right-0 p-4">
-            <View className="flex-row gap-4">
+          <View style={styles.bottomControls}>
+            <View style={styles.buttonRow}>
               <Button 
                 variant="outline" 
-                className="flex-1 bg-white/20" 
+                style={[styles.flexButton, styles.transparentButton]}
                 onPress={retakePicture}
                 disabled={isAnalyzing}
               >
                 <X size={20} color="white" />
-                <Text className="text-white ml-2">Retake</Text>
+                <Text style={styles.whiteText}>Retake</Text>
               </Button>
               <Button 
-                className="flex-1" 
+                style={styles.flexButton}
                 onPress={analyzeImage}
                 disabled={isAnalyzing}
               >
                 <Check size={20} color="white" />
-                <Text className="text-white ml-2">Use Photo</Text>
+                <Text style={styles.whiteText}>Use Photo</Text>
               </Button>
             </View>
           </View>
@@ -296,56 +287,49 @@ export default function CameraScreen() {
 
   // Camera View
   return (
-    <SafeAreaView className="flex-1 bg-black">
-      <CameraView ref={cameraRef} className="flex-1" facing={facing}>
+    <SafeAreaView style={styles.blackContainer}>
+      <CameraView ref={cameraRef} style={styles.flex} facing={facing}>
         {/* Ghost Image Overlay */}
         {showGhost && previousImage && (
           <Image 
             source={{ uri: previousImage }} 
-            className="absolute inset-0"
-            style={{ opacity: ghostOpacity }}
+            style={[styles.absoluteFill, { opacity: ghostOpacity }]}
             resizeMode="cover"
           />
         )}
         
         {/* Grid Overlay */}
         {showGrid && (
-          <View className="absolute inset-0" pointerEvents="none">
-            <View className="flex-1 flex-row">
-              <View className="flex-1 border-r border-white/30" />
-              <View className="flex-1 border-r border-white/30" />
-              <View className="flex-1" />
+          <View style={styles.absoluteFill} pointerEvents="none">
+            <View style={styles.gridRow}>
+              <View style={styles.gridColumn} />
+              <View style={styles.gridColumn} />
+              <View style={styles.gridColumnLast} />
             </View>
-            <View className="absolute inset-0 flex-col">
-              <View className="flex-1 border-b border-white/30" />
-              <View className="flex-1 border-b border-white/30" />
-              <View className="flex-1" />
+            <View style={[styles.absoluteFill, styles.gridVertical]}>
+              <View style={styles.gridRow} />
+              <View style={styles.gridRow} />
+              <View style={styles.gridRowLast} />
             </View>
           </View>
         )}
         
         {/* Top Controls */}
-        <View className="absolute top-4 left-4 right-4">
-          <View className="flex-row justify-between items-center">
-            <Badge className="bg-black/50">
-              <Text className="text-white">Day {plantAge} - {activePlant?.growthStage || 'Unknown'}</Text>
+        <View style={styles.topControls}>
+          <View style={styles.topControlsRow}>
+            <Badge style={styles.dayBadge}>
+              <Text style={styles.whiteText}>Day {plantAge} - {activePlant?.growthStage || 'Unknown'}</Text>
             </Badge>
             
-            <View className="flex-row gap-2">
+            <View style={styles.controlButtons}>
               <Pressable 
-                className={cn(
-                  "h-10 w-10 rounded-full items-center justify-center",
-                  showGrid ? "bg-white/20" : "bg-black/20"
-                )}
+                style={[styles.controlButton, showGrid && styles.controlButtonActive]}
                 onPress={() => setShowGrid(!showGrid)}
               >
                 <Grid3x3 size={20} color="white" />
               </Pressable>
               <Pressable 
-                className={cn(
-                  "h-10 w-10 rounded-full items-center justify-center",
-                  showGhost ? "bg-white/20" : "bg-black/20"
-                )}
+                style={[styles.controlButton, showGhost && styles.controlButtonActive]}
                 onPress={() => setShowGhost(!showGhost)}
               >
                 <Ghost size={20} color="white" />
@@ -355,19 +339,19 @@ export default function CameraScreen() {
         </View>
         
         {/* Helper Text */}
-        <View className="absolute top-32 left-0 right-0 items-center">
-          <View className="bg-black/50 px-4 py-2 rounded-full">
-            <Text className="text-white text-sm">Align your plant with yesterday's photo</Text>
+        <View style={styles.helperTextContainer}>
+          <View style={styles.helperTextBadge}>
+            <Text style={styles.helperText}>Align your plant with yesterday's photo</Text>
           </View>
         </View>
         
         {/* Bottom Controls */}
-        <View className="absolute bottom-0 left-0 right-0 p-4 bg-black/50">
-          <View className="flex-row justify-around items-center">
+        <View style={styles.cameraControls}>
+          <View style={styles.cameraControlsRow}>
             <TouchableOpacity onPress={() => setShowGrid(!showGrid)}>
               <Grid size={28} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={takePicture} className="w-20 h-20 rounded-full bg-white justify-center items-center">
+            <TouchableOpacity onPress={takePicture} style={styles.captureButton}>
               <CameraIcon size={40} color="black" />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowGhost(!showGhost)}>
@@ -376,8 +360,8 @@ export default function CameraScreen() {
           </View>
         </View>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
+        <View style={styles.flipButtonContainer}>
+          <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
             <RotateCw size={28} color="white" />
           </TouchableOpacity>
         </View>
@@ -387,12 +371,212 @@ export default function CameraScreen() {
 }
 
 const styles = StyleSheet.create({
-  buttonContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  blackContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  centerContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paddingHorizontal: {
+    paddingHorizontal: 16,
+  },
+  centerText: {
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  contentPadding: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  flex: {
+    flex: 1,
+  },
+  absoluteFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  healthScoreContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  healthScoreCircle: {
+    height: 96,
+    width: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthScoreText: {
+    fontWeight: 'bold',
+  },
+  healthScoreChange: {
+    color: '#64748B',
+    marginTop: 8,
+  },
+  section: {
+    marginTop: 16,
+  },
+  sectionTitle: {
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 4,
+  },
+  bulletPoint: {
+    color: '#F59E0B',
+  },
+  listText: {
+    flex: 1,
+  },
+  mutedText: {
+    color: '#64748B',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  flexButton: {
+    flex: 1,
+  },
+  analyzingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  analyzingText: {
+    color: 'white',
+    marginTop: 16,
+  },
+  progressBar: {
+    width: 192,
+    marginTop: 8,
+  },
+  bottomControls: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+  },
+  transparentButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  whiteText: {
+    color: 'white',
+  },
+  gridRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  gridColumn: {
+    flex: 1,
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  gridColumnLast: {
+    flex: 1,
+  },
+  gridVertical: {
+    flexDirection: 'column',
+  },
+  gridRowLast: {
+    flex: 1,
+  },
+  topControls: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+  },
+  topControlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dayBadge: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  controlButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  controlButton: {
+    height: 40,
+    width: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  },
+  controlButtonActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  helperTextContainer: {
+    position: 'absolute',
+    top: 128,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  helperTextBadge: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  helperText: {
+    color: 'white',
+    fontSize: 14,
+  },
+  cameraControls: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  cameraControlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  captureButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  flipButtonContainer: {
     position: 'absolute',
     bottom: 16,
     right: 16,
   },
-  button: {
+  flipButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 14,
     padding: 8,

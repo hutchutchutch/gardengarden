@@ -191,7 +191,7 @@ export default function TeacherIndex() {
             <CardHeader className="flex-row items-center justify-between pb-3">
               <View className="flex-row items-center">
                 <Feather name="alert-triangle" size={20} color="#EAB308" style={{ marginRight: 8 }} />
-                <CardTitle>Students Needing Attention</CardTitle>
+                <CardTitle title="Students Needing Attention" />
               </View>
               <Badge className="bg-destructive">
                 {studentsNeedingAttention.length}
@@ -236,7 +236,7 @@ export default function TeacherIndex() {
           {/* Recent Activity Feed */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
+              <CardTitle title="Recent Activity" />
             </CardHeader>
             <CardContent className="space-y-3">
               {recentActivity.map((activity, index) => (
@@ -263,7 +263,7 @@ export default function TeacherIndex() {
           {/* Student List with Search - FR-023 */}
           <Card>
             <CardHeader>
-              <CardTitle>All Students</CardTitle>
+              <CardTitle title="All Students" />
               {/* Search Bar */}
               <View className="relative mt-3">
                 <Feather name="search" size={20} color="#64748B" style={{ position: 'absolute', left: 12, top: 10 }} />
