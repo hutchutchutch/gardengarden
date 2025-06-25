@@ -1,17 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { View, Pressable, StyleSheet, Animated, Text, ScrollView, Platform } from 'react-native';
-import { MessageCircle, Bot, User, Bell, Users, X } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter, Href } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMode } from '@/contexts/ModeContext';
+import { BlurView } from 'expo-blur';
+import { cn } from '@/lib/utils';
 
-interface FABProps {
-  visible?: boolean;
-}
-
-export function FAB({ visible = true }: FABProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
+export function FAB() {
+  const [isOpen, setIsOpen] = useState(false);
+  const { isTeacherMode } = useMode();
   const router = useRouter();
   const { user, showFAB, updateUserRole } = useAuth();
   const isTeacher = user?.role === 'teacher';
@@ -24,8 +23,13 @@ export function FAB({ visible = true }: FABProps) {
   const notificationTranslate = useRef(new Animated.Value(0)).current;
   const menuOpacity = useRef(new Animated.Value(0)).current;
 
+  const handlePress = (route: Href) => {
+    router.push(route);
+    setIsOpen(false);
+  };
+
   const toggleExpanded = () => {
-    const toValue = isExpanded ? 0 : 1;
+    const toValue = isOpen ? 0 : 1;
     
     Animated.parallel([
       Animated.spring(scaleAnim, {
@@ -34,28 +38,27 @@ export function FAB({ visible = true }: FABProps) {
         friction: 5,
       }),
       Animated.spring(translateAnim1, {
-        toValue: isExpanded ? 0 : -70,
+        toValue: isOpen ? 0 : -70,
         useNativeDriver: true,
         friction: 5,
       }),
       Animated.spring(translateAnim2, {
-        toValue: isExpanded ? 0 : -140,
+        toValue: isOpen ? 0 : -140,
         useNativeDriver: true,
         friction: 5,
       }),
       Animated.spring(notificationTranslate, {
-        toValue: isExpanded ? 0 : -210,
+        toValue: isOpen ? 0 : -210,
         useNativeDriver: true,
         friction: 5,
       }),
     ]).start();
     
-    setIsExpanded(!isExpanded);
-    if (showRoleMenu) setShowRoleMenu(false);
+    setIsOpen(!isOpen);
   };
 
   const toggleRoleMenu = () => {
-    const toValue = showRoleMenu ? 0 : 1;
+    const toValue = isOpen ? 0 : 1;
     
     Animated.timing(menuOpacity, {
       toValue,
@@ -63,17 +66,16 @@ export function FAB({ visible = true }: FABProps) {
       useNativeDriver: true,
     }).start();
     
-    setShowRoleMenu(!showRoleMenu);
-    if (isExpanded) setIsExpanded(false);
+    setIsOpen(!isOpen);
   };
 
   const handleAIChat = () => {
-    setIsExpanded(false);
+    setIsOpen(false);
     router.push('/ai-chat');
   };
 
   const handleTeacherMessage = () => {
-    setIsExpanded(false);
+    setIsOpen(false);
     router.push({
       pathname: '/ai-chat',
       params: { mode: 'teacher' }
@@ -81,7 +83,7 @@ export function FAB({ visible = true }: FABProps) {
   };
 
   const handleRoleSwitch = async (newRole: 'student' | 'teacher') => {
-    setShowRoleMenu(false);
+    setIsOpen(false);
     // Update user role
     await updateUserRole(newRole);
     // Navigate to appropriate interface
@@ -90,19 +92,29 @@ export function FAB({ visible = true }: FABProps) {
 
   // Debug FAB visibility
   console.log('FAB Debug:', { 
-    visible, 
+    isOpen, 
     showFAB, 
     hasUser: !!user, 
     userRole: user?.role,
-    shouldShow: visible && showFAB && user 
+    shouldShow: isOpen && showFAB && user 
   });
 
-  if (!visible || !showFAB || !user) return null;
+  if (!isOpen || !showFAB || !user) return null;
+
+  const menuItems = isTeacherMode
+    ? [
+        { icon: <Feather name="bell" size={24} color="#8B5CF6" />, label: 'Send Alert', route: '/teacher-index' as Href },
+        { icon: <Feather name="users" size={24} color="#8B5CF6" />, label: 'Manage Students', route: '/teacher-progress' as Href },
+      ]
+    : [
+        { icon: <MaterialCommunityIcons name="robot-outline" size={24} color="#059669" />, label: 'Ask AI', route: '/ai-chat' as Href },
+        { icon: <Feather name="user" size={24} color="#059669" />, label: 'My Profile', route: '/(tabs)/profile' as Href },
+      ];
 
   return (
     <>
       {/* Role Menu Dropdown */}
-      {showRoleMenu && (
+      {isOpen && (
         <Animated.View
           style={[
             styles.roleMenu,
@@ -120,7 +132,7 @@ export function FAB({ visible = true }: FABProps) {
           <View style={styles.roleMenuHeader}>
             <Text style={styles.roleMenuTitle}>Switch Role</Text>
             <Pressable onPress={toggleRoleMenu}>
-              <X size={20} color="#64748B" />
+              <Feather name="x" size={20} color="#64748B" />
             </Pressable>
           </View>
           
@@ -132,7 +144,7 @@ export function FAB({ visible = true }: FABProps) {
             onPress={() => handleRoleSwitch('student')}
           >
             <View style={styles.roleOptionIcon}>
-              <User size={20} color={!isTeacher ? '#10B981' : '#64748B'} />
+              <Feather name="user" size={20} color={!isTeacher ? '#10B981' : '#64748B'} />
             </View>
             <View style={styles.roleOptionContent}>
               <Text style={[styles.roleOptionTitle, !isTeacher && styles.roleOptionTitleActive]}>
@@ -155,7 +167,7 @@ export function FAB({ visible = true }: FABProps) {
             onPress={() => handleRoleSwitch('teacher')}
           >
             <View style={styles.roleOptionIcon}>
-              <Users size={20} color={isTeacher ? '#10B981' : '#64748B'} />
+              <Feather name="users" size={20} color={isTeacher ? '#10B981' : '#64748B'} />
             </View>
             <View style={styles.roleOptionContent}>
               <Text style={[styles.roleOptionTitle, isTeacher && styles.roleOptionTitleActive]}>
@@ -182,12 +194,11 @@ export function FAB({ visible = true }: FABProps) {
         },
       ]}>
         {/* Backdrop */}
-        {(isExpanded || showRoleMenu) && (
+        {isOpen && (
           <Pressable 
             style={StyleSheet.absoluteFillObject} 
             onPress={() => {
-              setIsExpanded(false);
-              setShowRoleMenu(false);
+              setIsOpen(false);
             }}
           />
         )}
@@ -202,7 +213,7 @@ export function FAB({ visible = true }: FABProps) {
             },
           ]}
         >
-          {isExpanded && (
+          {isOpen && (
             <View style={styles.labelContainer}>
               <Text style={styles.label}>Notifications</Text>
             </View>
@@ -211,7 +222,7 @@ export function FAB({ visible = true }: FABProps) {
             style={[styles.option, styles.notificationOption]}
             onPress={toggleRoleMenu}
           >
-            <Bell size={24} color="#FFFFFF" />
+            <Feather name="bell" size={24} color="#FFFFFF" />
             {/* Notification badge */}
             <View style={styles.notificationBadge}>
               <Text style={styles.notificationBadgeText}>3</Text>
@@ -229,7 +240,7 @@ export function FAB({ visible = true }: FABProps) {
             },
           ]}
         >
-          {isExpanded && (
+          {isOpen && (
             <View style={styles.labelContainer}>
               <Text style={styles.label}>AI Assistant</Text>
             </View>
@@ -238,7 +249,7 @@ export function FAB({ visible = true }: FABProps) {
             style={[styles.option, styles.aiOption]}
             onPress={handleAIChat}
           >
-            <Bot size={24} color="#FFFFFF" />
+            <MaterialCommunityIcons name="robot-outline" size={24} color="#FFFFFF" />
           </Pressable>
         </Animated.View>
 
@@ -253,7 +264,7 @@ export function FAB({ visible = true }: FABProps) {
               },
             ]}
           >
-            {isExpanded && (
+            {isOpen && (
               <View style={styles.labelContainer}>
                 <Text style={styles.label}>Message Teacher</Text>
               </View>
@@ -262,7 +273,7 @@ export function FAB({ visible = true }: FABProps) {
               style={[styles.option, styles.teacherOption]}
               onPress={handleTeacherMessage}
             >
-              <User size={24} color="#FFFFFF" />
+              <Feather name="user" size={24} color="#FFFFFF" />
             </Pressable>
           </Animated.View>
         )}
@@ -271,7 +282,7 @@ export function FAB({ visible = true }: FABProps) {
         <Pressable
           style={[
             styles.fab,
-            isExpanded && styles.fabExpanded
+            isOpen && styles.fabExpanded
           ]}
           onPress={toggleExpanded}
         >
@@ -285,9 +296,48 @@ export function FAB({ visible = true }: FABProps) {
               }],
             }}
           >
-            <MessageCircle size={28} color="#FFFFFF" />
+            <Feather name="message-circle" size={28} color="#FFFFFF" />
           </Animated.View>
         </Pressable>
+      </View>
+
+      {/* New FAB */}
+      <View className={cn(
+        "absolute bottom-24 right-4 items-end",
+        isOpen && "bottom-24 right-4 h-full w-full"
+      )}>
+        {isOpen && (
+          <Pressable style={{...StyleSheet.absoluteFillObject, zIndex: 10}} onPress={() => setIsOpen(false)}>
+            <BlurView intensity={100} tint="dark" className="absolute inset-0" />
+          </Pressable>
+        )}
+        <View className={cn("z-20", isOpen && "flex-1 justify-end items-end w-full")}>
+          {isOpen && (
+            <View className="bg-card rounded-lg p-2 mb-4 w-52">
+              {menuItems.map((item, index) => (
+                <Pressable
+                  key={index}
+                  className="flex-row items-center p-3"
+                  onPress={() => handlePress(item.route)}
+                >
+                  {item.icon}
+                  <Text className="text-foreground ml-4">{item.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <Pressable
+            className={cn(
+              "w-16 h-16 rounded-full justify-center items-center shadow-lg",
+              isTeacherMode ? "bg-teacher" : "bg-primary"
+            )}
+            onPress={() => setIsOpen(!isOpen)}
+          >
+            {isOpen 
+              ? <Feather name="x" size={30} color="white" /> 
+              : <Feather name="message-circle" size={30} color="white" />}
+          </Pressable>
+        </View>
       </View>
     </>
   );

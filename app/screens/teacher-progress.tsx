@@ -1,20 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, FlatList, Pressable } from 'react-native';
+import { View, ScrollView, FlatList, Pressable, Image, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { 
-  Users, 
-  TrendingUp, 
-  Calendar, 
-  Award, 
-  AlertTriangle,
-  CheckCircle,
-  MessageCircle,
-  ClipboardList,
-  BarChart3,
-  Filter,
-  Search
-} from 'lucide-react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -180,7 +168,7 @@ export default function TeacherProgressScreen() {
                 <Text className="text-white text-xs">{student.plantHealth}%</Text>
               </Badge>
               {student.needsHelp && (
-                <AlertTriangle size={16} color="#EF4444" />
+                <Feather name="alert-triangle" size={16} color="#EF4444" />
               )}
             </View>
           </View>
@@ -201,7 +189,7 @@ export default function TeacherProgressScreen() {
               onPress={() => handleMessageStudent(student.id)}
               className="flex-row items-center gap-1"
             >
-              <MessageCircle size={14} color="#3B82F6" />
+              <Feather name="message-circle" size={14} color="#3B82F6" />
               <Text className="text-xs text-blue-600">Message</Text>
             </Pressable>
           </View>
@@ -219,7 +207,7 @@ export default function TeacherProgressScreen() {
           <Card>
             <CardHeader>
               <CardTitle className="flex-row items-center gap-2">
-                <BarChart3 size={20} color="#10B981" />
+                <MaterialCommunityIcons name="chart-bar" size={20} color="#10B981" />
                 <Text>Class Overview</Text>
               </CardTitle>
             </CardHeader>
@@ -265,7 +253,7 @@ export default function TeacherProgressScreen() {
           <Card>
             <CardHeader>
               <CardTitle className="flex-row items-center gap-2">
-                <ClipboardList size={20} color="#EAB308" />
+                <MaterialCommunityIcons name="clipboard-list" size={20} color="#EAB308" />
                 <Text>Upcoming Assignments</Text>
               </CardTitle>
             </CardHeader>
@@ -302,7 +290,7 @@ export default function TeacherProgressScreen() {
             <CardHeader>
               <View className="flex-row items-center justify-between">
                 <CardTitle className="flex-row items-center gap-2">
-                  <Users size={20} color="#3B82F6" />
+                  <MaterialCommunityIcons name="account-group" size={20} color="#3B82F6" />
                   <Text>Students ({filteredStudents.length})</Text>
                 </CardTitle>
                 <View className="flex-row gap-2">
@@ -353,17 +341,17 @@ export default function TeacherProgressScreen() {
             <CardContent>
               <View className="gap-3">
                 <Button className="flex-row items-center gap-2">
-                  <ClipboardList size={16} color="white" />
+                  <MaterialCommunityIcons name="clipboard-list" size={16} color="white" />
                   <Text className="text-white">Create New Assignment</Text>
                 </Button>
                 
                 <Button variant="outline" className="flex-row items-center gap-2">
-                  <MessageCircle size={16} color="#3B82F6" />
+                  <Feather name="message-circle" size={16} color="#3B82F6" />
                   <Text>Send Class Announcement</Text>
                 </Button>
                 
                 <Button variant="outline" className="flex-row items-center gap-2">
-                  <Award size={16} color="#3B82F6" />
+                  <MaterialCommunityIcons name="trophy" size={16} color="#3B82F6" />
                   <Text>View Achievement Leaderboard</Text>
                 </Button>
               </View>

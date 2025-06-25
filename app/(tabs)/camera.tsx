@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Image, Pressable, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Image, Pressable, ActivityIndicator, Alert, Platform, StyleSheet, TouchableOpacity } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Camera as CameraIcon, RotateCw, Grid3x3, Ghost, Check, X } from 'lucide-react-native';
-import { Camera, CameraType, CameraView } from 'expo-camera';
+import { Camera, CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { usePlantStore } from '@/store/plant-store';
@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Text } from '@/components/ui/text';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { plants } from '@/mocks/plants';
 
 export default function CameraScreen() {
   const router = useRouter();
@@ -28,11 +30,14 @@ export default function CameraScreen() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [facing, setFacing] = useState<CameraType>(CameraType.back);
   
   const activePlant = plants[0];
   const previousImage = activePlant?.images[0]?.uri;
   const plantAge = activePlant ? 
     Math.floor((new Date().getTime() - new Date(activePlant.plantedDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+  const [permission, requestPermission] = useCameraPermissions();
 
   const handlePermissions = async () => {
     try {
@@ -145,6 +150,10 @@ export default function CameraScreen() {
 
   const continueToHome = () => {
     router.push('/(tabs)');
+  };
+
+  const toggleCameraFacing = () => {
+    setFacing(current => (current === CameraType.back ? CameraType.front : CameraType.back));
   };
 
   if (hasPermission === null) {
@@ -290,7 +299,7 @@ export default function CameraScreen() {
   // Camera View
   return (
     <SafeAreaView className="flex-1 bg-black">
-      <CameraView ref={cameraRef} className="flex-1" facing="back">
+      <CameraView ref={cameraRef} className="flex-1" facing={facing}>
         {/* Ghost Image Overlay */}
         {showGhost && previousImage && (
           <Image 
@@ -371,26 +380,39 @@ export default function CameraScreen() {
         </View>
         
         {/* Bottom Controls */}
-        <View className="absolute bottom-8 left-0 right-0">
-          <View className="flex-row items-center justify-center gap-8">
-            <Pressable 
-              className="h-12 w-12 rounded-full bg-black/50 items-center justify-center"
-              onPress={pickImage}
-            >
-              <Text className="text-white text-xs">Library</Text>
-            </Pressable>
-            
-            <Pressable 
-              className="h-20 w-20 rounded-full bg-white items-center justify-center"
-              onPress={takePicture}
-            >
-              <View className="h-16 w-16 rounded-full bg-white border-4 border-black" />
-            </Pressable>
-            
-            <View className="h-12 w-12" />
+        <View className="absolute bottom-0 left-0 right-0 p-4 bg-black/50">
+          <View className="flex-row justify-around items-center">
+            <TouchableOpacity onPress={() => setShowGrid(!showGrid)}>
+              <MaterialCommunityIcons name="grid" size={28} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={takePicture} className="w-20 h-20 rounded-full bg-white justify-center items-center">
+              <MaterialCommunityIcons name="camera" size={40} color="black" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowGhost(!showGhost)}>
+              <MaterialCommunityIcons name="image-filter-center-focus-weak" size={28} color="white" />
+            </TouchableOpacity>
           </View>
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
+            <MaterialCommunityIcons name="camera-party-mode" size={28} color="white" />
+          </TouchableOpacity>
         </View>
       </CameraView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+  },
+  button: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 14,
+    padding: 8,
+  },
+});

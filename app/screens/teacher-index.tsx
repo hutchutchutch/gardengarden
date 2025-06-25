@@ -6,28 +6,18 @@ import {
   Pressable, 
   TextInput,
   RefreshControl,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Search, 
-  Filter, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock,
-  TrendingUp,
-  TrendingDown,
-  Users,
-  Sprout,
-  MessageCircle,
-  Camera
-} from 'lucide-react-native';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Feather } from '@expo/vector-icons';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useMode } from '@/contexts/ModeContext';
+import { useRouter } from 'expo-router';
 
 interface StudentData {
   id: string;
@@ -38,6 +28,10 @@ interface StudentData {
   plantStage: 'seed' | 'sprout' | 'growing' | 'mature';
   needsAttention: boolean;
   lastPhotoUrl?: string;
+  avatar: string;
+  lastActive: string;
+  grade: string;
+  progress: number;
 }
 
 interface ClassStats {
@@ -66,11 +60,11 @@ export default function TeacherIndex() {
   });
 
   const [students, setStudents] = useState<StudentData[]>([
-    { id: '1', name: 'Sarah Chen', submitted: true, healthScore: 85, daysSinceLastSubmission: 0, plantStage: 'growing', needsAttention: false },
-    { id: '2', name: 'Alex Rivera', submitted: true, healthScore: 92, daysSinceLastSubmission: 0, plantStage: 'mature', needsAttention: false },
-    { id: '3', name: 'Maya Patel', submitted: false, healthScore: 78, daysSinceLastSubmission: 1, plantStage: 'growing', needsAttention: true },
-    { id: '4', name: 'Jordan Kim', submitted: true, healthScore: 65, daysSinceLastSubmission: 0, plantStage: 'sprout', needsAttention: true },
-    { id: '5', name: 'Emma Wilson', submitted: true, healthScore: 88, daysSinceLastSubmission: 0, plantStage: 'growing', needsAttention: false },
+    { id: '1', name: 'Sarah Chen', submitted: true, healthScore: 85, daysSinceLastSubmission: 0, plantStage: 'growing', needsAttention: false, avatar: '', lastActive: '', grade: '', progress: 0 },
+    { id: '2', name: 'Alex Rivera', submitted: true, healthScore: 92, daysSinceLastSubmission: 0, plantStage: 'mature', needsAttention: false, avatar: '', lastActive: '', grade: '', progress: 0 },
+    { id: '3', name: 'Maya Patel', submitted: false, healthScore: 78, daysSinceLastSubmission: 1, plantStage: 'growing', needsAttention: true, avatar: '', lastActive: '', grade: '', progress: 0 },
+    { id: '4', name: 'Jordan Kim', submitted: true, healthScore: 65, daysSinceLastSubmission: 0, plantStage: 'sprout', needsAttention: true, avatar: '', lastActive: '', grade: '', progress: 0 },
+    { id: '5', name: 'Emma Wilson', submitted: true, healthScore: 88, daysSinceLastSubmission: 0, plantStage: 'growing', needsAttention: false, avatar: '', lastActive: '', grade: '', progress: 0 },
   ]);
 
   const [recentActivity, setRecentActivity] = useState([
@@ -79,6 +73,8 @@ export default function TeacherIndex() {
     { type: 'achievement', student: 'Alex Rivera', action: 'earned First Flower badge', time: '1h ago' },
     { type: 'alert', student: 'Maya Patel', action: 'missed daily submission', time: '2h ago' },
   ]);
+
+  const router = useRouter();
 
   useEffect(() => {
     // Show FAB on teacher dashboard
@@ -146,8 +142,6 @@ export default function TeacherIndex() {
 
   return (
     <View className="flex-1 bg-backgroundLight">
-
-      
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -196,7 +190,7 @@ export default function TeacherIndex() {
           <Card>
             <CardHeader className="flex-row items-center justify-between pb-3">
               <View className="flex-row items-center">
-                <AlertTriangle size={20} color="#EAB308" style={{ marginRight: 8 }} />
+                <Feather name="alert-triangle" size={20} color="#EAB308" style={{ marginRight: 8 }} />
                 <CardTitle>Students Needing Attention</CardTitle>
               </View>
               <Badge className="bg-destructive">
@@ -228,10 +222,10 @@ export default function TeacherIndex() {
                   </View>
                   <View className="flex-row items-center space-x-2">
                     <Pressable className="p-2">
-                      <Camera size={18} color="#64748B" />
+                      <Feather name="camera" size={18} color="#64748B" />
                     </Pressable>
                     <Pressable className="p-2">
-                      <MessageCircle size={18} color="#64748B" />
+                      <Feather name="message-circle" size={18} color="#64748B" />
                     </Pressable>
                   </View>
                 </Pressable>
@@ -272,11 +266,7 @@ export default function TeacherIndex() {
               <CardTitle>All Students</CardTitle>
               {/* Search Bar */}
               <View className="relative mt-3">
-                <Search 
-                  size={20} 
-                  color="#64748B" 
-                  style={{ position: 'absolute', left: 12, top: 10 }} 
-                />
+                <Feather name="search" size={20} color="#64748B" style={{ position: 'absolute', left: 12, top: 10 }} />
                 <TextInput
                   className="pl-10 pr-4 py-2 bg-muted rounded-lg text-foreground"
                   placeholder="Search students..."
@@ -358,14 +348,14 @@ export default function TeacherIndex() {
                     <View className="flex-row items-center">
                       {student.submitted ? (
                         <>
-                          <CheckCircle size={16} color="#10B981" style={{ marginRight: 4 }} />
+                          <Feather name="check-circle" size={16} color="#10B981" style={{ marginRight: 4 }} />
                           <Text className="text-sm text-muted-foreground">
                             Submitted today
                           </Text>
                         </>
                       ) : (
                         <>
-                          <Clock size={16} color="#EAB308" style={{ marginRight: 4 }} />
+                          <Feather name="clock" size={16} color="#EAB308" style={{ marginRight: 4 }} />
                           <Text className="text-sm text-muted-foreground">
                             {student.daysSinceLastSubmission}d ago
                           </Text>
@@ -374,10 +364,10 @@ export default function TeacherIndex() {
                     </View>
                     <View className="flex-row space-x-2">
                       <Pressable className="p-2">
-                        <Camera size={16} color="#64748B" />
+                        <Feather name="camera" size={16} color="#64748B" />
                       </Pressable>
                       <Pressable className="p-2">
-                        <MessageCircle size={16} color="#64748B" />
+                        <Feather name="message-circle" size={16} color="#64748B" />
                       </Pressable>
                     </View>
                   </View>

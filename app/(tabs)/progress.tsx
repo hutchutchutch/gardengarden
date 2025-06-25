@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Image, Pressable } from 'react-native';
+import { View, ScrollView, Image, Pressable, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { TrendingUp, Droplets, Sun, Award, Edit2 } from 'lucide-react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { usePlantStore } from '@/store/plant-store';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -81,7 +81,7 @@ export default function ProgressScreen() {
                   <CardTitle className="flex-row items-center gap-2">
                     <Text>{activePlant.name || 'My Plant'}</Text>
                     <Pressable onPress={() => setEditingNickname(true)}>
-                      <Edit2 size={16} color="#64748B" />
+                      <Feather name="edit-2" size={16} color="#64748B" />
                     </Pressable>
                   </CardTitle>
                   <CardDescription>
@@ -205,7 +205,7 @@ export default function ProgressScreen() {
               <View className="flex-row gap-4">
                 <View className="flex-1">
                   <View className="flex-row items-center gap-2 mb-1">
-                    <TrendingUp size={16} color="#10B981" />
+                    <Feather name="trending-up" size={16} color="#10B981" />
                     <Text className="text-sm text-muted-foreground">Height</Text>
                   </View>
                   <Text className="text-lg font-semibold">18 inches</Text>
@@ -213,7 +213,7 @@ export default function ProgressScreen() {
                 </View>
                 <View className="flex-1">
                   <View className="flex-row items-center gap-2 mb-1">
-                    <Sun size={16} color="#EAB308" />
+                    <Feather name="sun" size={16} color="#EAB308" />
                     <Text className="text-sm text-muted-foreground">Light</Text>
                   </View>
                   <Text className="text-lg font-semibold">6-8 hrs</Text>
@@ -221,7 +221,7 @@ export default function ProgressScreen() {
                 </View>
                 <View className="flex-1">
                   <View className="flex-row items-center gap-2 mb-1">
-                    <Droplets size={16} color="#3B82F6" />
+                    <MaterialCommunityIcons name="water-outline" size={16} color="#3B82F6" />
                     <Text className="text-sm text-muted-foreground">Water</Text>
                   </View>
                   <Text className="text-lg font-semibold">2x/week</Text>
@@ -281,14 +281,14 @@ export default function ProgressScreen() {
                 <View className="flex-row items-center justify-between">
                   <Text className="text-sm">Plant Health</Text>
                   <View className="flex-row items-center gap-2">
-                    <Award size={16} color="#10B981" />
+                    <Feather name="award" size={16} color="#10B981" />
                     <Text className="font-semibold">#3 of 25</Text>
                   </View>
                 </View>
                 <View className="flex-row items-center justify-between">
                   <Text className="text-sm">Photo Streak</Text>
                   <View className="flex-row items-center gap-2">
-                    <Award size={16} color="#EAB308" />
+                    <Feather name="award" size={16} color="#EAB308" />
                     <Text className="font-semibold">#5 of 25</Text>
                   </View>
                 </View>

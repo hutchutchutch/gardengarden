@@ -4,6 +4,7 @@ const { hairlineWidth } = require('nativewind/theme');
 module.exports = {
   darkMode: 'class',
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
@@ -97,6 +98,8 @@ module.exports = {
     transition: false,
     transform: false,
     // Disable aspect-ratio to prevent parsing conflicts with ImagePicker
-    aspectRatio: false,
+    // aspectRatio: false,
+    // Disable container queries that might conflict
+    container: false,
   },
 }; 

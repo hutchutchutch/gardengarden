@@ -1,25 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Pressable, FlatList } from 'react-native';
+import { View, ScrollView, Pressable, FlatList, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { 
-  Plus, 
-  Users, 
-  TrendingUp, 
-  Clock, 
-  CheckCircle, 
-  AlertTriangle,
-  BookOpen,
-  Calendar,
-  BarChart3,
-  Settings,
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  MessageSquare
-} from 'lucide-react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
@@ -167,7 +152,7 @@ const DocumentItem = ({ document }: DocumentItemProps) => {
         </View>
       </View>
       <View className="flex-row items-center gap-1">
-        <MessageSquare size={12} color="#64748B" />
+        <MaterialCommunityIcons name="message-outline" size={20} color="#64748B" />
         <Text className="text-sm font-semibold text-primary">
           {document.ragReferences}
         </Text>
@@ -201,9 +186,9 @@ const TeacherLessonCard = ({ lesson, isExpanded, onToggleExpand, onEdit }: Teach
           <View className="flex-row items-center justify-between">
             <View className="flex-1 flex-row items-center">
               {isExpanded ? (
-                <ChevronDown size={16} color="#64748B" />
+                <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" />
               ) : (
-                <ChevronRight size={16} color="#64748B" />
+                <MaterialCommunityIcons name="chevron-right" size={20} color="#64748B" />
               )}
               <View className="flex-1 ml-2">
                 <CardTitle className="text-base">{lesson.title}</CardTitle>
@@ -219,7 +204,7 @@ const TeacherLessonCard = ({ lesson, isExpanded, onToggleExpand, onEdit }: Teach
                     <>
                       <Text className="text-xs text-muted-foreground">•</Text>
                       <View className="flex-row items-center gap-1">
-                        <MessageSquare size={10} color="#64748B" />
+                        <MaterialCommunityIcons name="message-outline" size={12} color="#64748B" />
                         <Text className="text-xs text-primary font-medium">
                           {totalReferences}
                         </Text>
@@ -239,7 +224,7 @@ const TeacherLessonCard = ({ lesson, isExpanded, onToggleExpand, onEdit }: Teach
                 </Badge>
               )}
               <Pressable onPress={onEdit} className="p-1">
-                <Settings size={14} color="#64748B" />
+                <MaterialCommunityIcons name="cog" size={16} color="#64748B" />
               </Pressable>
             </View>
           </View>
@@ -364,7 +349,7 @@ export default function TeacherLessons() {
         <View className="flex-row gap-2 mb-6">
           <Card className="flex-1">
             <CardContent className="p-3 items-center">
-              <BookOpen size={20} color="#10B981" />
+              <MaterialCommunityIcons name="book-open-page-variant" size={20} color="#10B981" />
               <Text className="text-lg font-bold mt-1">{totalLessons}</Text>
               <Text className="text-xs text-muted-foreground">Lessons</Text>
             </CardContent>
@@ -372,7 +357,7 @@ export default function TeacherLessons() {
           
           <Card className="flex-1">
             <CardContent className="p-3 items-center">
-              <TrendingUp size={20} color="#3B82F6" />
+              <MaterialCommunityIcons name="trending-up" size={20} color="#3B82F6" />
               <Text className="text-lg font-bold mt-1">{Math.round(overallCompletionRate)}%</Text>
               <Text className="text-xs text-muted-foreground">Completion</Text>
             </CardContent>
@@ -380,7 +365,7 @@ export default function TeacherLessons() {
           
           <Card className="flex-1">
             <CardContent className="p-3 items-center">
-              <MessageSquare size={20} color="#8B5CF6" />
+              <MaterialCommunityIcons name="message-outline" size={20} color="#8B5CF6" />
               <Text className="text-lg font-bold mt-1">{totalRAGReferences}</Text>
               <Text className="text-xs text-muted-foreground">References</Text>
             </CardContent>
@@ -388,7 +373,7 @@ export default function TeacherLessons() {
         </View>
 
         <Button onPress={handleCreateLesson} className="w-full mb-4">
-          <Plus size={16} color="white" />
+          <MaterialCommunityIcons name="plus-circle" size={16} color="white" />
           <Text className="text-primary-foreground ml-2">Create New Lesson</Text>
         </Button>
       </View>
@@ -441,13 +426,13 @@ export default function TeacherLessons() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View className="items-center justify-center py-12">
-              <BookOpen size={48} color="#64748B" />
+              <MaterialCommunityIcons name="book-open-page-variant" size={48} color="#64748B" />
               <Text className="text-lg font-semibold mt-4 mb-2">No lessons yet</Text>
               <Text className="text-muted-foreground text-center mb-4">
                 Create your first lesson to get started with teaching.
               </Text>
               <Button onPress={handleCreateLesson}>
-                <Plus size={16} color="white" />
+                <MaterialCommunityIcons name="plus-circle" size={16} color="white" />
                 <Text className="text-primary-foreground ml-2">Create Lesson</Text>
               </Button>
             </View>
