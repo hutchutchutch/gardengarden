@@ -1,12 +1,11 @@
 import React, { useEffect } from 'react';
-import { View, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView, Pressable, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { usePlantStore } from '@/store/plant-store';
 import { useTaskStore } from '@/store/task-store';
 import { useMode } from '@/contexts/ModeContext';
 import { cn } from '@/lib/utils';
 import {
-  GSafeScreen,
   GSModeToggle,
   GSHeader,
   GSIconButton,
@@ -18,9 +17,7 @@ import {
   GSCollapsible,
   GSChip,
   GSTaskChecklist,
-  GSBadge,
   GSProgressIndicator,
-  GSTabBar,
   GSPlantCard,
   SectionHeader,
   Text
@@ -123,239 +120,213 @@ export default function StudentIndexScreen() {
   };
 
   return (
-    <GSafeScreen scrollable>
-      {/* Mode Toggle - Sticky top */}
-      <View className="sticky top-0 z-10 bg-background pb-2">
-        <GSModeToggle />
-      </View>
-
-      {/* Header with hamburger menu and notification bell */}
-      <GSHeader 
-        variant="menu" 
-        title="My Garden"
-        onMenu={() => {
-          // Open drawer navigation or menu
-          console.log('Open menu');
-        }}
-        actions={[
-          {
-            icon: 'bell',
-            onPress: () => router.push('/notifications' as any)
-          },
-          {
-            icon: 'settings',
-            onPress: () => router.push('/settings' as any)
-          }
-        ]}
-      />
-
-      {/* Plant Stories Section */}
-      <View className="mb-6 mt-6">
-        <SectionHeader title="Class Gardens">
-          <GSIconButton icon="info" onPress={() => {}} size={20} />
-        </SectionHeader>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+      <View style={{ flex: 1 }}>
+        {/* Fixed Mode Toggle at the top */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
+          <GSModeToggle />
+        </View>
         
+        {/* Scrollable Content */}
         <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-          style={{ marginHorizontal: -16, marginTop: 12 }}
+          showsVerticalScrollIndicator={false} 
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 80 }}
         >
-          {/* Add Story Card */}
+          
+
+          {/* Plant Stories Section */}
+          <View className="mb-6 mt-6 px-4">
+            <SectionHeader title="Class Gardens">
+              <GSIconButton icon="info" onPress={() => {}} size={20} />
+            </SectionHeader>
+            
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+              style={{ marginHorizontal: -16, marginTop: 12 }}
+            >
+              {/* Add Story Card */}
+              {activePlant && (
+                <View className="items-center mr-3">
+                  <Pressable 
+                    onPress={() => router.push('/(tabs)/camera')}
+                    className="w-20 h-20 bg-primary/10 rounded-2xl items-center justify-center border-2 border-dashed border-primary"
+                  >
+                    <GSIconButton icon="camera" onPress={() => router.push('/(tabs)/camera')} size={24} />
+                  </Pressable>
+                  <Text className="text-xs mt-2 text-center text-primary font-medium">Share Today</Text>
+                </View>
+              )}
+              
+              {/* Story Thumbnails with proper spacing */}
+              {classStories.map((story, index) => (
+                <View key={story.id} className={cn("mr-3", index === classStories.length - 1 && "mr-0")}>
+                  <GSStoryThumbnail
+                    thumbnailUrl={story.thumbnailUrl}
+                    healthScore={story.healthScore}
+                    studentName={story.studentName}
+                    timeAgo={story.timeAgo}
+                    viewed={story.viewed}
+                    onPress={() => console.log('View story:', story.id)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* My Plant Progress Section with GSPlantCard */}
           {activePlant && (
-            <View className="items-center mr-3">
-              <Pressable 
-                onPress={() => router.push('/(tabs)/camera')}
-                className="w-20 h-20 bg-primary/10 rounded-2xl items-center justify-center border-2 border-dashed border-primary"
-              >
-                <GSIconButton icon="camera" onPress={() => router.push('/(tabs)/camera')} size={24} />
-              </Pressable>
-              <Text className="text-xs mt-2 text-center text-primary font-medium">Share Today</Text>
+            <View className="mb-6 mt-6 px-4">
+              <SectionHeader title="My Plant Progress" />
+              
+              <View className="mt-3">
+                <GSPlantCard
+                  imageUrl={plantProgress.imageUrl}
+                  studentName="My Plant"
+                  plantName={activePlant.name}
+                  dayNumber={plantProgress.dayNumber}
+                  healthScore={plantProgress.healthScore}
+                  analysis="Thriving! Your plant is showing excellent growth patterns."
+                />
+              </View>
+
+              {/* Horizontal scrollable stats */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4">
+                <View className="flex-row gap-3">
+                  <GSStatCard 
+                    label="Height" 
+                    value={`${plantProgress.height}"`} 
+                    icon="ruler" 
+                  />
+                  <GSStatCard 
+                    label="Stage" 
+                    value={plantProgress.currentStage} 
+                    icon="sprout" 
+                  />
+                  <GSStatCard 
+                    label="Streak" 
+                    value={`${plantProgress.streak} days`} 
+                    icon="flame" 
+                  />
+                  <GSStatCard 
+                    label="Health" 
+                    value={`${plantProgress.healthScore}%`} 
+                    icon="heart" 
+                  />
+                </View>
+              </ScrollView>
+
+              {/* Today's Photo CTA */}
+              <View className="mt-4">
+                <GSButton 
+                  variant="secondary" 
+                  icon="camera" 
+                  fullWidth
+                  onPress={() => router.push('/(tabs)/camera')}
+                >
+                  Today's Photo
+                </GSButton>
+              </View>
             </View>
           )}
-          
-          {/* Story Thumbnails with proper spacing */}
-          {classStories.map((story, index) => (
-            <View key={story.id} className={cn("mr-3", index === classStories.length - 1 && "mr-0")}>
-              <GSStoryThumbnail
-                thumbnailUrl={story.thumbnailUrl}
-                healthScore={story.healthScore}
-                studentName={story.studentName}
-                timeAgo={story.timeAgo}
-                viewed={story.viewed}
-                onPress={() => console.log('View story:', story.id)}
+
+          {/* Yesterday's Feedback Section with proper GSGuidanceCard */}
+          <View className="mb-6 mt-6 px-4">
+            <SectionHeader title="Yesterday's Feedback" />
+            
+            <View className="mt-3">
+              <GSGuidanceCard
+                emoji="📊"
+                title={`Day ${plantProgress.dayNumber - 1} Analysis`}
+                content={yesterdaysFeedback.guidanceText}
               />
             </View>
-          ))}
-        </ScrollView>
-      </View>
 
-      {/* My Plant Progress Section with GSPlantCard */}
-      {activePlant && (
-        <View className="mb-6 mt-6">
-          <SectionHeader title="My Plant Progress" />
-          
-          <View className="mt-3">
-            <GSPlantCard
-              imageUrl={plantProgress.imageUrl}
-              studentName="My Plant"
-              plantName={activePlant.name}
-              dayNumber={plantProgress.dayNumber}
-              healthScore={plantProgress.healthScore}
-              analysis="Thriving! Your plant is showing excellent growth patterns."
-            />
+            {/* Additional feedback details */}
+            <View className="bg-card rounded-lg p-4 mt-3 border border-border">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="font-medium text-base">Health Score</Text>
+                <GSHealthBadge size="small" score={yesterdaysFeedback.score} />
+              </View>
+
+              {/* Issues */}
+              {yesterdaysFeedback.issues.length > 0 && (
+                <View className="mb-3">
+                  <Text className="text-sm font-medium mb-2">Issues Detected:</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {yesterdaysFeedback.issues.map((issue, index) => (
+                      <GSChip key={index} label={issue} variant="warning" />
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Sources */}
+              <GSCollapsible label="View Sources">
+                {yesterdaysFeedback.sources.map((source, index) => (
+                  <View key={index} className="flex-row items-center gap-2 py-2">
+                    <GSIconButton icon="link-2" onPress={() => {}} size={16} />
+                    <View className="flex-1">
+                      <Text className="text-sm font-medium">{source.title}</Text>
+                      <Text className="text-xs text-muted-foreground">{source.domain}</Text>
+                    </View>
+                  </View>
+                ))}
+              </GSCollapsible>
+            </View>
           </View>
 
-          {/* Horizontal scrollable stats */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4 -mx-4 px-4">
-            <View className="flex-row gap-3">
-              <GSStatCard 
-                label="Height" 
-                value={`${plantProgress.height}"`} 
-                icon="ruler" 
-              />
-              <GSStatCard 
-                label="Stage" 
-                value={plantProgress.currentStage} 
-                icon="sprout" 
-              />
-              <GSStatCard 
-                label="Streak" 
-                value={`${plantProgress.streak} days`} 
-                icon="flame" 
-              />
-              <GSStatCard 
-                label="Health" 
-                value={`${plantProgress.healthScore}%`} 
-                icon="heart" 
+          {/* Today's Tasks Section */}
+          <View className="mb-6 mt-6 px-4">
+            <SectionHeader title="Today's Tasks">
+              <GSProgressIndicator progress={completedTasksPercentage / 100} size="small" />
+            </SectionHeader>
+            
+            <View className="mt-3">
+              <GSTaskChecklist 
+                tasks={todaysTasks}
+                onTaskToggle={handleTaskToggle}
               />
             </View>
-          </ScrollView>
-
-          {/* Today's Photo CTA */}
-          <View className="mt-4">
-            <GSButton 
-              variant="secondary" 
-              icon="camera" 
-              fullWidth
-              onPress={() => router.push('/(tabs)/camera')}
-            >
-              Today's Photo
-            </GSButton>
-          </View>
-        </View>
-      )}
-
-      {/* Yesterday's Feedback Section with proper GSGuidanceCard */}
-      <View className="mb-6 mt-6">
-        <SectionHeader title="Yesterday's Feedback" />
-        
-        <View className="mt-3">
-          <GSGuidanceCard
-            emoji="📊"
-            title={`Day ${plantProgress.dayNumber - 1} Analysis`}
-            content={yesterdaysFeedback.guidanceText}
-          />
-        </View>
-
-        {/* Additional feedback details */}
-        <View className="bg-card rounded-lg p-4 mt-3 border border-border">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="font-medium text-base">Health Score</Text>
-            <GSHealthBadge size="small" score={yesterdaysFeedback.score} />
           </View>
 
-          {/* Issues */}
-          {yesterdaysFeedback.issues.length > 0 && (
-            <View className="mb-3">
-              <Text className="text-sm font-medium mb-2">Issues Detected:</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {yesterdaysFeedback.issues.map((issue, index) => (
-                  <GSChip key={index} label={issue} variant="warning" />
+          {/* Tips & Reminders Section */}
+          <View className="mb-6 mt-6 px-4">
+            <SectionHeader title="Tips & Reminders" />
+            
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3">
+              <View className="flex-row gap-3">
+                {tips.map((tip, index) => (
+                  <View key={index} className="bg-card rounded-lg p-4 min-w-[200px] border border-border">
+                    <View className="flex-row items-center gap-2 mb-2">
+                      <GSIconButton icon={tip.icon} onPress={() => {}} size={20} />
+                      <Text className="font-medium text-base">{tip.title}</Text>
+                    </View>
+                    <Text className="text-sm text-muted-foreground">{tip.description}</Text>
+                  </View>
                 ))}
               </View>
+            </ScrollView>
+          </View>
+
+          {/* Need Help Section */}
+          <View className="mb-6 mt-6 px-4">
+            <SectionHeader title="Need Help?" />
+            <View className="mt-3">
+              <GSButton 
+                variant="primary" 
+                fullWidth 
+                icon="message-circle"
+                onPress={() => router.push('/ai-chat')}
+              >
+                Ask AI Assistant
+              </GSButton>
             </View>
-          )}
-
-          {/* Sources */}
-          <GSCollapsible label="View Sources">
-            {yesterdaysFeedback.sources.map((source, index) => (
-              <View key={index} className="flex-row items-center gap-2 py-2">
-                <GSIconButton icon="link-2" onPress={() => {}} size={16} />
-                <View className="flex-1">
-                  <Text className="text-sm font-medium">{source.title}</Text>
-                  <Text className="text-xs text-muted-foreground">{source.domain}</Text>
-                </View>
-              </View>
-            ))}
-          </GSCollapsible>
-        </View>
-      </View>
-
-      {/* Today's Tasks Section */}
-      <View className="mb-6 mt-6">
-        <SectionHeader title="Today's Tasks">
-          <GSProgressIndicator progress={completedTasksPercentage / 100} size="small" />
-        </SectionHeader>
-        
-        <View className="mt-3">
-          <GSTaskChecklist 
-            tasks={todaysTasks}
-            onTaskToggle={handleTaskToggle}
-          />
-        </View>
-      </View>
-
-      {/* Tips & Reminders Section */}
-      <View className="mb-6 mt-6">
-        <SectionHeader title="Tips & Reminders" />
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4 mt-3">
-          <View className="flex-row gap-3">
-            {tips.map((tip, index) => (
-              <View key={index} className="bg-card rounded-lg p-4 min-w-[200px] border border-border">
-                <View className="flex-row items-center gap-2 mb-2">
-                  <GSIconButton icon={tip.icon} onPress={() => {}} size={20} />
-                  <Text className="font-medium text-base">{tip.title}</Text>
-                </View>
-                <Text className="text-sm text-muted-foreground">{tip.description}</Text>
-              </View>
-            ))}
           </View>
         </ScrollView>
       </View>
-
-      {/* Need Help Section */}
-      <View className="mb-20 mt-6">
-        <SectionHeader title="Need Help?" />
-        <View className="mt-3">
-          <GSButton 
-            variant="primary" 
-            fullWidth 
-            icon="message-circle"
-            onPress={() => router.push('/ai-chat')}
-          >
-            Ask AI Assistant
-          </GSButton>
-        </View>
-      </View>
-
-      {/* Tab Bar Navigation with correct Lucide icons */}
-      <GSTabBar 
-        routes={[
-          { key: 'index', title: 'Home', focusedIcon: 'home' },
-          { key: 'lessons', title: 'Learn', focusedIcon: 'book' },
-          { key: 'camera', title: 'Camera', focusedIcon: 'camera', badge: true },
-          { key: 'progress', title: 'Progress', focusedIcon: 'message-circle' },
-          { key: 'profile', title: 'Profile', focusedIcon: 'user' }
-        ]}
-        activeIndex={0}
-        onIndexChange={(index) => {
-          const routes = ['index', 'lessons', 'camera', 'progress', 'profile'];
-          if (index === 0) return;
-          router.push(`/(tabs)/${routes[index]}` as any);
-        }}
-      />
-    </GSafeScreen>
+    </SafeAreaView>
   );
 }

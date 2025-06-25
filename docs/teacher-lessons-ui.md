@@ -92,4 +92,5 @@ typescript// Main Screen Container
   - GSFAB (icon: "plus", label: "New Lesson", position: "bottom-right")
   
   // Navigation
-  - GSTabBar (active: "lessons")
+  // Note: Tab navigation is handled by Expo Router's tab navigation
+  // in app/(tabs)/_layout.tsx, not by a GSTabBar component

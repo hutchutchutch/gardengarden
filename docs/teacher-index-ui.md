@@ -74,10 +74,5 @@ typescript// Main Screen Container
     - GSButton (variant: "outline", icon: "book-open", label: "Lessons")
   
   // Navigation
-  - GSTabBar (active: "home")
-    - TabItem (icon: "home", label: "Home", active: true)
-    - TabItem (icon: "book-open", label: "Lessons")
-    - TabItem (icon: "users", label: "Students")
-    - TabItem (icon: "message-square", label: "Messages")
-      - GSBadge (count: unreadCount, position: "top-right")
-    - TabItem (icon: "settings", label: "Settings")
+  // Note: Tab navigation is handled by Expo Router's tab navigation
+  // in app/(tabs)/_layout.tsx, not by a GSTabBar component

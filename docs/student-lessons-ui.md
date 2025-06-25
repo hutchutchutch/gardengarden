@@ -76,4 +76,5 @@ typescript// Main Screen Container
       - Text (description: "Check back soon!")
   
   // Navigation
-  - GSTabBar (active: "lessons")
+  // Note: Tab navigation is handled by Expo Router's tab navigation
+  // in app/(tabs)/_layout.tsx, not by a GSTabBar component

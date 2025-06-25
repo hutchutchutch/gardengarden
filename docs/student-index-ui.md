@@ -77,9 +77,5 @@ typescript// Main Screen Container
   - GSButton (variant: "primary", fullWidth: true, icon: "message-circle", label: "Ask AI Assistant")
   
   // Navigation
-  - GSTabBar (active: "home")
-    - TabItem (icon: "home", label: "Home", active: true)
-    - TabItem (icon: "book", label: "Lessons")
-    - TabItem (icon: "camera", label: "Camera", accent: true)
-    - TabItem (icon: "message-circle", label: "Messages")
-    - TabItem (icon: "user", label: "Profile")
+  // Note: Tab navigation is handled by Expo Router's tab navigation
+  // in app/(tabs)/_layout.tsx, not by a GSTabBar component

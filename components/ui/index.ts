@@ -3,6 +3,7 @@ export { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 // Core Layout Components
 export { GSafeScreen } from './GSafeScreen';
+export { GSScreenLayout } from './GSScreenLayout';
 export { GSHeader } from './GSHeader';
 export { GSTabBar } from './GSTabBar';
 export type { GSTabBarRoute } from './GSTabBar';
