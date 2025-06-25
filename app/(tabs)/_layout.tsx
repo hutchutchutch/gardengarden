@@ -8,6 +8,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
         tabBarStyle: {
           position: 'absolute',
@@ -44,15 +45,6 @@ export default function TabLayout() {
           title: 'Camera',
           tabBarIcon: ({ color, focused }) => (
             <Camera size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="ai-chat"
-        options={{
-          title: 'AI Chat',
-          tabBarIcon: ({ color, focused }) => (
-            <Bot size={24} color={color} />
           ),
         }}
       />

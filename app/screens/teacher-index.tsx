@@ -12,12 +12,15 @@ import {
 import { Stack } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Feather } from '@expo/vector-icons';
+import { Bell, Settings } from 'lucide-react-native';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
+import ModeToggle from '@/components/ui/mode-toggle';
 import { useMode } from '@/contexts/ModeContext';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface StudentData {
   id: string;
@@ -44,11 +47,12 @@ interface ClassStats {
 
 export default function TeacherIndex() {
   const { user, setShowFAB } = useAuth();
-  const { isTeacherMode } = useMode();
+  const { isTeacherMode, setIsTeacherMode } = useMode();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'not-submitted' | 'low-health'>('all');
+  const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   
         // Mock data - In real app, fetch from Supabase
   const [classStats, setClassStats] = useState<ClassStats>({
@@ -81,6 +85,12 @@ export default function TeacherIndex() {
     setShowFAB(true);
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (!isTeacherMode) {
+      router.replace('/screens/student-index');
+    }
+  }, [isTeacherMode]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -141,13 +151,47 @@ export default function TeacherIndex() {
   }
 
   return (
-    <View className="flex-1 bg-backgroundLight">
+    <SafeAreaView className="flex-1 bg-backgroundLight">
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         className="flex-1"
       >
+        {/* Header with notification bell and toggle */}
+        <View className="px-4 pb-2">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-2xl font-bold text-foreground">Teacher Dashboard</Text>
+            <View>
+              <Pressable 
+                className="relative"
+                onPress={() => setShowNotificationMenu(!showNotificationMenu)}
+              >
+                <Bell size={24} color="#64748B" />
+                <View className="absolute -top-1 -right-1 h-2 w-2 bg-destructive rounded-full" />
+              </Pressable>
+              
+              {showNotificationMenu && (
+                <View className="absolute right-0 top-8 w-48 bg-card border border-border rounded-lg shadow-lg z-10">
+                  <Pressable className="flex-row items-center p-2" onPress={() => {/* Handle notifications */}}>
+                    <Bell size={16} color="#64748B" />
+                    <Text className="text-sm ml-2">View Notifications</Text>
+                  </Pressable>
+                   <Pressable className="flex-row items-center p-2" onPress={() => router.push('/(tabs)/profile')}>
+                    <Settings size={16} color="#64748B" />
+                    <Text className="text-sm ml-2">Settings</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Student/Teacher Toggle */}
+          <View className="mb-6">
+            <ModeToggle />
+          </View>
+        </View>
+
         {/* Header Stats - FR-016, FR-017 */}
         <View className="bg-primary p-6">
           <Text className="text-2xl font-bold text-white mb-2">
@@ -377,6 +421,6 @@ export default function TeacherIndex() {
           </Card>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 } 
