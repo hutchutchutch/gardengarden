@@ -3,6 +3,7 @@ import { Card, Avatar, Text, IconButton } from 'react-native-paper';
 import { View, StyleSheet } from 'react-native';
 import { useAppTheme } from '../../config/theme';
 import { GSHealthBadge } from './GSHealthBadge';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 interface GSStudentCardProps {
   name: string;
@@ -13,6 +14,7 @@ interface GSStudentCardProps {
   onMessage?: () => void;
   onViewDetails?: () => void;
   onPress?: () => void;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -25,9 +27,41 @@ export const GSStudentCard: React.FC<GSStudentCardProps> = ({
   onMessage,
   onViewDetails,
   onPress,
+  isLoading = false,
   testID = 'gs-student-card',
 }) => {
   const theme = useAppTheme();
+
+  if (isLoading) {
+    return (
+      <Card
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.outline,
+          },
+        ]}
+      >
+        <Card.Content style={styles.content}>
+          <View style={styles.mainContent}>
+            <View style={styles.avatarSection}>
+              <ShimmerPlaceholder width={48} height={48} borderRadius={24} />
+            </View>
+            
+            <View style={styles.infoSection}>
+              <ShimmerPlaceholder width={120} height={18} borderRadius={4} style={{ marginBottom: 4 }} />
+              <ShimmerPlaceholder width={100} height={16} borderRadius={4} />
+            </View>
+            
+            <View style={styles.actionSection}>
+              <ShimmerPlaceholder width={40} height={40} borderRadius={20} style={{ marginLeft: 4 }} />
+            </View>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  }
 
   const getInitials = (name: string) => {
     return name

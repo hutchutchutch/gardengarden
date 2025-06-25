@@ -1,6 +1,8 @@
 import React from 'react';
 import { IconButton } from 'react-native-paper';
+import { View } from 'react-native';
 import { useAppTheme } from '../../config/theme';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 interface GSIconButtonProps {
   icon: string;
@@ -11,6 +13,7 @@ interface GSIconButtonProps {
   mode?: 'outlined' | 'contained' | 'contained-tonal';
   selected?: boolean;
   animated?: boolean;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -23,9 +26,20 @@ export const GSIconButton: React.FC<GSIconButtonProps> = ({
   mode,
   selected = false,
   animated = true,
+  isLoading = false,
   testID = 'gs-icon-button',
 }) => {
   const theme = useAppTheme();
+
+  if (isLoading) {
+    return (
+      <ShimmerPlaceholder 
+        width={40} 
+        height={40} 
+        borderRadius={20}
+      />
+    );
+  }
 
   const getColor = () => {
     if (disabled) return theme.colors.onSurfaceDisabled;

@@ -2,6 +2,7 @@ import React from 'react';
 import { Button, ActivityIndicator } from 'react-native-paper';
 import { StyleSheet, View } from 'react-native';
 import { useAppTheme } from '../../config/theme';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success';
 type ButtonSize = 'small' | 'medium' | 'large';
@@ -15,6 +16,7 @@ interface GSButtonProps {
   disabled?: boolean;
   icon?: string;
   fullWidth?: boolean;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -27,9 +29,28 @@ export const GSButton: React.FC<GSButtonProps> = ({
   disabled = false,
   icon,
   fullWidth = false,
+  isLoading = false,
   testID = 'gs-button',
 }) => {
   const theme = useAppTheme();
+
+  if (isLoading) {
+    const sizeMap = {
+      small: { width: 80, height: 32 },
+      medium: { width: 100, height: 40 },
+      large: { width: 120, height: 48 },
+    };
+    
+    const dimensions = sizeMap[size];
+    
+    return (
+      <ShimmerPlaceholder 
+        width={fullWidth ? '100%' : dimensions.width}
+        height={dimensions.height}
+        borderRadius={8}
+      />
+    );
+  }
 
   const getVariantColors = () => {
     switch (variant) {

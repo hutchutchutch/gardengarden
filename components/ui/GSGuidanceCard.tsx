@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, Text, IconButton, Divider } from 'react-native-paper';
 import { View, StyleSheet } from 'react-native';
 import { useAppTheme } from '../../config/theme';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 interface GSGuidanceCardProps {
   emoji: string;
@@ -9,6 +10,7 @@ interface GSGuidanceCardProps {
   content: string;
   sources?: string[];
   onSourcePress?: (source: string) => void;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -18,10 +20,43 @@ export const GSGuidanceCard: React.FC<GSGuidanceCardProps> = ({
   content,
   sources = [],
   onSourcePress,
+  isLoading = false,
   testID = 'gs-guidance-card',
 }) => {
   const theme = useAppTheme();
   const [expanded, setExpanded] = useState(false);
+
+  if (isLoading) {
+    return (
+      <Card
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.primaryContainer,
+          },
+        ]}
+      >
+        <Card.Content style={styles.content}>
+          <View style={styles.header}>
+            <View style={[styles.emojiContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
+              <ShimmerPlaceholder width={24} height={24} borderRadius={12} />
+            </View>
+            
+            <View style={styles.titleContainer}>
+              <ShimmerPlaceholder width={150} height={20} borderRadius={4} />
+            </View>
+          </View>
+          
+          <ShimmerPlaceholder width="100%" height={16} borderRadius={4} style={{ marginBottom: 4 }} />
+          <ShimmerPlaceholder width="90%" height={16} borderRadius={4} style={{ marginBottom: 4 }} />
+          <ShimmerPlaceholder width="60%" height={16} borderRadius={4} style={{ marginBottom: 12 }} />
+          
+          <ShimmerPlaceholder width={120} height={16} borderRadius={4} />
+        </Card.Content>
+      </Card>
+    );
+  }
 
   const handleToggleExpand = () => {
     setExpanded(!expanded);

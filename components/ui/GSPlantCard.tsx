@@ -3,6 +3,7 @@ import { Card, Text, Surface, IconButton, ProgressBar } from 'react-native-paper
 import { View, StyleSheet, Image, Dimensions } from 'react-native';
 import { useAppTheme } from '../../config/theme';
 import { GSHealthBadge } from './GSHealthBadge';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 interface GSPlantCardProps {
   imageUrl: string;
@@ -12,6 +13,7 @@ interface GSPlantCardProps {
   healthScore: number;
   analysis?: string;
   onExpand?: () => void;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -26,11 +28,47 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
   healthScore,
   analysis,
   onExpand,
+  isLoading = false,
   testID = 'gs-plant-card',
 }) => {
   const theme = useAppTheme();
   const [expanded, setExpanded] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+
+  if (isLoading) {
+    return (
+      <Card
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.colors.surface,
+            width: cardWidth,
+          },
+        ]}
+      >
+        <View style={styles.imageContainer}>
+          <ShimmerPlaceholder width="100%" height={200} />
+          
+          <View style={styles.healthBadgeOverlay}>
+            <ShimmerPlaceholder width={60} height={24} borderRadius={12} />
+          </View>
+          
+          <Surface style={[styles.dayBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
+            <ShimmerPlaceholder width={60} height={14} borderRadius={7} />
+          </Surface>
+        </View>
+        
+        <Card.Content style={styles.content}>
+          <View style={styles.header}>
+            <View style={styles.info}>
+              <ShimmerPlaceholder width={100} height={18} borderRadius={4} style={{ marginBottom: 4 }} />
+              <ShimmerPlaceholder width={60} height={14} borderRadius={4} />
+            </View>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  }
 
   const handleExpand = () => {
     setExpanded(!expanded);

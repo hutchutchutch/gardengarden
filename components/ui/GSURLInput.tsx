@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { TextInput, IconButton, HelperText } from 'react-native-paper';
 import { View, StyleSheet } from 'react-native';
 import { useAppTheme } from '../../config/theme';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 interface GSURLInputProps {
   label?: string;
@@ -11,6 +12,7 @@ interface GSURLInputProps {
   onRemove?: () => void;
   placeholder?: string;
   disabled?: boolean;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -22,12 +24,39 @@ export const GSURLInput: React.FC<GSURLInputProps> = ({
   onRemove,
   placeholder = 'https://example.com',
   disabled = false,
+  isLoading = false,
   testID = 'gs-url-input',
 }) => {
   const theme = useAppTheme();
   const [error, setError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <ShimmerPlaceholder 
+          width={80} 
+          height={16} 
+          borderRadius={4}
+          style={{ marginBottom: 8 }}
+        />
+        <View style={styles.inputContainer}>
+          <ShimmerPlaceholder 
+            height={56} 
+            borderRadius={theme.borderRadius.sm}
+          />
+          <View style={styles.addButtonShimmer}>
+            <ShimmerPlaceholder 
+              width={40} 
+              height={40} 
+              borderRadius={20}
+            />
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   const validateURL = useCallback((url: string) => {
     if (!url) {
@@ -170,5 +199,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     paddingHorizontal: 12,
+  },
+  addButtonShimmer: {
+    position: 'absolute',
+    right: 8,
+    top: 8,
   },
 }); 

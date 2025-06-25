@@ -1,3 +1,6 @@
+// Core Utility Components
+export { ShimmerPlaceholder } from './ShimmerPlaceholder';
+
 // Core Layout Components
 export { GSafeScreen } from './GSafeScreen';
 export { GSHeader } from './GSHeader';
@@ -16,16 +19,16 @@ export { GSFAB } from './GSFAB';
 export type { FABAction } from './GSFAB';
 export { GSIconButton } from './GSIconButton';
 
+// Display Components
+export { GSHealthBadge } from './GSHealthBadge';
+export { GSProgressIndicator } from './GSProgressIndicator';
+export { GSEmptyState } from './GSEmptyState';
+
 // Card Components
 export { GSLessonCard } from './GSLessonCard';
 export { GSStudentCard } from './GSStudentCard';
 export { GSPlantCard } from './GSPlantCard';
 export { GSGuidanceCard } from './GSGuidanceCard';
-
-// Display Components
-export { GSHealthBadge } from './GSHealthBadge';
-export { GSProgressIndicator } from './GSProgressIndicator';
-export { GSEmptyState } from './GSEmptyState';
 
 // Chat Components
 export { GSChatBubble } from './GSChatBubble';

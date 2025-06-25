@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TextInput, HelperText } from 'react-native-paper';
 import { View, StyleSheet, Text } from 'react-native';
 import { useAppTheme } from '../../config/theme';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 interface GSTextInputProps {
   label: string;
@@ -19,6 +20,7 @@ interface GSTextInputProps {
   left?: React.ReactNode;
   right?: React.ReactNode;
   mode?: 'flat' | 'outlined';
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -38,10 +40,28 @@ export const GSTextInput: React.FC<GSTextInputProps> = ({
   left,
   right,
   mode = 'outlined',
+  isLoading = false,
   testID = 'gs-text-input',
 }) => {
   const theme = useAppTheme();
   const [isFocused, setIsFocused] = useState(false);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <ShimmerPlaceholder 
+          width={80} 
+          height={16} 
+          borderRadius={4}
+          style={{ marginBottom: 8 }}
+        />
+        <ShimmerPlaceholder 
+          height={56} 
+          borderRadius={4}
+        />
+      </View>
+    );
+  }
 
   const handleChangeText = (text: string) => {
     if (maxLength && text.length > maxLength) {

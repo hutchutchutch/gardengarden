@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Searchbar, Chip } from 'react-native-paper';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { useAppTheme } from '../../config/theme';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 export interface FilterChip {
   id: string;
@@ -18,6 +19,7 @@ interface GSSearchBarProps {
   selectedFilters?: string[];
   onFilterToggle?: (filterId: string) => void;
   showClearButton?: boolean;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -30,10 +32,42 @@ export const GSSearchBar: React.FC<GSSearchBarProps> = ({
   selectedFilters = [],
   onFilterToggle,
   showClearButton = true,
+  isLoading = false,
   testID = 'gs-search-bar',
 }) => {
   const theme = useAppTheme();
   const [isFocused, setIsFocused] = useState(false);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <ShimmerPlaceholder 
+          height={48} 
+          borderRadius={8}
+        />
+        {filters.length > 0 && (
+          <View style={styles.filterContainer}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterContent}
+            >
+              {[1, 2, 3, 4].map((i) => (
+                <ShimmerPlaceholder 
+                  key={i}
+                  width={60} 
+                  height={32} 
+                  borderRadius={16}
+                  style={{ marginHorizontal: 4 }}
+                  delay={i * 50}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+      </View>
+    );
+  }
 
   const handleClear = () => {
     onChangeText('');

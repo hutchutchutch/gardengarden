@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { FAB, Portal } from 'react-native-paper';
-import { Animated, StyleSheet } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { useAppTheme } from '../../config/theme';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 export interface FABAction {
   icon: string;
@@ -15,6 +16,7 @@ interface GSFABProps {
   onPress?: () => void;
   actions?: FABAction[];
   visible?: boolean;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -23,11 +25,24 @@ export const GSFAB: React.FC<GSFABProps> = ({
   onPress,
   actions = [],
   visible = true,
+  isLoading = false,
   testID = 'gs-fab',
 }) => {
   const theme = useAppTheme();
   const [open, setOpen] = useState(false);
   const animation = useRef(new Animated.Value(0)).current;
+
+  if (isLoading) {
+    return (
+      <View style={styles.fab}>
+        <ShimmerPlaceholder 
+          width={56} 
+          height={56} 
+          borderRadius={28}
+        />
+      </View>
+    );
+  }
 
   const toggleMenu = () => {
     const toValue = open ? 0 : 1;

@@ -2,6 +2,7 @@ import React from 'react';
 import { Badge, Icon } from 'react-native-paper';
 import { View, StyleSheet, Text } from 'react-native';
 import { useAppTheme } from '../../config/theme';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 type BadgeSize = 'small' | 'medium' | 'large';
 
@@ -9,6 +10,7 @@ interface GSHealthBadgeProps {
   score: number; // 0-100
   size?: BadgeSize;
   showLabel?: boolean;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -16,9 +18,28 @@ export const GSHealthBadge: React.FC<GSHealthBadgeProps> = ({
   score,
   size = 'medium',
   showLabel = true,
+  isLoading = false,
   testID = 'gs-health-badge',
 }) => {
   const theme = useAppTheme();
+
+  if (isLoading) {
+    const sizeMap = {
+      small: { width: 60, height: 24 },
+      medium: { width: 80, height: 32 },
+      large: { width: 100, height: 40 },
+    };
+    
+    const dimensions = sizeMap[size];
+    
+    return (
+      <ShimmerPlaceholder 
+        width={dimensions.width}
+        height={dimensions.height}
+        borderRadius={dimensions.height / 2}
+      />
+    );
+  }
 
   const getHealthLevel = () => {
     if (score >= 80) return { level: 'excellent', icon: 'emoticon-happy', label: 'Thriving!' };

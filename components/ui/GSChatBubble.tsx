@@ -2,6 +2,7 @@ import React from 'react';
 import { Surface, Text, Icon } from 'react-native-paper';
 import { View, StyleSheet } from 'react-native';
 import { useAppTheme } from '../../config/theme';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 type ChatBubbleType = 'ai' | 'teacher' | 'student';
 
@@ -12,6 +13,7 @@ interface GSChatBubbleProps {
   showSources?: boolean;
   sources?: string[];
   isRead?: boolean;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -22,6 +24,7 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   showSources = false,
   sources = [],
   isRead = false,
+  isLoading = false,
   testID = 'gs-chat-bubble',
 }) => {
   const theme = useAppTheme();
@@ -54,6 +57,25 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   };
 
   const color = getBubbleColor();
+
+  if (isLoading) {
+    return (
+      <View 
+        style={[
+          styles.container,
+          { alignItems: getAlignment() },
+        ]}
+        testID={testID}
+      >
+        <ShimmerPlaceholder 
+          width={200} 
+          height={60} 
+          borderRadius={18}
+          style={type === 'student' ? styles.studentBubble : styles.otherBubble}
+        />
+      </View>
+    );
+  }
 
   return (
     <View 

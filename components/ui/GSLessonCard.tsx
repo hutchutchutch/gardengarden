@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Switch, Text, Chip } from 'react-native-paper';
 import { View, StyleSheet } from 'react-native';
 import { useAppTheme } from '../../config/theme';
+import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
 interface GSLessonCardProps {
   title: string;
@@ -12,6 +13,7 @@ interface GSLessonCardProps {
   isActive: boolean;
   onToggleActive: (active: boolean) => void;
   onPress?: () => void;
+  isLoading?: boolean;
   testID?: string;
 }
 
@@ -24,9 +26,48 @@ export const GSLessonCard: React.FC<GSLessonCardProps> = ({
   isActive,
   onToggleActive,
   onPress,
+  isLoading = false,
   testID = 'gs-lesson-card',
 }) => {
   const theme = useAppTheme();
+
+  if (isLoading) {
+    return (
+      <Card
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.outline,
+            borderWidth: 1,
+          },
+        ]}
+      >
+        <Card.Content style={styles.content}>
+          <View style={styles.header}>
+            <View style={styles.titleContainer}>
+              <ShimmerPlaceholder width={180} height={20} borderRadius={4} />
+            </View>
+            <ShimmerPlaceholder width={48} height={24} borderRadius={12} />
+          </View>
+          
+          <ShimmerPlaceholder width={120} height={16} borderRadius={4} style={{ marginBottom: 16 }} />
+          
+          <View style={styles.stats}>
+            <View style={styles.stat}>
+              <ShimmerPlaceholder width={60} height={40} borderRadius={4} />
+            </View>
+            <View style={[styles.stat, styles.statDivider]}>
+              <ShimmerPlaceholder width={60} height={40} borderRadius={4} />
+            </View>
+            <View style={[styles.stat, styles.statDivider]}>
+              <ShimmerPlaceholder width={60} height={40} borderRadius={4} />
+            </View>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  }
 
   return (
     <Card
