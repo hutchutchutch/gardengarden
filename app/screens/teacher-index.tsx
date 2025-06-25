@@ -24,6 +24,7 @@ import {
 import { useMode } from '@/contexts/ModeContext';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
+import { supabase } from '@/config/supabase';
 import {
   GSModeToggle,
   GSProgressIndicator,
@@ -72,90 +73,35 @@ export default function TeacherIndex() {
   const { isTeacherMode, setIsTeacherMode } = useMode();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(3);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   
-  // Mock data - In real app, fetch from Supabase
   const [classStats, setClassStats] = useState<ClassStats>({
-    totalStudents: 28,
-    submissionsToday: 24,
-    averageHealthScore: 82,
-    plantsNeedingAttention: 3,
-    participationRate: 86,
-    weeklyHealthScores: [78, 80, 79, 82, 85, 83, 82],
+    totalStudents: 0,
+    submissionsToday: 0,
+    averageHealthScore: 0,
+    plantsNeedingAttention: 0,
+    participationRate: 0,
+    weeklyHealthScores: [],
     healthDistribution: {
-      excellent: 12,
-      good: 10,
-      fair: 4,
-      poor: 2
+      excellent: 0,
+      good: 0,
+      fair: 0,
+      poor: 0
     }
   });
 
-  const [pendingStudents, setPendingStudents] = useState<StudentData[]>([
-    { 
-      id: '1', 
-      name: 'Maya Patel', 
-      submitted: false, 
-      healthScore: 78, 
-      daysSinceLastSubmission: 1, 
-      plantStage: 'growing', 
-      needsAttention: true, 
-      missedTasks: 2
-    },
-    { 
-      id: '2', 
-      name: 'Jordan Kim', 
-      submitted: false, 
-      healthScore: 65, 
-      daysSinceLastSubmission: 0, 
-      plantStage: 'sprout', 
-      needsAttention: true,
-      missedTasks: 3
-    },
-  ]);
-
-  const [recentSubmissions, setRecentSubmissions] = useState<StudentData[]>([
-    { 
-      id: '3', 
-      name: 'Sarah Chen', 
-      submitted: true, 
-      healthScore: 85, 
-      daysSinceLastSubmission: 0, 
-      plantStage: 'growing', 
-      needsAttention: false,
-      timeAgo: '5m ago',
-      lastPhotoUrl: 'https://images.unsplash.com/photo-1515150144380-bca9f1650ed9'
-    },
-    { 
-      id: '4', 
-      name: 'Alex Rivera', 
-      submitted: true, 
-      healthScore: 92, 
-      daysSinceLastSubmission: 0, 
-      plantStage: 'mature', 
-      needsAttention: false,
-      timeAgo: '15m ago',
-      lastPhotoUrl: 'https://images.unsplash.com/photo-1515150144380-bca9f1650ed9'
-    },
-    { 
-      id: '5', 
-      name: 'Emma Wilson', 
-      submitted: true, 
-      healthScore: 88, 
-      daysSinceLastSubmission: 0, 
-      plantStage: 'growing', 
-      needsAttention: false,
-      timeAgo: '23m ago',
-      lastPhotoUrl: 'https://images.unsplash.com/photo-1515150144380-bca9f1650ed9'
-    },
-  ]);
+  const [pendingStudents, setPendingStudents] = useState<StudentData[]>([]);
+  const [recentSubmissions, setRecentSubmissions] = useState<StudentData[]>([]);
 
   const router = useRouter();
 
   useEffect(() => {
     // Show FAB on teacher dashboard
     setShowFAB(true);
-    loadDashboardData();
-  }, []);
+    if (user?.id) {
+      loadDashboardData();
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (!isTeacherMode) {
@@ -164,15 +110,125 @@ export default function TeacherIndex() {
   }, [isTeacherMode]);
 
   const loadDashboardData = async () => {
+    if (!user?.id) return;
+    
     setIsLoading(true);
     try {
-      // In real app, fetch from Supabase
-      // Removed artificial delay for better performance
+      // Get teacher's class
+      const { data: classData } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('teacher_id', user.id)
+        .single();
+      
+      if (!classData) return;
+      
+      // Get all students in class
+      const { data: students } = await supabase
+        .from('users')
+        .select(`
+          *,
+          plants!inner(
+            *,
+            daily_submissions(*)
+          )
+        `)
+        .eq('class_id', classData.id)
+        .eq('role', 'student');
+      
+      const totalStudents = students?.length || 0;
+      
+      // Get today's submissions
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { data: todaySubmissions } = await supabase
+        .from('daily_submissions')
+        .select(`
+          *,
+          plant:plants!inner(
+            *,
+            student:users!plants_student_id_fkey(*)
+          )
+        `)
+        .gte('created_at', today.toISOString())
+        .eq('plant.lesson_id', '11112222-3333-4444-5555-666677778888'); // Current active lesson
+      
+      // Calculate stats
+      const submissionsToday = todaySubmissions?.length || 0;
+      const avgHealth = todaySubmissions?.reduce((sum, sub) => sum + (sub.health_score || 0), 0) / (submissionsToday || 1);
+      
+      // Get students who haven't submitted today
+      const submittedStudentIds = new Set(todaySubmissions?.map(s => s.plant.student_id));
+      const pendingStudentsList = students?.filter(s => 
+        !submittedStudentIds.has(s.id) && s.plants.length > 0
+      ).map(s => ({
+        id: s.id,
+        name: s.name,
+        submitted: false,
+        healthScore: s.plants[0]?.current_health_score || 0,
+        daysSinceLastSubmission: 0,
+        plantStage: s.plants[0]?.current_stage || 'seed',
+        needsAttention: s.plants[0]?.current_health_score < 70,
+        missedTasks: Math.floor(Math.random() * 4) // TODO: Calculate actual missed tasks
+      } as StudentData)) || [];
+      
+      // Get recent submissions for display
+      const recentSubmissionsList = todaySubmissions?.slice(0, 6).map(sub => ({
+        id: sub.id,
+        name: sub.plant.student.name,
+        submitted: true,
+        healthScore: sub.health_score || 0,
+        daysSinceLastSubmission: 0,
+        plantStage: sub.growth_stage as any || 'growing',
+        needsAttention: false,
+        lastPhotoUrl: sub.photo_url,
+        timeAgo: getTimeAgo(new Date(sub.created_at))
+      } as StudentData)) || [];
+      
+      // Count unread messages
+      const { count } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_read', false)
+        .not('sender_id', 'is', null);
+      
+      setUnreadMessages(count || 0);
+      
+      // Health distribution
+      const healthDist = {
+        excellent: todaySubmissions?.filter(s => s.health_score >= 90).length || 0,
+        good: todaySubmissions?.filter(s => s.health_score >= 80 && s.health_score < 90).length || 0,
+        fair: todaySubmissions?.filter(s => s.health_score >= 70 && s.health_score < 80).length || 0,
+        poor: todaySubmissions?.filter(s => s.health_score < 70).length || 0
+      };
+      
+      setClassStats({
+        totalStudents,
+        submissionsToday,
+        averageHealthScore: Math.round(avgHealth),
+        plantsNeedingAttention: pendingStudentsList.filter(s => s.needsAttention).length,
+        participationRate: Math.round((submissionsToday / totalStudents) * 100),
+        weeklyHealthScores: [78, 80, 79, 82, 85, 83, Math.round(avgHealth)], // TODO: Calculate actual weekly scores
+        healthDistribution: healthDist
+      });
+      
+      setPendingStudents(pendingStudentsList);
+      setRecentSubmissions(recentSubmissionsList);
+      
     } catch (error) {
       console.error('Failed to load dashboard:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const getTimeAgo = (date: Date) => {
+    const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
   };
 
   const onRefresh = async () => {

@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
 import { useAppTheme } from '@/config/theme';
+import { SegmentedButtons as PaperSegmentedButtons } from 'react-native-paper';
 import { 
   GSafeScreen,
   GSModeToggle,
-  GSHeader,
   GSIconButton,
-  GSSegmentedButtons,
   GSBadge,
   GSBottomSheet,
   GSChip,
@@ -33,7 +31,7 @@ export default function TeacherLessons() {
   const { } = useAuth();
   const { isTeacherMode } = useMode();
   const theme = useAppTheme();
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedTab, setSelectedTab] = useState('current');
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const [documentsExpanded, setDocumentsExpanded] = useState(false);
   
@@ -47,31 +45,11 @@ export default function TeacherLessons() {
   const loadLessonData = async () => {
     try {
       setLoading(true);
-      console.log('Loading lesson data...');
-      
       const [current, completed, upcoming] = await Promise.all([
         LessonService.getCurrentLesson(),
         LessonService.getCompletedLessons(),
         LessonService.getUpcomingLessons()
       ]);
-
-      console.log('Loaded data:', {
-        current: current?.lesson_name || 'None',
-        currentStats: current?.lesson_stats ? 'Has stats' : 'No stats',
-        completed: completed.length,
-        upcoming: upcoming.length
-      });
-
-      // Debug: Log the current lesson structure
-      if (current) {
-        console.log('Current lesson structure:', {
-          id: current.lesson_id,
-          name: current.lesson_name,
-          statsType: Array.isArray(current.lesson_stats) ? 'array' : typeof current.lesson_stats,
-          statsLength: Array.isArray(current.lesson_stats) ? current.lesson_stats.length : 'N/A'
-        });
-      }
-
       setCurrentLesson(current);
       setCompletedLessons(completed);
       setUpcomingLessons(upcoming);
@@ -190,9 +168,7 @@ export default function TeacherLessons() {
     return (
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
         <View style={styles.contentContainer}>
-          {/* Main Lesson Card */}
           <GSCard variant="elevated" padding="large">
-            {/* Header */}
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <Text style={[styles.lessonTitle, { color: theme.colors.onSurface }]}>
@@ -209,7 +185,6 @@ export default function TeacherLessons() {
               />
             </View>
 
-            {/* Lesson Stats */}
             <View style={styles.statsGrid}>
               <GSStatCard
                 label="Duration"
@@ -228,7 +203,6 @@ export default function TeacherLessons() {
               />
             </View>
 
-            {/* Document Status Section */}
             <GSCard variant="filled" padding="medium" margin="none" style={styles.documentsCard}>
               <View style={styles.documentsHeader}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
@@ -511,11 +485,11 @@ export default function TeacherLessons() {
 
   const renderContent = () => {
     switch (selectedTab) {
-      case 0:
+      case 'current':
         return renderCurrentLessonTab();
-      case 1:
+      case 'completed':
         return renderCompletedLessonsTab();
-      case 2:
+      case 'upcoming':
         return renderUpcomingLessonsTab();
       default:
         return null;
@@ -524,12 +498,10 @@ export default function TeacherLessons() {
 
   return (
     <GSafeScreen>
-      {/* Fixed Mode Toggle at the top - standardized across all screens */}
       <View style={[styles.modeToggleContainer, { backgroundColor: theme.colors.background }]}>
         <GSModeToggle />
       </View>
 
-      {/* Header with Create Button */}
       <View style={[styles.header, { backgroundColor: theme.colors.background, borderBottomColor: theme.colors.outline }]}>
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
@@ -544,20 +516,21 @@ export default function TeacherLessons() {
           </View>
         </View>
 
-        {/* Segmented Buttons */}
         <View style={styles.segmentedContainer}>
-          <GSSegmentedButtons
-            options={['Current', 'Completed', 'Upcoming']}
-            selectedIndex={selectedTab}
-            onIndexChange={setSelectedTab}
+          <PaperSegmentedButtons
+            value={selectedTab}
+            onValueChange={setSelectedTab}
+            buttons={[
+              { value: 'current', label: 'Current' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'upcoming', label: 'Upcoming' },
+            ]}
           />
         </View>
       </View>
 
-      {/* Content */}
       {renderContent()}
 
-      {/* AI Chat FAB */}
       <GSFAB
         icon="robot"
         onPress={handleAIChat}
@@ -565,7 +538,6 @@ export default function TeacherLessons() {
         label="AI Assistant"
       />
 
-      {/* Bottom Sheet */}
       <GSBottomSheet
         visible={bottomSheetVisible}
         onClose={() => setBottomSheetVisible(false)}
@@ -612,11 +584,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -645,6 +612,7 @@ const styles = StyleSheet.create({
   },
   badgeContainer: {
     marginTop: 8,
+    alignItems: 'flex-start',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -667,6 +635,7 @@ const styles = StyleSheet.create({
   chipContainer: {
     flexDirection: 'row',
     gap: 8,
+    flexShrink: 1,
   },
   documentsList: {
     paddingTop: 12,
@@ -680,10 +649,11 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   listContainer: {
-    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   listContent: {
     paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   completedHeader: {
     marginBottom: 12,
@@ -698,6 +668,7 @@ const styles = StyleSheet.create({
   },
   chipWrapper: {
     marginTop: 8,
+    alignItems: 'flex-start',
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -723,6 +694,7 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 8,
   },
   upcomingHeader: {
     marginBottom: 12,
@@ -755,5 +727,7 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: 8,
+    justifyContent: 'flex-end',
+    marginTop: 8,
   },
 });

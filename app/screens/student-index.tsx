@@ -5,6 +5,8 @@ import { usePlantStore } from '@/store/plant-store';
 import { useTaskStore } from '@/store/task-store';
 import { useMode } from '@/contexts/ModeContext';
 import PlantStories from '@/components/PlantStories';
+import { supabase } from '@/config/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 import {
   GSModeToggle,
@@ -28,28 +30,77 @@ export default function StudentIndexScreen() {
   const { plants } = usePlantStore();
   const { tasks } = useTaskStore();
   const { isTeacherMode } = useMode();
+  const { user } = useAuth();
   
   const activePlant = plants[0];
 
-  // Mock plant progress data
-  const plantProgress = {
-    currentStage: 'Seedling',
-    dayNumber: 12,
-    healthScore: 88,
-    height: '3.2',
-    streak: 7,
-    imageUrl: 'https://picsum.photos/400/300?random=plant'
-  };
+  const [plantProgress, setPlantProgress] = React.useState<any>(null);
+  const [yesterdaysFeedback, setYesterdaysFeedback] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
 
-  // Mock yesterday's feedback
-  const yesterdaysFeedback = {
-    score: 82,
-    guidanceText: "Your plant showed good growth yesterday! The leaves are developing nicely. Consider adjusting the watering schedule slightly - the soil moisture was a bit high. Keep up the consistent care routine.",
-    issues: ['Slight overwatering', 'Minor leaf curl'],
-    sources: [
-      { title: 'Optimal Watering Guide', domain: 'gardening101.com' },
-      { title: 'Leaf Health Indicators', domain: 'plantcare.org' }
-    ]
+  // Fetch plant and submission data from Supabase
+  const fetchStudentData = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      
+      // Fetch student's plant for active lesson
+      const { data: plantData, error: plantError } = await supabase
+        .from('plants')
+        .select(`
+          *,
+          lesson:lessons(*)
+        `)
+        .eq('student_id', user.id)
+        .eq('lesson.status', 'active')
+        .single();
+        
+      if (plantData) {
+        // Calculate day number
+        const plantingDate = new Date(plantData.planting_date);
+        const dayNumber = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        
+        setPlantProgress({
+          currentStage: plantData.current_stage,
+          dayNumber,
+          healthScore: plantData.current_health_score || 0,
+          height: plantData.predictions?.current_height || '0',
+          streak: 7, // TODO: Calculate actual streak
+          imageUrl: 'https://picsum.photos/400/300?random=plant'
+        });
+      }
+      
+      // Fetch yesterday's submission and guidance
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      
+      const { data: submissionData } = await supabase
+        .from('daily_submissions')
+        .select(`
+          *,
+          guidance_history(*)
+        `)
+        .eq('student_id', user.id)
+        .gte('created_at', yesterday.toISOString())
+        .lt('created_at', new Date(yesterday.getTime() + 24 * 60 * 60 * 1000).toISOString())
+        .single();
+        
+      if (submissionData && submissionData.guidance_history?.[0]) {
+        setYesterdaysFeedback({
+          score: submissionData.health_score || 0,
+          guidanceText: submissionData.guidance_history[0].guidance_text,
+          issues: submissionData.issues || [],
+          sources: submissionData.guidance_history[0].source_refs || []
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error fetching student data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Today's tasks
@@ -80,8 +131,10 @@ export default function StudentIndexScreen() {
   useEffect(() => {
     if (isTeacherMode) {
       router.replace('/screens/teacher-index');
+    } else if (user?.id) {
+      fetchStudentData();
     }
-  }, [isTeacherMode]);
+  }, [isTeacherMode, user?.id]);
 
   const handleTaskToggle = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
@@ -178,8 +231,8 @@ export default function StudentIndexScreen() {
             <View style={{ marginTop: 12 }}>
               <GSGuidanceCard
                 emoji="📊"
-                title={`Day ${plantProgress.dayNumber - 1} Analysis`}
-                content={yesterdaysFeedback.guidanceText}
+                title={`Day ${plantProgress?.dayNumber - 1} Analysis`}
+                content={yesterdaysFeedback?.guidanceText}
               />
             </View>
 
@@ -187,15 +240,15 @@ export default function StudentIndexScreen() {
             <GSCard variant="elevated" padding="medium" margin="none" style={{ marginTop: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <Text style={{ fontWeight: '500', fontSize: 16, color: '#000' }}>Health Score</Text>
-                <GSHealthBadge size="small" score={yesterdaysFeedback.score} />
+                <GSHealthBadge size="small" score={yesterdaysFeedback?.score} />
               </View>
 
               {/* Issues */}
-              {yesterdaysFeedback.issues.length > 0 && (
+              {yesterdaysFeedback?.issues && yesterdaysFeedback.issues.length > 0 && (
                 <View style={{ marginBottom: 12 }}>
                   <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8, color: '#000' }}>Issues Detected:</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {yesterdaysFeedback.issues.map((issue, index) => (
+                    {yesterdaysFeedback.issues.map((issue: string, index: number) => (
                       <GSChip key={index} label={issue} variant="warning" />
                     ))}
                   </View>
@@ -204,7 +257,7 @@ export default function StudentIndexScreen() {
 
               {/* Sources */}
               <GSCollapsible label="View Sources">
-                {yesterdaysFeedback.sources.map((source, index) => (
+                {yesterdaysFeedback?.sources?.map((source: any, index: number) => (
                   <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 }}>
                     <GSIconButton icon="link-2" onPress={() => {}} size={16} />
                     <View style={{ flex: 1 }}>

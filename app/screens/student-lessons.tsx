@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Image, Pressable } from 'react-native';
+import { View, ScrollView, Image, Pressable, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
+import { useAppTheme } from '@/config/theme';
+import { supabase } from '@/config/supabase';
+import { SegmentedButtons as PaperSegmentedButtons } from 'react-native-paper';
 import {
   GSModeToggle,
   GSCard,
@@ -11,78 +15,26 @@ import {
   GSChip,
   GSProgressIndicator,
   GSIconButton,
-  GSSegmentedButtons,
-  Text
+  GSEmptyState,
+  GSSearchBar,
+  Text,
+  SectionHeader
 } from '@/components/ui';
 
-// Mock lesson data
-const mockLessons = [
-  {
-    id: '1',
-    title: 'Understanding Plant Growth Stages',
-    description: 'Learn about the different stages of plant development from seed to maturity.',
-    duration: '15 min',
-    progress: 65,
-    status: 'active',
-    imageUri: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400',
-    category: 'Botany Basics',
-    difficulty: 'Beginner',
-    completedAt: null,
-    dueDate: '2024-02-15',
-  },
-  {
-    id: '2',
-    title: 'Soil Composition and pH',
-    description: 'Discover how soil composition affects plant health and growth.',
-    duration: '12 min',
-    progress: 100,
-    status: 'completed',
-    imageUri: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400',
-    category: 'Soil Science',
-    difficulty: 'Intermediate',
-    completedAt: '2024-01-28',
-    dueDate: null,
-  },
-  {
-    id: '3',
-    title: 'Plant Identification Techniques',
-    description: 'Master the art of identifying plants using key characteristics.',
-    duration: '20 min',
-    progress: 0,
-    status: 'upcoming',
-    imageUri: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400',
-    category: 'Plant ID',
-    difficulty: 'Advanced',
-    completedAt: null,
-    dueDate: '2024-02-20',
-  },
-  {
-    id: '4',
-    title: 'Watering Techniques',
-    description: 'Learn proper watering methods for different plant types.',
-    duration: '10 min',
-    progress: 100,
-    status: 'completed',
-    imageUri: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400',
-    category: 'Plant Care',
-    difficulty: 'Beginner',
-    completedAt: '2024-01-25',
-    dueDate: null,
-  },
-  {
-    id: '5',
-    title: 'Pest Management Strategies',
-    description: 'Identify and manage common plant pests naturally.',
-    duration: '18 min',
-    progress: 0,
-    status: 'upcoming',
-    imageUri: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400',
-    category: 'Plant Health',
-    difficulty: 'Intermediate',
-    completedAt: null,
-    dueDate: '2024-02-25',
-  },
-];
+// Remove mock lesson data
+interface Lesson {
+  id: string;
+  title: string;
+  description: string;
+  duration: string;
+  progress: number;
+  status: 'active' | 'completed' | 'upcoming';
+  imageUri: string;
+  category: string;
+  difficulty: string;
+  completedAt: string | null;
+  dueDate: string | null;
+}
 
 // Helper function to get difficulty variant
 const getDifficultyVariant = (difficulty: string) => {
@@ -94,34 +46,94 @@ const getDifficultyVariant = (difficulty: string) => {
   }
 };
 
-// Helper function to get status variant
-const getStatusVariant = (status: string) => {
-  switch (status) {
-    case 'completed': return 'success';
-    case 'active': return 'primary';
-    case 'upcoming': return 'default';
-    default: return 'default';
-  }
-};
-
 export default function StudentLessons() {
   const router = useRouter();
+  const theme = useAppTheme();
   const { user } = useAuth();
   const { isTeacherMode } = useMode();
-  const [selectedTab, setSelectedTab] = useState<'upcoming' | 'completed'>('upcoming');
+  const [selectedTab, setSelectedTab] = useState('0'); // Use string values for SegmentedButtons
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedDifficulty, setSelectedDifficulty] = useState('All');
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch lessons from Supabase
+  const fetchLessons = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      
+      // Get all lessons accessible to the student
+      const { data: lessonsData, error } = await supabase
+        .from('lessons')
+        .select(`
+          *,
+          lesson_urls(count)
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Transform lessons to match our interface
+      const transformedLessons = lessonsData?.map(lesson => ({
+        id: lesson.id,
+        title: lesson.name,
+        description: lesson.description || '',
+        duration: `${Math.floor(lesson.expected_duration_days / 7)} weeks`,
+        progress: lesson.status === 'completed' ? 100 : lesson.status === 'active' ? 35 : 0,
+        status: lesson.status as 'active' | 'completed' | 'upcoming',
+        imageUri: `https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400`,
+        category: lesson.plant_type || 'General',
+        difficulty: 'Beginner', // TODO: Add difficulty to schema
+        completedAt: lesson.status === 'completed' ? lesson.updated_at : null,
+        dueDate: lesson.status === 'draft' ? lesson.start_date : null
+      })) || [];
+      
+      setLessons(transformedLessons);
+      
+    } catch (error) {
+      console.error('Error fetching lessons:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    if (isTeacherMode) {
+      router.replace('/screens/teacher-lessons');
+    } else if (user?.id) {
+      fetchLessons();
+    }
+  }, [isTeacherMode, user?.id]);
   
   // Get active lesson (first lesson with progress > 0 and < 100)
-  const activeLesson = mockLessons.find(lesson => 
+  const activeLesson = lessons.find(lesson => 
     lesson.progress > 0 && lesson.progress < 100
   );
   
   // Filter lessons by status
-  const completedLessons = mockLessons.filter(lesson => lesson.status === 'completed');
-  const upcomingLessons = mockLessons.filter(lesson => lesson.status === 'upcoming');
-  const currentLessons = selectedTab === 'upcoming' ? upcomingLessons : completedLessons;
+  const completedLessons = lessons.filter(lesson => lesson.status === 'completed');
+  const upcomingLessons = lessons.filter(lesson => lesson.status === 'upcoming');
+  
+  // Apply filters
+  const filterLessons = (lessonsToFilter: typeof lessons) => {
+    return lessonsToFilter.filter(lesson => {
+      const matchesSearch = lesson.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          lesson.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === 'All' || lesson.category === selectedCategory;
+      const matchesDifficulty = selectedDifficulty === 'All' || lesson.difficulty === selectedDifficulty;
+      
+      return matchesSearch && matchesCategory && matchesDifficulty;
+    });
+  };
+  
+  const currentLessons = selectedTab === '0' 
+    ? filterLessons(upcomingLessons)
+    : filterLessons(completedLessons);
 
   const handleLessonPress = (lessonId: string) => {
-    // Navigate to lesson detail or player
     router.push({
       pathname: '/modal',
       params: { type: 'lesson', lessonId }
@@ -134,156 +146,307 @@ export default function StudentLessons() {
     }
   };
 
-  useEffect(() => {
-    if (isTeacherMode) {
-      router.replace('/screens/teacher-lessons');
-    }
-  }, [isTeacherMode]);
+  // Get unique categories for filtering
+  const getUniqueCategories = (lessonsToFilter: typeof lessons) => {
+    const categories = new Set(lessonsToFilter.map(lesson => lesson.category));
+    return ['All', ...Array.from(categories)];
+  };
+
+  const renderLessonCard = ({ item }: { item: typeof lessons[0] }) => (
+    <Pressable onPress={() => handleLessonPress(item.id)}>
+      <GSCard variant="elevated" padding="none" style={styles.lessonCard}>
+        <View style={styles.lessonCardContent}>
+          <Image 
+            source={{ uri: item.imageUri }} 
+            style={styles.lessonThumbnail}
+            resizeMode="cover"
+          />
+          <View style={styles.lessonInfo}>
+            <View style={styles.lessonHeader}>
+              <Text style={[styles.lessonTitle, { color: theme.colors.onSurface }]} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <GSIconButton 
+                icon={item.status === 'completed' ? 'check-circle' : 'clock'} 
+                onPress={() => {}} 
+                size={20}
+              />
+            </View>
+            
+            <Text style={[styles.lessonDescription, { color: theme.colors.onSurfaceVariant }]} numberOfLines={2}>
+              {item.description}
+            </Text>
+            
+            <View style={styles.lessonMeta}>
+              <View style={styles.lessonTags}>
+                <GSChip 
+                  label={item.category} 
+                  variant="primary" 
+                  size="small" 
+                />
+                <GSChip 
+                  label={item.difficulty} 
+                  variant={getDifficultyVariant(item.difficulty) as any} 
+                  size="small" 
+                />
+                <Text style={[styles.duration, { color: theme.colors.onSurfaceVariant }]}>
+                  {item.duration}
+                </Text>
+              </View>
+              
+              {item.status === 'completed' && item.completedAt && (
+                <Text style={[styles.completedDate, { color: theme.colors.excellent }]}>
+                  {new Date(item.completedAt).toLocaleDateString()}
+                </Text>
+              )}
+              {item.status === 'upcoming' && item.dueDate && (
+                <Text style={[styles.dueDate, { color: theme.colors.onSurfaceVariant }]}>
+                  Due {new Date(item.dueDate).toLocaleDateString()}
+                </Text>
+              )}
+            </View>
+            
+            {selectedTab === '0' && item.progress > 0 && item.progress < 100 && (
+              <View style={styles.progressContainer}>
+                <GSProgressIndicator progress={item.progress / 100} size="small" />
+                <Text style={[styles.progressText, { color: theme.colors.onSurfaceVariant }]}>
+                  {item.progress}% complete
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </GSCard>
+    </Pressable>
+  );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-      {/* Fixed Mode Toggle at the top */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={styles.modeToggleContainer}>
         <GSModeToggle />
       </View>
       
-      {/* Scrollable Content */}
-      <ScrollView 
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 24 }}
+      <FlatList
+        data={currentLessons}
+        renderItem={renderLessonCard}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-      >
-        {/* Continue Learning Section */}
-        {activeLesson ? (
-          <View style={{ paddingHorizontal: 16, paddingTop: 16, marginBottom: 24 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 16, color: '#000' }}>Continue Learning</Text>
-            
-            <GSCard variant="elevated" padding="none">
-              <Image 
-                source={{ uri: activeLesson.imageUri }} 
-                style={{ width: '100%', height: 192, borderTopLeftRadius: 12, borderTopRightRadius: 12 }}
-                resizeMode="cover"
-              />
-              <View style={{ padding: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <GSChip label={activeLesson.category} variant="primary" />
-                  <Text style={{ fontSize: 14, color: '#666' }}>{activeLesson.duration}</Text>
-                </View>
-                
-                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8, color: '#000' }}>{activeLesson.title}</Text>
-                <Text style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>{activeLesson.description}</Text>
-                
-                {/* Progress */}
-                <View style={{ marginBottom: 16 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text style={{ fontSize: 14, color: '#666' }}>Progress</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '500', color: '#000' }}>{activeLesson.progress}%</Text>
-                  </View>
-                  <GSProgressIndicator progress={activeLesson.progress / 100} size="medium" />
-                </View>
-                
-                <GSButton 
-                  variant="primary" 
-                  icon="play" 
-                  fullWidth
-                  onPress={handleContinueLesson}
-                >
-                  Continue Lesson
-                </GSButton>
-              </View>
-            </GSCard>
-          </View>
-        ) : (
-          <View style={{ paddingHorizontal: 16, paddingTop: 16, marginBottom: 24, alignItems: 'center', paddingVertical: 48 }}>
-            <GSIconButton icon="book-open" onPress={() => {}} size={48} />
-            <Text style={{ fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8, color: '#000' }}>All caught up!</Text>
-            <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
-              You've completed all available lessons. Check back later for new content.
-            </Text>
-          </View>
-        )}
-
-        {/* Tab Selection */}
-        <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
-          <GSSegmentedButtons
-            options={[`Upcoming (${upcomingLessons.length})`, `Completed (${completedLessons.length})`]}
-            selectedIndex={selectedTab === 'upcoming' ? 0 : 1}
-            onIndexChange={(index) => setSelectedTab(index === 0 ? 'upcoming' : 'completed')}
-          />
-        </View>
-
-        {/* Lessons List */}
-        <View style={{ paddingHorizontal: 16 }}>
-          {currentLessons.map((lesson) => (
-            <Pressable key={lesson.id} onPress={() => handleLessonPress(lesson.id)}>
-              <GSCard variant="elevated" padding="medium" margin="none" style={{ marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
+        ListHeaderComponent={
+          <>
+            {activeLesson && (
+              <View style={styles.continueSection}>
+                <SectionHeader title="Continue Learning" />
+                <GSCard variant="elevated" padding="none">
                   <Image 
-                    source={{ uri: lesson.imageUri }} 
-                    style={{ width: 64, height: 64, borderRadius: 8 }}
+                    source={{ uri: activeLesson.imageUri }} 
+                    style={styles.heroImage}
                     resizeMode="cover"
                   />
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontWeight: '600', flex: 1, color: '#000' }} numberOfLines={1}>
-                        {lesson.title}
+                  <View style={styles.heroContent}>
+                    <View style={styles.heroMeta}>
+                      <GSChip label={activeLesson.category} variant="primary" />
+                      <Text style={[styles.duration, { color: theme.colors.onSurfaceVariant }]}>
+                        {activeLesson.duration}
                       </Text>
-                      <GSIconButton 
-                        icon={lesson.status === 'completed' ? 'check-circle' : lesson.status === 'active' ? 'play' : 'clock'} 
-                        onPress={() => {}} 
-                        size={20} 
-                      />
                     </View>
-                    <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }} numberOfLines={2}>
-                      {lesson.description}
+                    
+                    <Text style={[styles.heroTitle, { color: theme.colors.onSurface }]}>
+                      {activeLesson.title}
                     </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <GSChip label={lesson.difficulty} variant={getDifficultyVariant(lesson.difficulty)} />
-                        <Text style={{ fontSize: 12, color: '#666' }}>{lesson.duration}</Text>
+                    <Text style={[styles.heroDescription, { color: theme.colors.onSurfaceVariant }]}>
+                      {activeLesson.description}
+                    </Text>
+                    
+                    <View style={styles.progressSection}>
+                      <View style={styles.progressHeader}>
+                        <Text style={[styles.progressLabel, { color: theme.colors.onSurfaceVariant }]}>
+                          Progress
+                        </Text>
+                        <Text style={[styles.progressValue, { color: theme.colors.onSurface }]}>
+                          {activeLesson.progress}%
+                        </Text>
                       </View>
-                      {lesson.status === 'completed' && lesson.completedAt && (
-                        <Text style={{ fontSize: 12, color: '#10B981' }}>
-                          Completed {new Date(lesson.completedAt).toLocaleDateString()}
-                        </Text>
-                      )}
-                      {lesson.status === 'upcoming' && lesson.dueDate && (
-                        <Text style={{ fontSize: 12, color: '#F97316' }}>
-                          Due {new Date(lesson.dueDate).toLocaleDateString()}
-                        </Text>
-                      )}
+                      <GSProgressIndicator progress={activeLesson.progress / 100} size="medium" />
                     </View>
-                    {selectedTab === 'upcoming' && lesson.progress > 0 && lesson.progress < 100 && (
-                      <View style={{ marginTop: 8 }}>
-                        <GSProgressIndicator progress={lesson.progress / 100} size="small" />
-                        <Text style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                          {lesson.progress}% complete
-                        </Text>
-                      </View>
-                    )}
+                    
+                    <GSButton 
+                      variant="primary" 
+                      icon="play" 
+                      fullWidth
+                      onPress={handleContinueLesson}
+                    >
+                      Continue Lesson
+                    </GSButton>
                   </View>
-                </View>
-              </GSCard>
-            </Pressable>
-          ))}
-          
-          {currentLessons.length === 0 && (
-            <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-              <GSIconButton icon="book" onPress={() => {}} size={48} />
-              <Text style={{ fontSize: 16, fontWeight: '500', marginTop: 16, marginBottom: 8, color: '#000' }}>
-                No {selectedTab} lessons
-              </Text>
-              <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
-                {selectedTab === 'upcoming' 
-                  ? 'All lessons are complete or in progress!' 
-                  : 'Complete some lessons to see them here.'}
-              </Text>
+                </GSCard>
+              </View>
+            )}
+
+            <View style={styles.filterSection}>
+              <PaperSegmentedButtons
+                value={selectedTab}
+                onValueChange={setSelectedTab}
+                buttons={[
+                  { value: '0', label: `Upcoming (${upcomingLessons.length})` },
+                  { value: '1', label: `Completed (${completedLessons.length})` },
+                ]}
+              />
+              <View style={styles.searchContainer}>
+                <GSSearchBar
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search lessons..."
+                />
+              </View>
             </View>
-          )}
-        </View>
-      </ScrollView>
+          </>
+        }
+        ListEmptyComponent={
+          <GSEmptyState
+            icon={searchQuery || selectedCategory !== 'All' || selectedDifficulty !== 'All' ? 'search-off' : 'book'}
+            title={searchQuery || selectedCategory !== 'All' || selectedDifficulty !== 'All' 
+              ? 'No lessons found' 
+              : `No ${selectedTab === '0' ? 'upcoming' : 'completed'} lessons`
+            }
+            description={
+              searchQuery || selectedCategory !== 'All' || selectedDifficulty !== 'All'
+                ? 'Try adjusting your filters or search query'
+                : selectedTab === '0' 
+                  ? 'All lessons are complete or in progress!' 
+                  : 'Complete some lessons to see them here.'
+            }
+            actionLabel={searchQuery ? 'Clear search' : undefined}
+            onAction={searchQuery ? () => setSearchQuery('') : undefined}
+          />
+        }
+      />
     </SafeAreaView>
   );
 }
 
- 
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  modeToggleContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    backgroundColor: 'white',
+  },
+  listContent: {
+    paddingBottom: 100,
+  },
+  continueSection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    marginBottom: 24,
+  },
+  heroImage: {
+    width: '100%',
+    height: 192,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  heroContent: {
+    padding: 16,
+  },
+  heroMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  heroDescription: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  progressSection: {
+    marginBottom: 16,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  progressLabel: {
+    fontSize: 14,
+  },
+  progressValue: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  filterSection: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  searchContainer: {
+    marginTop: 16,
+  },
+  lessonCard: {
+    marginBottom: 12,
+    marginHorizontal: 16,
+  },
+  lessonCardContent: {
+    flexDirection: 'row',
+    padding: 12,
+  },
+  lessonThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  lessonInfo: {
+    flex: 1,
+  },
+  lessonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  lessonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  lessonDescription: {
+    fontSize: 14,
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  lessonMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lessonTags: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  duration: {
+    fontSize: 12,
+  },
+  completedDate: {
+    fontSize: 12,
+  },
+  dueDate: {
+    fontSize: 12,
+  },
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressText: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+});
