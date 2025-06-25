@@ -96,5 +96,7 @@ module.exports = {
     animation: false,
     transition: false,
     transform: false,
+    // Disable aspect-ratio to prevent parsing conflicts with ImagePicker
+    aspectRatio: false,
   },
 }; 
