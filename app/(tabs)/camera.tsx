@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Image, Pressable, ActivityIndicator, Alert, Platform, StyleSheet, TouchableOpacity } from 'react-native';
-import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Camera as CameraIcon, RotateCw, Grid3x3, Ghost, Check, X, Grid, Focus, PartyPopper } from 'lucide-react-native';
@@ -353,22 +352,6 @@ export default function CameraScreen() {
               </Pressable>
             </View>
           </View>
-          
-          {/* Ghost Opacity Slider */}
-          {showGhost && previousImage && (
-            <View className="mt-4 bg-black/50 rounded-lg p-3">
-              <Text className="text-white text-xs mb-1">Ghost Opacity</Text>
-              <Slider
-                value={ghostOpacity}
-                onValueChange={setGhostOpacity}
-                minimumValue={0}
-                maximumValue={0.7}
-                minimumTrackTintColor="#10B981"
-                maximumTrackTintColor="#FFFFFF30"
-                thumbTintColor="#FFFFFF"
-              />
-            </View>
-          )}
         </View>
         
         {/* Helper Text */}

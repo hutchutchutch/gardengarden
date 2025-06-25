@@ -1,7 +1,6 @@
 import { Tabs } from 'expo-router';
-import { BlurView } from 'expo-blur';
 import { Home, Sprout, Camera, Bot, TrendingUp, User } from 'lucide-react-native';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, View } from 'react-native';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -17,14 +16,8 @@ export default function TabLayout() {
           right: 0,
           borderTopWidth: 0,
           elevation: 0,
+          backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)',
         },
-        tabBarBackground: () => (
-          <BlurView
-            tint={colorScheme === 'dark' ? 'dark' : 'light'}
-            intensity={100}
-            style={{ flex: 1 }}
-          />
-        ),
       }}
     >
       <Tabs.Screen

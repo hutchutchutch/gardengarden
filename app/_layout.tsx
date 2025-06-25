@@ -7,13 +7,7 @@ import { useColorScheme } from 'react-native';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ModeProvider } from '@/contexts/ModeContext';
 import { View } from 'react-native';
-import '../global.css';
-import { Platform } from 'react-native';
-
-// Import web-specific styles only on web
-if (Platform.OS === 'web') {
-  require('../global.web.css');
-}
+import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -23,49 +17,40 @@ export {
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
   initialRouteName: '(tabs)',
-  // Ensure proper web routing
-  web: {
-    initialRouteName: '(tabs)',
-  },
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  // Remove font loading - use system fonts instead
+  const colorScheme = useColorScheme();
+  
   useEffect(() => {
     SplashScreen.hideAsync();
   }, []);
 
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const paperTheme = colorScheme === 'dark' ? MD3DarkTheme : MD3LightTheme;
 
   return (
-    <AuthProvider>
-      <ModeProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <View style={{ flex: 1 }}>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-              }}
-            >
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-              <Stack.Screen name="auth/signin" options={{ headerShown: false }} />
-              <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="ai-chat" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="plant/[id]" options={{ headerShown: false }} />
-            </Stack>
-          </View>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </ModeProvider>
-    </AuthProvider>
+    <PaperProvider theme={paperTheme}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <AuthProvider>
+          <ModeProvider>
+            <View style={{ flex: 1 }}>
+              <StatusBar style="auto" />
+              <Stack>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="auth/signin" options={{ headerShown: false }} />
+                <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                <Stack.Screen name="ai-chat" options={{ title: 'AI Assistant' }} />
+                <Stack.Screen name="plant/[id]" options={{ title: 'Plant Details' }} />
+              </Stack>
+            </View>
+          </ModeProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </PaperProvider>
   );
 }
