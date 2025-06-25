@@ -7,7 +7,8 @@ import { useColorScheme } from 'react-native';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ModeProvider } from '@/contexts/ModeContext';
 import { View } from 'react-native';
-import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
+import { Provider as PaperProvider } from 'react-native-paper';
+import { lightTheme, darkTheme } from '@/config/theme';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -29,7 +30,7 @@ export default function RootLayout() {
     SplashScreen.hideAsync();
   }, []);
 
-  const paperTheme = colorScheme === 'dark' ? MD3DarkTheme : MD3LightTheme;
+  const paperTheme = colorScheme === 'dark' ? darkTheme : lightTheme;
 
   return (
     <PaperProvider theme={paperTheme}>

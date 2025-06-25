@@ -63,7 +63,7 @@ export const GSProgressIndicator: React.FC<GSProgressIndicatorProps> = ({
             <ActivityIndicator
               animating
               color={finalColor}
-              size={sizeStyles.circularSize}
+              size={size === 'small' ? 'small' : 'large'}
               testID={`${testID}-spinner`}
             />
           ) : (

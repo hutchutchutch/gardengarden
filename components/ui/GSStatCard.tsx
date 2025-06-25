@@ -3,12 +3,11 @@ import { View } from 'react-native';
 import { Text } from './text';
 import { GSIconButton } from './GSIconButton';
 import { cn } from '@/lib/utils';
-import type { LucideIcon } from 'lucide-react-native';
 
 interface GSStatCardProps {
   label: string;
   value: string;
-  icon: string | LucideIcon;
+  icon: string;
   className?: string;
 }
 
@@ -26,9 +25,8 @@ export const GSStatCard: React.FC<GSStatCardProps> = ({
     )}>
       <GSIconButton
         icon={icon}
-        size="small"
-        interactive={false}
-        className="mb-2"
+        onPress={() => {}}
+        size={20}
       />
       <Text className="text-xs text-muted-foreground mb-1">{label}</Text>
       <Text className="font-semibold">{value}</Text>
