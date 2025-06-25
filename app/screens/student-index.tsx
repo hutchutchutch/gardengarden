@@ -4,11 +4,11 @@ import { useRouter } from 'expo-router';
 import { usePlantStore } from '@/store/plant-store';
 import { useTaskStore } from '@/store/task-store';
 import { useMode } from '@/contexts/ModeContext';
+import PlantStories from '@/components/PlantStories';
 
 import {
   GSModeToggle,
   GSIconButton,
-  GSStoryThumbnail,
   GSHealthBadge,
   GSStatCard,
   GSButton,
@@ -30,34 +30,6 @@ export default function StudentIndexScreen() {
   const { isTeacherMode } = useMode();
   
   const activePlant = plants[0];
-  
-  // Mock data for stories
-  const classStories = [
-    { 
-      id: '1', 
-      thumbnailUrl: 'https://picsum.photos/80/80?random=1', 
-      healthScore: 85, 
-      studentName: 'Alex M.', 
-      timeAgo: '2h ago',
-      viewed: false 
-    },
-    { 
-      id: '2', 
-      thumbnailUrl: 'https://picsum.photos/80/80?random=2', 
-      healthScore: 92, 
-      studentName: 'Sarah K.', 
-      timeAgo: '5h ago',
-      viewed: true 
-    },
-    { 
-      id: '3', 
-      thumbnailUrl: 'https://picsum.photos/80/80?random=3', 
-      healthScore: 78, 
-      studentName: 'Mike R.', 
-      timeAgo: '1d ago',
-      viewed: true 
-    },
-  ];
 
   // Mock plant progress data
   const plantProgress = {
@@ -136,55 +108,16 @@ export default function StudentIndexScreen() {
           
 
           {/* Plant Stories Section */}
-          <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <View style={{ marginBottom: 24, marginTop: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 16 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Class Gardens</Text>
               <GSIconButton icon="info" onPress={() => {}} size={20} />
             </View>
             
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
-              contentContainerStyle={{ paddingHorizontal: 16 }}
-              style={{ marginHorizontal: -16, marginTop: 12 }}
-            >
-              {/* Add Story Card */}
-              {activePlant && (
-                <View style={{ alignItems: 'center', marginRight: 12 }}>
-                  <Pressable 
-                    onPress={() => router.push('/(tabs)/camera')}
-                    style={{ 
-                      width: 80, 
-                      height: 80, 
-                      backgroundColor: 'rgba(34, 197, 94, 0.1)', 
-                      borderRadius: 16, 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      borderWidth: 2, 
-                      borderStyle: 'dashed', 
-                      borderColor: '#22c55e' 
-                    }}
-                  >
-                    <GSIconButton icon="camera" onPress={() => router.push('/(tabs)/camera')} size={24} />
-                  </Pressable>
-                  <Text style={{ fontSize: 12, marginTop: 8, textAlign: 'center', color: '#22c55e', fontWeight: '500' }}>Share Today</Text>
-                </View>
-              )}
-              
-              {/* Story Thumbnails with proper spacing */}
-              {classStories.map((story, index) => (
-                <View key={story.id} style={{ marginRight: index === classStories.length - 1 ? 0 : 12 }}>
-                  <GSStoryThumbnail
-                    thumbnailUrl={story.thumbnailUrl}
-                    healthScore={story.healthScore}
-                    studentName={story.studentName}
-                    timeAgo={story.timeAgo}
-                    viewed={story.viewed}
-                    onPress={() => console.log('View story:', story.id)}
-                  />
-                </View>
-              ))}
-            </ScrollView>
+            <PlantStories 
+              onAddPhoto={() => router.push('/(tabs)/camera')}
+              onStoryPress={(story) => console.log('View story:', story.id)}
+            />
           </View>
 
           {/* My Plant Progress Section with GSPlantCard */}
@@ -324,7 +257,6 @@ export default function StudentIndexScreen() {
           icon="message-circle"
           onPress={() => router.push('/ai-chat')}
           variant="primary"
-          label="AI Assistant"
         />
       </View>
     </SafeAreaView>
