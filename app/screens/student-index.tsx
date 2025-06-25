@@ -1,52 +1,109 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Pressable, FlatList } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect } from 'react';
+import { View, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, User, Settings, Camera, MessageCircle, Users, BookOpen, CheckCircle, Clock } from 'lucide-react-native';
-import { useAuth } from '@/contexts/AuthContext';
 import { usePlantStore } from '@/store/plant-store';
 import { useTaskStore } from '@/store/task-store';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Text } from '@/components/ui/text';
-import { Progress } from '@/components/ui/progress';
-import PlantStories from '@/components/PlantStories';
-import TaskCard from '@/components/TaskCard';
-import ModeToggle from '@/components/ui/mode-toggle';
 import { useMode } from '@/contexts/ModeContext';
+import {
+  GSafeScreen,
+  GSModeToggle,
+  GSHeader,
+  GSIconButton,
+  GSStoryThumbnail,
+  GSHealthBadge,
+  GSStatCard,
+  GSButton,
+  GSGuidanceCard,
+  GSCollapsible,
+  GSChip,
+  GSTaskChecklist,
+  GSBadge,
+  GSProgressIndicator,
+  GSTabBar,
+  SectionHeader,
+  Text
+} from '@/components/ui';
 
 export default function StudentIndexScreen() {
   const router = useRouter();
   const { plants } = usePlantStore();
   const { tasks } = useTaskStore();
-  const { user } = useAuth();
-  const { isTeacherMode, setIsTeacherMode } = useMode();
-  const [showNotificationMenu, setShowNotificationMenu] = useState(false);
-  const [showPreviousTips, setShowPreviousTips] = useState(false);
+  const { isTeacherMode } = useMode();
   
   const activePlant = plants[0];
-  const tips = [
-    "Keep the soil consistently moist but not waterlogged.",
-    "Your plant is getting optimal light. Keep it up!",
-    "A new leaf is unfurling. Great progress!"
+  
+  // Mock data for stories
+  const classStories = [
+    { 
+      id: '1', 
+      thumbnailUrl: 'https://picsum.photos/80/80?random=1', 
+      healthScore: 85, 
+      studentName: 'Alex M.', 
+      timeAgo: '2h ago',
+      viewed: false 
+    },
+    { 
+      id: '2', 
+      thumbnailUrl: 'https://picsum.photos/80/80?random=2', 
+      healthScore: 92, 
+      studentName: 'Sarah K.', 
+      timeAgo: '5h ago',
+      viewed: true 
+    },
+    { 
+      id: '3', 
+      thumbnailUrl: 'https://picsum.photos/80/80?random=3', 
+      healthScore: 78, 
+      studentName: 'Mike R.', 
+      timeAgo: '1d ago',
+      viewed: true 
+    },
   ];
 
-  // Get user's first name
-  const firstName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'Student';
-
-  // Mock lesson progress data
-  const lessonProgress = {
-    completed: 3,
-    total: 5,
-    currentLesson: 'Understanding Plant Growth Stages',
-    progress: 65
+  // Mock plant progress data
+  const plantProgress = {
+    currentStage: 'seedling',
+    dayNumber: 12,
+    healthScore: 88,
+    height: '3.2',
+    streak: 7
   };
 
-  // Get today's tasks
-  const todaysTasks = tasks.filter(task => {
-    const today = new Date().toISOString().split('T')[0];
-    return task.dueDate === today;
-  }).slice(0, 3); // Show max 3 tasks
+  // Mock yesterday's feedback
+  const yesterdaysFeedback = {
+    score: 82,
+    guidanceText: "Your plant showed good growth yesterday! The leaves are developing nicely. Consider adjusting the watering schedule slightly - the soil moisture was a bit high. Keep up the consistent care routine.",
+    issues: ['Slight overwatering', 'Minor leaf curl'],
+    sources: [
+      { title: 'Optimal Watering Guide', domain: 'gardening101.com' },
+      { title: 'Leaf Health Indicators', domain: 'plantcare.org' }
+    ]
+  };
+
+  // Today's tasks
+  const todaysTasks = tasks
+    .filter(task => {
+      const today = new Date().toISOString().split('T')[0];
+      return task.dueDate === today;
+    })
+    .map(task => ({
+      id: task.id,
+      name: task.title,
+      description: task.description,
+      isCompleted: task.completed,
+      points: 10
+    }));
+
+  // Tips
+  const tips = [
+    { icon: 'droplets', title: 'Watering Tip', description: 'Check soil moisture before watering' },
+    { icon: 'sun', title: 'Light Check', description: 'Ensure 6-8 hours of indirect sunlight' },
+    { icon: 'thermometer', title: 'Temperature', description: 'Keep between 65-75°F for optimal growth' }
+  ];
+
+  const completedTasksPercentage = todaysTasks.length > 0 
+    ? Math.round((todaysTasks.filter(t => t.isCompleted).length / todaysTasks.length) * 100)
+    : 0;
 
   useEffect(() => {
     if (isTeacherMode) {
@@ -54,149 +111,212 @@ export default function StudentIndexScreen() {
     }
   }, [isTeacherMode]);
 
+  const handleTaskToggle = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      // Update task in store
+      // This would typically call a method from your task store
+      console.log('Toggle task:', taskId);
+    }
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <ScrollView>
-        <View className="px-4 pb-2">
-          {/* Student/Teacher Toggle */}
-          <View className="mb-6">
-            <ModeToggle />
-          </View>
+    <GSafeScreen scrollable>
+      {/* Mode Toggle - Sticky top */}
+      <View className="sticky top-0 z-10 bg-background">
+        <GSModeToggle />
+      </View>
 
-          {/* 1. Plant Stories - At the very top */}
-          <View className="mb-6">
-            <PlantStories />
-          </View>
+      {/* Header */}
+      <GSHeader 
+        variant="menu" 
+        title="My Garden"
+        actions={[
+          {
+            icon: 'settings',
+            onPress: () => router.push('/settings' as any)
+          }
+        ]}
+      />
 
-          {/* 2. Welcome back message */}
-          <View className="mb-6">
-            <Text className="text-sm text-muted-foreground">Welcome back!</Text>
-          </View>
-
-          {/* 3. Lesson Progress */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle title="Lesson Progress" />
-            </CardHeader>
-            <CardContent>
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-sm text-muted-foreground">Current Lesson</Text>
-                <Text className="text-sm font-medium">{lessonProgress.progress}%</Text>
-              </View>
-              <Text className="font-medium mb-3">{lessonProgress.currentLesson}</Text>
-              <Progress value={lessonProgress.progress} className="mb-3" />
-              <View className="flex-row items-center justify-between">
-                <Text className="text-sm text-muted-foreground">
-                  {lessonProgress.completed} of {lessonProgress.total} lessons completed
-                </Text>
-                <Button 
-                  size="sm"
-                  onPress={() => router.push('/(tabs)/lessons')}
-                >
-                  <BookOpen size={14} color="white" />
-                  <Text className="text-primary-foreground ml-1">Continue</Text>
-                </Button>
-              </View>
-            </CardContent>
-          </Card>
-
-          {/* 4. Today's Tasks */}
-          <Card className="mb-6">
-            <CardHeader>
-              <View className="flex-row items-center justify-between">
-                <CardTitle title="Today's Tasks" />
-                <Text className="text-sm text-muted-foreground">
-                  {todaysTasks.filter(task => task.completed).length}/{todaysTasks.length}
-                </Text>
-              </View>
-            </CardHeader>
-            <CardContent>
-              {todaysTasks.length > 0 ? (
-                <View>
-                  {todaysTasks.map((task) => (
-                    <View key={task.id} className="mb-3 last:mb-0">
-                      <TaskCard task={task} />
-                    </View>
-                  ))}
-                  <Button 
-                    variant="outline" 
-                    className="mt-2"
-                    onPress={() => router.push('/(tabs)/progress')}
-                  >
-                    <Text>View All Tasks</Text>
-                  </Button>
-                </View>
-              ) : (
-                <View className="items-center py-4">
-                  <CheckCircle size={32} color="#10B981" />
-                  <Text className="text-sm text-muted-foreground mt-2">All tasks completed!</Text>
-                </View>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 5. Tips and Feedback */}
+      {/* Plant Stories Section */}
+      <View className="mb-6">
+        <SectionHeader title="Class Gardens">
+          <GSIconButton icon="info" onPress={() => {}} size={20} />
+        </SectionHeader>
+        
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 -mx-4">
+          {/* Add Story Card */}
           {activePlant && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle title="Tips and Feedback" />
-              </CardHeader>
-              <CardContent>
-                <Text className="text-muted-foreground mb-4">
-                  {tips[tips.length - 1]}
-                </Text>
-                
-                {showPreviousTips && (
-                  <View className="mb-4">
-                    {tips.slice(0, -1).map((tip, index) => (
-                      <Text key={index} className="text-sm text-muted-foreground/80 mb-1">{tip}</Text>
-                    ))}
-                  </View>
-                )}
-                
-                {tips.length > 1 && (
-                  <Pressable 
-                    className="mb-4"
-                    onPress={() => setShowPreviousTips(!showPreviousTips)}
-                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  >
-                    <Text className="text-sm text-muted-foreground">
-                      {showPreviousTips ? 'Hide' : 'Show'} previous tips ({tips.length - 1})
-                    </Text>
-                  </Pressable>
-                )}
-
-                <Button 
-                  onPress={() => router.push('/(tabs)/camera')}
-                >
-                  <Camera size={16} color="white" />
-                  <Text className="text-primary-foreground ml-2">Take Today's Photo</Text>
-                </Button>
-              </CardContent>
-            </Card>
+            <View className="mr-3">
+              <Pressable 
+                onPress={() => router.push('/(tabs)/camera')}
+                className="w-20 h-20 bg-primary/10 rounded-lg items-center justify-center border-2 border-dashed border-primary"
+              >
+                <GSIconButton icon="camera" onPress={() => {}} size={24} />
+              </Pressable>
+              <Text className="text-xs mt-1 text-center text-primary font-medium">Share Today</Text>
+            </View>
           )}
+          
+          {/* Story Thumbnails */}
+          {classStories.map((story) => (
+            <View key={story.id} className="mr-3">
+              <GSStoryThumbnail
+                thumbnailUrl={story.thumbnailUrl}
+                healthScore={story.healthScore}
+                studentName={story.studentName}
+                timeAgo={story.timeAgo}
+                viewed={story.viewed}
+                onPress={() => console.log('View story:', story.id)}
+              />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
 
-          {/* 6. Ask AI - At the bottom */}
-          <View className="flex-row gap-4 mb-4">
-             <Button 
-                variant="outline" 
-                className="flex-1"
-                onPress={() => router.push('/ai-chat')}
-              >
-                <MessageCircle size={16} />
-                <Text className="ml-2">Ask AI</Text>
-              </Button>
-               <Button 
-                variant="outline" 
-                className="flex-1"
-                onPress={() => router.push('/(tabs)/progress')}
-              >
-                <Users size={16} />
-                <Text className="ml-2">Class Plants</Text>
-              </Button>
+      {/* My Plant Progress Section */}
+      {activePlant && (
+        <View className="mb-6">
+          <SectionHeader title="My Plant Progress" />
+          
+          {/* Using individual components instead of GSPlantCard since it doesn't accept children */}
+          <View className="bg-card rounded-lg p-4 border border-border">
+            {/* Plant Visualization */}
+            <View className="items-center mb-4">
+              <View className="w-32 h-32 bg-green-100 rounded-full items-center justify-center mb-2">
+                <Text className="text-4xl">🌱</Text>
+              </View>
+              <View className="flex-row items-center gap-2">
+                <GSBadge label={`Day ${plantProgress.dayNumber}`} variant="primary" />
+                <GSHealthBadge size="large" score={plantProgress.healthScore} />
+              </View>
+            </View>
+
+            {/* Stats Cards */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              <View className="flex-row gap-2">
+                <GSStatCard label="Height" value={`${plantProgress.height} inches`} icon="ruler" />
+                <GSStatCard label="Stage" value={plantProgress.currentStage} icon="sprout" />
+                <GSStatCard label="Health" value={`${plantProgress.healthScore}%`} icon="heart" />
+                <GSStatCard label="Streak" value={`${plantProgress.streak} days`} icon="flame" />
+              </View>
+            </ScrollView>
+
+            {/* Camera Button */}
+            <GSButton 
+              variant="secondary" 
+              icon="camera" 
+              onPress={() => router.push('/(tabs)/camera')}
+            >
+              Today's Photo
+            </GSButton>
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      )}
+
+      {/* Yesterday's Feedback Section */}
+      <View className="mb-6">
+        <SectionHeader title="Yesterday's Feedback" />
+        
+        <GSGuidanceCard
+          emoji="📊"
+          title={`Day ${plantProgress.dayNumber - 1} Analysis`}
+          content={yesterdaysFeedback.guidanceText}
+        />
+
+        {/* Additional feedback details */}
+        <View className="bg-card rounded-lg p-4 mt-3 border border-border">
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="font-medium">Health Score</Text>
+            <GSHealthBadge size="small" score={yesterdaysFeedback.score} />
+          </View>
+
+          {/* Sources */}
+          <GSCollapsible label="View Sources">
+            {yesterdaysFeedback.sources.map((source, index) => (
+              <View key={index} className="flex-row items-center gap-2 py-2">
+                <GSIconButton icon="link" onPress={() => {}} size={16} />
+                <View className="flex-1">
+                  <Text className="text-sm font-medium">{source.title}</Text>
+                  <Text className="text-xs text-muted-foreground">{source.domain}</Text>
+                </View>
+              </View>
+            ))}
+          </GSCollapsible>
+
+          {/* Issues */}
+          {yesterdaysFeedback.issues.length > 0 && (
+            <View className="mt-3">
+              <Text className="text-sm font-medium mb-2">Issues Detected:</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {yesterdaysFeedback.issues.map((issue, index) => (
+                  <GSChip key={index} label={issue} variant="warning" />
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Today's Tasks Section */}
+      <View className="mb-6">
+        <SectionHeader title="Daily Care">
+          <GSProgressIndicator progress={completedTasksPercentage / 100} size="small" />
+        </SectionHeader>
+        
+        <GSTaskChecklist 
+          tasks={todaysTasks}
+          onTaskToggle={handleTaskToggle}
+        />
+      </View>
+
+      {/* Tips & Reminders Section */}
+      <View className="mb-6">
+        <SectionHeader title="Tips & Reminders" />
+        
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {tips.map((tip, index) => (
+            <View key={index} className="bg-card rounded-lg p-4 mr-3 min-w-[200px]">
+              <View className="flex-row items-center gap-2 mb-2">
+                <GSIconButton icon={tip.icon} onPress={() => {}} size={20} />
+                <Text className="font-medium">{tip.title}</Text>
+              </View>
+              <Text className="text-sm text-muted-foreground">{tip.description}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Need Help Section */}
+      <View className="mb-6">
+        <SectionHeader title="Need Help?" />
+        <GSButton 
+          variant="primary" 
+          fullWidth 
+          icon="message-circle"
+          onPress={() => router.push('/ai-chat')}
+        >
+          Ask AI Assistant
+        </GSButton>
+      </View>
+
+      {/* Tab Bar Navigation */}
+      <GSTabBar 
+        routes={[
+          { key: 'home', title: 'Home', focusedIcon: 'home' },
+          { key: 'lessons', title: 'Lessons', focusedIcon: 'book' },
+          { key: 'camera', title: 'Camera', focusedIcon: 'camera', badge: true },
+          { key: 'messages', title: 'Messages', focusedIcon: 'message-circle' },
+          { key: 'profile', title: 'Profile', focusedIcon: 'user' }
+        ]}
+        activeIndex={0}
+        onIndexChange={(index) => {
+          const routes = ['home', 'lessons', 'camera', 'messages', 'profile'];
+          if (index === 0) return;
+          router.push(`/(tabs)/${routes[index]}` as any);
+        }}
+      />
+    </GSafeScreen>
   );
 }

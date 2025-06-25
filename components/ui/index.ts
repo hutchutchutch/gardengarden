@@ -34,6 +34,17 @@ export { GSGuidanceCard } from './GSGuidanceCard';
 export { GSChatBubble } from './GSChatBubble';
 export { GSChatInput } from './GSChatInput';
 
+// UI Components
+export { GSModeToggle } from './GSModeToggle';
+export { GSStoryThumbnail } from './GSStoryThumbnail';
+export { GSStatCard } from './GSStatCard';
+export { GSCollapsible } from './GSCollapsible';
+export { GSChip } from './GSChip';
+export { GSCheckbox } from './GSCheckbox';
+export { GSTaskChecklist } from './GSTaskChecklist';
+export { GSBadge } from './GSBadge';
+export { SectionHeader } from './SectionHeader';
+
 // Re-export existing components for backward compatibility
 export { Badge } from './badge';
 export { Button } from './button';
