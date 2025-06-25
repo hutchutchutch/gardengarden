@@ -28,14 +28,7 @@
     "web": {
       "favicon": "./assets/images/favicon.png",
       "bundler": "metro",
-      "output": "static",
-      "build": {
-        "babel": {
-          "include": [
-            "@expo/vector-icons"
-          ]
-        }
-      }
+      "output": "static"
     },
     "plugins": [
       [

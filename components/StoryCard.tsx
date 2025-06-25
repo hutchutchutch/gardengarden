@@ -1,12 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
-import { Feather } from '@expo/vector-icons';
+import { Heart, MessageCircle } from 'lucide-react-native';
 import colors from '@/constants/colors';
 import { ClassStory } from '@/types';
 import { useStoryStore } from '@/store/story-store';
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Card, CardContent } from './ui/card';
+import { Text as UiText } from './ui/text';
+import { useRouter } from 'expo-router';
 
 interface StoryCardProps {
   story: ClassStory;
@@ -44,11 +47,11 @@ export default function StoryCard({ story }: StoryCardProps) {
         <Text style={styles.caption}>{story.caption}</Text>
         <View style={styles.actionsContainer}>
           <Pressable style={styles.actionButton} onPress={handleLike}>
-            <Feather name="heart" size={20} color={colors.error} style={styles.actionIcon} />
+            <Heart size={20} color={colors.error} style={styles.actionIcon} />
             <Text style={styles.actionText}>{story.likes}</Text>
           </Pressable>
           <View style={styles.actionButton}>
-            <Feather name="message-circle" size={20} color={colors.textLight} style={styles.actionIcon} />
+            <MessageCircle size={20} color={colors.textLight} style={styles.actionIcon} />
             <Text style={styles.actionText}>{story.comments.length}</Text>
           </View>
         </View>

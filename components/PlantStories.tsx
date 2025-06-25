@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Pressable, Image } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Heart, MessageCircle, Camera, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import StoryCard from './StoryCard';
 
 export interface PlantStory {
   id: string;
@@ -121,7 +123,7 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
     >
       <View className="relative">
         <View className="w-20 h-20 rounded-full bg-muted border-2 border-dashed border-border items-center justify-center">
-          <Feather name="plus" size={24} color="#64748B" />
+          <Plus size={24} color="#64748B" />
         </View>
       </View>
       <View className="items-center mt-2">

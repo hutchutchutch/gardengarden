@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { View, Pressable, StyleSheet, Animated, Text, ScrollView, Platform } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Bell, Users, Bot, User, X, MessageCircle } from 'lucide-react-native';
 import { useRouter, Href } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMode } from '@/contexts/ModeContext';
 import { BlurView } from 'expo-blur';
 import { cn } from '@/lib/utils';
+import { Camera, Leaf } from 'lucide-react-native';
 
 export function FAB() {
   const [isOpen, setIsOpen] = useState(false);
@@ -103,12 +104,12 @@ export function FAB() {
 
   const menuItems = isTeacherMode
     ? [
-        { icon: <Feather name="bell" size={24} color="#8B5CF6" />, label: 'Send Alert', route: '/teacher-index' as Href },
-        { icon: <Feather name="users" size={24} color="#8B5CF6" />, label: 'Manage Students', route: '/teacher-progress' as Href },
+        { icon: <Bell size={24} color="#8B5CF6" />, label: 'Send Alert', route: '/teacher-index' as Href },
+        { icon: <Users size={24} color="#8B5CF6" />, label: 'Manage Students', route: '/teacher-progress' as Href },
       ]
     : [
-        { icon: <MaterialCommunityIcons name="robot-outline" size={24} color="#059669" />, label: 'Ask AI', route: '/ai-chat' as Href },
-        { icon: <Feather name="user" size={24} color="#059669" />, label: 'My Profile', route: '/(tabs)/profile' as Href },
+        { icon: <Bot size={24} color="#059669" />, label: 'Ask AI', route: '/ai-chat' as Href },
+        { icon: <User size={24} color="#059669" />, label: 'My Profile', route: '/(tabs)/profile' as Href },
       ];
 
   return (
@@ -132,7 +133,7 @@ export function FAB() {
           <View style={styles.roleMenuHeader}>
             <Text style={styles.roleMenuTitle}>Switch Role</Text>
             <Pressable onPress={toggleRoleMenu}>
-              <Feather name="x" size={20} color="#64748B" />
+              <X size={20} color="#64748B" />
             </Pressable>
           </View>
           
@@ -144,7 +145,7 @@ export function FAB() {
             onPress={() => handleRoleSwitch('student')}
           >
             <View style={styles.roleOptionIcon}>
-              <Feather name="user" size={20} color={!isTeacher ? '#10B981' : '#64748B'} />
+              <User size={20} color={!isTeacher ? '#10B981' : '#64748B'} />
             </View>
             <View style={styles.roleOptionContent}>
               <Text style={[styles.roleOptionTitle, !isTeacher && styles.roleOptionTitleActive]}>
@@ -167,7 +168,7 @@ export function FAB() {
             onPress={() => handleRoleSwitch('teacher')}
           >
             <View style={styles.roleOptionIcon}>
-              <Feather name="users" size={20} color={isTeacher ? '#10B981' : '#64748B'} />
+              <Users size={20} color={isTeacher ? '#10B981' : '#64748B'} />
             </View>
             <View style={styles.roleOptionContent}>
               <Text style={[styles.roleOptionTitle, isTeacher && styles.roleOptionTitleActive]}>
@@ -222,7 +223,7 @@ export function FAB() {
             style={[styles.option, styles.notificationOption]}
             onPress={toggleRoleMenu}
           >
-            <Feather name="bell" size={24} color="#FFFFFF" />
+            <Bell size={24} color="#FFFFFF" />
             {/* Notification badge */}
             <View style={styles.notificationBadge}>
               <Text style={styles.notificationBadgeText}>3</Text>
@@ -249,7 +250,7 @@ export function FAB() {
             style={[styles.option, styles.aiOption]}
             onPress={handleAIChat}
           >
-            <MaterialCommunityIcons name="robot-outline" size={24} color="#FFFFFF" />
+            <Bot size={24} color="#FFFFFF" />
           </Pressable>
         </Animated.View>
 
@@ -273,7 +274,7 @@ export function FAB() {
               style={[styles.option, styles.teacherOption]}
               onPress={handleTeacherMessage}
             >
-              <Feather name="user" size={24} color="#FFFFFF" />
+              <User size={24} color="#FFFFFF" />
             </Pressable>
           </Animated.View>
         )}
@@ -296,7 +297,7 @@ export function FAB() {
               }],
             }}
           >
-            <Feather name="message-circle" size={28} color="#FFFFFF" />
+            <MessageCircle size={28} color="#FFFFFF" />
           </Animated.View>
         </Pressable>
       </View>
@@ -334,8 +335,8 @@ export function FAB() {
             onPress={() => setIsOpen(!isOpen)}
           >
             {isOpen 
-              ? <Feather name="x" size={30} color="white" /> 
-              : <Feather name="message-circle" size={30} color="white" />}
+              ? <X size={30} color="white" /> 
+              : <MessageCircle size={30} color="white" />}
           </Pressable>
         </View>
       </View>

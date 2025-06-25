@@ -3,7 +3,7 @@ import { View, Image, Pressable, ActivityIndicator, Alert, Platform, StyleSheet,
 import Slider from '@react-native-community/slider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Camera as CameraIcon, RotateCw, Grid3x3, Ghost, Check, X } from 'lucide-react-native';
+import { Camera as CameraIcon, RotateCw, Grid3x3, Ghost, Check, X, Grid, Focus, PartyPopper } from 'lucide-react-native';
 import { Camera, CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge';
 import { Text } from '@/components/ui/text';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { plants } from '@/mocks/plants';
 
 export default function CameraScreen() {
@@ -383,20 +382,20 @@ export default function CameraScreen() {
         <View className="absolute bottom-0 left-0 right-0 p-4 bg-black/50">
           <View className="flex-row justify-around items-center">
             <TouchableOpacity onPress={() => setShowGrid(!showGrid)}>
-              <MaterialCommunityIcons name="grid" size={28} color="white" />
+              <Grid size={28} color="white" />
             </TouchableOpacity>
             <TouchableOpacity onPress={takePicture} className="w-20 h-20 rounded-full bg-white justify-center items-center">
-              <MaterialCommunityIcons name="camera" size={40} color="black" />
+              <CameraIcon size={40} color="black" />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowGhost(!showGhost)}>
-              <MaterialCommunityIcons name="image-filter-center-focus-weak" size={28} color="white" />
+              <Focus size={28} color="white" />
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
-            <MaterialCommunityIcons name="camera-party-mode" size={28} color="white" />
+            <RotateCw size={28} color="white" />
           </TouchableOpacity>
         </View>
       </CameraView>

@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { BlurView } from 'expo-blur';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Home, Sprout, Camera, Bot, TrendingUp, User } from 'lucide-react-native';
 import { useColorScheme } from 'react-native';
 
 export default function TabLayout() {
@@ -32,7 +32,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Feather name="home" size={24} color={color} />
+            <Home size={24} color={color} />
           ),
         }}
       />
@@ -41,7 +41,7 @@ export default function TabLayout() {
         options={{
           title: 'Lessons',
           tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons name="sprout-outline" size={24} color={color} />
+            <Sprout size={24} color={color} />
           ),
         }}
       />
@@ -50,7 +50,7 @@ export default function TabLayout() {
         options={{
           title: 'Camera',
           tabBarIcon: ({ color, focused }) => (
-            <Feather name="camera" size={24} color={color} />
+            <Camera size={24} color={color} />
           ),
         }}
       />
@@ -59,7 +59,7 @@ export default function TabLayout() {
         options={{
           title: 'AI Chat',
           tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons name="robot-outline" size={24} color={color} />
+            <Bot size={24} color={color} />
           ),
         }}
       />
@@ -68,7 +68,7 @@ export default function TabLayout() {
         options={{
           title: 'Progress',
           tabBarIcon: ({ color, focused }) => (
-            <Feather name="trending-up" size={24} color={color} />
+            <TrendingUp size={24} color={color} />
           ),
         }}
       />
@@ -77,7 +77,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <Feather name="user" size={24} color={color} />
+            <User size={24} color={color} />
           ),
         }}
       />

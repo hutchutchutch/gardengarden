@@ -11,6 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Award, TrendingUp, Calendar } from 'lucide-react-native';
+import colors from '@/constants/colors';
+import { useTaskStore } from '@/store/task-store';
+import { useStoryStore } from '@/store/story-store';
+import PlantCard from '@/components/PlantCard';
 
 // Mock data for achievements
 const achievements = [

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Plus, MessageSquare, Book, Settings, LogOut } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import colors from '@/constants/colors';
 
@@ -72,26 +72,26 @@ export default function ProfileScreen() {
 
       <Text style={styles.sectionTitle}>My Plants</Text>
       <Pressable style={styles.addButton}>
-        <Feather name="plus" size={20} color={colors.white} />
+        <Plus size={20} color={colors.white} />
         <Text style={styles.addButtonText}>Add New Plant</Text>
       </Pressable>
 
       <Text style={styles.sectionTitle}>Resources</Text>
       <View style={styles.menuContainer}>
         <Pressable style={styles.menuItem} onPress={handleAIChat}>
-          <Feather name="message-square" size={20} color={colors.primary} style={styles.menuIcon} />
+          <MessageSquare size={20} color={colors.primary} style={styles.menuIcon} />
           <Text style={styles.menuText}>Garden Mentor AI</Text>
         </Pressable>
         <Pressable style={styles.menuItem}>
-          <Feather name="book" size={20} color={colors.primary} style={styles.menuIcon} />
+          <Book size={20} color={colors.primary} style={styles.menuIcon} />
           <Text style={styles.menuText}>Learning Resources</Text>
         </Pressable>
         <Pressable style={styles.menuItem}>
-          <Feather name="settings" size={20} color={colors.primary} style={styles.menuIcon} />
+          <Settings size={20} color={colors.primary} style={styles.menuIcon} />
           <Text style={styles.menuText}>Settings</Text>
         </Pressable>
         <Pressable style={styles.menuItem} onPress={handleSignOut}>
-          <Feather name="log-out" size={20} color={colors.error} style={styles.menuIcon} />
+          <LogOut size={20} color={colors.error} style={styles.menuIcon} />
           <Text style={[styles.menuText, { color: colors.error }]}>Sign Out</Text>
         </Pressable>
       </View>

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import colors from '@/constants/colors';
-import { Feather } from '@expo/vector-icons';
+import { ChevronRight, ChevronLeft, Home, Camera, BookOpen, TrendingUp } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -21,7 +21,7 @@ interface OnboardingSlide {
   subtitle: string;
   description: string;
   image: any;
-  icon: keyof typeof Feather.glyphMap;
+  icon: React.ReactElement;
 }
 
 const slides: OnboardingSlide[] = [
@@ -31,7 +31,7 @@ const slides: OnboardingSlide[] = [
     subtitle: 'Your Plant Learning Companion',
     description: 'Discover, learn, and grow with our interactive gardening platform designed for students and teachers.',
     image: require('@/assets/images/Onboarding.webp'),
-    icon: 'home',
+    icon: <Home size={24} color={colors.primary} />,
   },
   {
     id: '2',
@@ -39,7 +39,7 @@ const slides: OnboardingSlide[] = [
     subtitle: 'AI-Powered Plant Recognition',
     description: 'Take photos of plants and get instant identification with detailed information about species, care, and growing tips.',
     image: require('@/assets/images/Scan.webp'),
-    icon: 'camera',
+    icon: <Camera size={24} color={colors.primary} />,
   },
   {
     id: '3',
@@ -47,7 +47,7 @@ const slides: OnboardingSlide[] = [
     subtitle: 'Deep Plant Knowledge',
     description: 'Access comprehensive plant analysis, care guides, and educational content to become a gardening expert.',
     image: require('@/assets/images/Analysis.webp'),
-    icon: 'book-open',
+    icon: <BookOpen size={24} color={colors.primary} />,
   },
   {
     id: '4',
@@ -55,7 +55,7 @@ const slides: OnboardingSlide[] = [
     subtitle: 'Complete Tasks & Stories',
     description: 'Engage with interactive lessons, complete gardening tasks, and track your learning journey.',
     image: require('@/assets/images/Task.webp'),
-    icon: 'trending-up',
+    icon: <TrendingUp size={24} color={colors.primary} />,
   },
 ];
 
@@ -97,7 +97,7 @@ export default function OnboardingScreen() {
       <View style={styles.imageContainer}>
         <Image source={item.image} style={styles.image} resizeMode="contain" />
         <View style={styles.iconOverlay}>
-          <Feather name={item.icon} size={24} color={colors.primary} />
+          {item.icon}
         </View>
       </View>
       
@@ -151,8 +151,7 @@ export default function OnboardingScreen() {
           style={[styles.button, styles.previousButton]}
           disabled={currentIndex === 0}
         >
-          <Feather 
-            name="chevron-left" 
+          <ChevronLeft 
             size={20} 
             color={currentIndex === 0 ? colors.grayLight : colors.primary} 
           />
@@ -169,7 +168,7 @@ export default function OnboardingScreen() {
           <Text style={[styles.buttonText, styles.nextButtonText]}>
             {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
           </Text>
-          <Feather name="chevron-right" size={20} color={colors.white} />
+          <ChevronRight size={20} color={colors.white} />
         </Pressable>
       </View>
     </View>

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Image, Pressable, FlatList } from 'react-native';
+import { View, ScrollView, Image, Pressable, FlatList, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { CheckCircle, Play, Clock, BookOpen } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
 // Mock lesson data
@@ -98,13 +99,13 @@ const LessonCard = ({ lesson, onPress, showProgress = false }: LessonCardProps) 
   const getStatusIcon = () => {
     switch (lesson.status) {
       case 'completed':
-        return <MaterialCommunityIcons name="check-circle" size={20} color="#10B981" />;
+        return <CheckCircle size={20} color="#10B981" />;
       case 'active':
-        return <MaterialCommunityIcons name="play" size={20} color="#3B82F6" />;
+        return <Play size={20} color="#3B82F6" />;
       case 'upcoming':
-        return <MaterialCommunityIcons name="clock" size={20} color="#64748B" />;
+        return <Clock size={20} color="#64748B" />;
       default:
-        return <MaterialCommunityIcons name="book-open" size={20} color="#64748B" />;
+        return <BookOpen size={20} color="#64748B" />;
     }
   };
 
@@ -232,7 +233,7 @@ export default function StudentLessons() {
                   </View>
                   
                   <Button onPress={handleContinueLesson} className="w-full">
-                    <MaterialCommunityIcons name="play" size={16} color="white" />
+                    <Play size={16} color="white" />
                     <Text className="text-primary-foreground ml-2">Continue Lesson</Text>
                   </Button>
                 </View>
@@ -241,7 +242,7 @@ export default function StudentLessons() {
           </View>
         ) : (
           <View className="p-4 items-center justify-center flex-1">
-            <MaterialCommunityIcons name="book-open" size={48} color="#64748B" />
+            <BookOpen size={48} color="#64748B" />
             <Text className="text-lg font-semibold mt-4 mb-2">All caught up!</Text>
             <Text className="text-muted-foreground text-center">
               You've completed all available lessons. Check back later for new content.

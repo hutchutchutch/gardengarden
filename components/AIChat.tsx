@@ -1,9 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Switch } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Send, ImageIcon } from 'lucide-react-native';
 import colors from '@/constants/colors';
 import { useAIStore } from '@/store/ai-store';
+import { useColorScheme } from 'react-native';
+import { usePlantStore } from '@/store/plant-store';
+import { useTaskStore } from '@/store/task-store';
 import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
 import { AIPlantAnalysis } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -173,7 +177,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
 
       <View style={styles.inputContainer}>
         <Pressable style={styles.imageButton} onPress={handlePickImage}>
-          <Feather name="image" size={24} color={colors.primary} />
+          <ImageIcon size={24} color={colors.primary} />
         </Pressable>
         <TextInput
           style={styles.input}
@@ -187,7 +191,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
           onPress={handleSend}
           disabled={!message.trim() && !imageUri}
         >
-          <Feather name="send" size={20} color={colors.white} />
+          <Send size={20} color={colors.white} />
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -347,6 +351,3 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
-
-// Fix for TypeScript error with Image component
-import { Image } from 'react-native';

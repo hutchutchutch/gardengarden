@@ -4,7 +4,7 @@ import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { usePlantStore } from '@/store/plant-store';
 import { useTaskStore } from '@/store/task-store';
-import { Feather } from '@expo/vector-icons';
+import { Edit, Trash2, Camera, Droplet, Star } from 'lucide-react-native';
 import colors from '@/constants/colors';
 import TaskCard from '@/components/TaskCard';
 
@@ -78,10 +78,10 @@ export default function PlantDetailScreen() {
         </View>
         <View style={styles.headerActions}>
           <Pressable style={styles.iconButton}>
-            <Feather name="edit" size={20} color={colors.primary} />
+            <Edit size={20} color={colors.primary} />
           </Pressable>
           <Pressable style={[styles.iconButton, styles.deleteButton]}>
-            <Feather name="trash-2" size={20} color={colors.error} />
+            <Trash2 size={20} color={colors.error} />
           </Pressable>
         </View>
       </View>
@@ -116,15 +116,15 @@ export default function PlantDetailScreen() {
 
       <View style={styles.actionsContainer}>
         <Pressable style={styles.actionButton}>
-          <Feather name="camera" size={20} color={colors.white} />
+          <Camera size={20} color={colors.white} />
           <Text style={styles.actionButtonText}>Take Photo</Text>
         </Pressable>
         <Pressable style={[styles.actionButton, styles.waterButton]}>
-          <Feather name="droplet" size={20} color={colors.white} />
+          <Droplet size={20} color={colors.white} />
           <Text style={styles.actionButtonText}>Water</Text>
         </Pressable>
         <Pressable style={[styles.actionButton, styles.fertilizeButton]}>
-          <Feather name="star" size={20} color={colors.white} />
+          <Star size={20} color={colors.white} />
           <Text style={styles.actionButtonText}>Fertilize</Text>
         </Pressable>
       </View>

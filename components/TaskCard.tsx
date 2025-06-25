@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Task } from '@/types';
-import { Feather } from '@expo/vector-icons';
+import { CheckCircle, Droplet, Sparkles, Scissors, Package, AlertCircle } from 'lucide-react-native';
 import colors from '@/constants/colors';
+import { Task } from '@/types';
 import { useTaskStore } from '@/store/task-store';
-import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 
 interface TaskCardProps {
   task: Task;
@@ -24,15 +24,15 @@ export default function TaskCard({ task }: TaskCardProps) {
   const getTaskIcon = () => {
     switch (task.type) {
       case 'water':
-        return <Feather name="droplet" size={20} color={colors.primary} />;
+        return <Droplet size={20} color={colors.primary} />;
       case 'fertilize':
-        return <Feather name="star" size={20} color={colors.primary} />;
+        return <Sparkles size={20} color={colors.primary} />;
       case 'prune':
-        return <Feather name="scissors" size={20} color={colors.primary} />;
+        return <Scissors size={20} color={colors.primary} />;
       case 'harvest':
-        return <Feather name="package" size={20} color={colors.primary} />;
+        return <Package size={20} color={colors.primary} />;
       default:
-        return <Feather name="alert-circle" size={20} color={colors.primary} />;
+        return <AlertCircle size={20} color={colors.primary} />;
     }
   };
 

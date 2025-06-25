@@ -14,7 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import colors from '@/constants/colors';
-import { Feather } from '@expo/vector-icons';
+import { Eye, EyeOff, CheckCircle, User, Book } from 'lucide-react-native';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
@@ -65,7 +65,7 @@ export default function SignUpScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Feather name="check-circle" size={48} color={colors.primary} />
+          <CheckCircle size={48} color={colors.primary} />
           <Text style={styles.title}>Join GardenSnap</Text>
           <Text style={styles.subtitle}>Start your garden journey!</Text>
         </View>
@@ -117,8 +117,8 @@ export default function SignUpScreen() {
                 ]}
                 onPress={() => setRole('student')}
               >
-                <Feather name="user" size={20} color={role === 'student' ? colors.white : colors.text} />
-                <Text style={[
+                                  <User size={20} color={role === 'student' ? colors.white : colors.text} />
+                  <Text style={[
                   styles.roleButtonText,
                   role === 'student' && styles.roleButtonTextActive
                 ]}>Student</Text>
@@ -131,8 +131,8 @@ export default function SignUpScreen() {
                 ]}
                 onPress={() => setRole('teacher')}
               >
-                <Feather name="book" size={20} color={role === 'teacher' ? colors.white : colors.text} />
-                <Text style={[
+                                  <Book size={20} color={role === 'teacher' ? colors.white : colors.text} />
+                  <Text style={[
                   styles.roleButtonText,
                   role === 'teacher' && styles.roleButtonTextActive
                 ]}>Teacher</Text>

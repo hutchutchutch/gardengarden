@@ -14,7 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import colors from '@/constants/colors';
-import { Feather } from '@expo/vector-icons';
+import { Eye, EyeOff, CheckCircle, PlayCircle, X, Book, Users } from 'lucide-react-native';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
@@ -67,7 +67,7 @@ export default function SignInScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.header}>
-        <Feather name="check-circle" size={48} color={colors.primary} />
+        <CheckCircle size={48} color={colors.primary} />
         <Text style={styles.title}>GardenSnap</Text>
         <Text style={styles.subtitle}>Welcome back!</Text>
       </View>
@@ -120,7 +120,7 @@ export default function SignInScreen() {
           style={styles.demoButton} 
           onPress={() => setShowDemoModal(true)}
         >
-          <Feather name="play-circle" size={20} color={colors.primary} />
+          <PlayCircle size={20} color={colors.primary} />
           <Text style={styles.demoButtonText}>Try Demo Mode</Text>
         </Pressable>
       </View>
@@ -139,7 +139,7 @@ export default function SignInScreen() {
                 onPress={() => setShowDemoModal(false)}
                 style={styles.closeButton}
               >
-                <Feather name="x" size={24} color={colors.textLight} />
+                <X size={24} color={colors.textLight} />
               </Pressable>
             </View>
             
@@ -153,7 +153,7 @@ export default function SignInScreen() {
                 onPress={() => handleDemoSignIn('student')}
                 disabled={isLoading}
               >
-                <Feather name="book" size={24} color={colors.white} />
+                <Book size={24} color={colors.white} />
                 <Text style={styles.roleButtonText}>Student Mode</Text>
                 <Text style={styles.roleButtonSubtext}>
                   Access lessons, tasks, and learning content
@@ -165,7 +165,7 @@ export default function SignInScreen() {
                 onPress={() => handleDemoSignIn('teacher')}
                 disabled={isLoading}
               >
-                <Feather name="users" size={24} color={colors.white} />
+                <Users size={24} color={colors.white} />
                 <Text style={styles.roleButtonText}>Teacher Mode</Text>
                 <Text style={styles.roleButtonSubtext}>
                   Manage classes, track progress, and create content

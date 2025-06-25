@@ -1,8 +1,9 @@
 import React from 'react';
+import { Cloud, CloudRain, Sun, CloudSnow, CloudLightning } from 'lucide-react-native';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import colors from '@/constants/colors';
 import { Weather } from '@/types';
+import { useWeatherStore } from '@/store/weather-store';
 
 interface WeatherWidgetProps {
   weather: Weather | null;
@@ -29,15 +30,15 @@ export default function WeatherWidget({ weather, isLoading }: WeatherWidgetProps
   const getWeatherIcon = () => {
     switch (weather.condition) {
       case 'sunny':
-        return <Feather name="sun" size={32} color={colors.warning} />;
+        return <Sun size={32} color={colors.warning} />;
       case 'cloudy':
-        return <Feather name="cloud" size={32} color={colors.gray} />;
+        return <Cloud size={32} color={colors.gray} />;
       case 'rainy':
-        return <Feather name="cloud-rain" size={32} color={colors.secondary} />;
+        return <CloudRain size={32} color={colors.secondary} />;
       case 'stormy':
-        return <Feather name="cloud-lightning" size={32} color={colors.error} />;
+        return <CloudLightning size={32} color={colors.error} />;
       default:
-        return <Feather name="sun" size={32} color={colors.warning} />;
+        return <Sun size={32} color={colors.warning} />;
     }
   };
 

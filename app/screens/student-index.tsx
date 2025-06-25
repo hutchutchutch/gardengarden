@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Bell, User, Settings, Camera, MessageCircle, Users } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlantStore } from '@/store/plant-store';
 import { Button } from '@/components/ui/button';
@@ -49,7 +49,7 @@ export default function StudentIndex() {
                 className="relative"
                 onPress={() => setShowNotificationMenu(!showNotificationMenu)}
               >
-                <Feather name="bell" size={24} color="#64748B" />
+                <Bell size={24} color="#64748B" />
                 <View className="absolute -top-1 -right-1 h-2 w-2 bg-destructive rounded-full" />
               </Pressable>
               
@@ -62,15 +62,15 @@ export default function StudentIndex() {
                       setShowNotificationMenu(false);
                     }}
                   >
-                    <Feather name="user" size={16} color="#64748B" />
+                    <User size={16} color="#64748B" />
                     <Text className="text-sm">Switch to Teacher View</Text>
                   </Pressable>
                   <Pressable className="flex-row items-center p-2" onPress={() => {/* Handle notifications */}}>
-                    <Feather name="bell" size={16} color="#64748B" />
+                    <Bell size={16} color="#64748B" />
                     <Text className="text-sm">View Notifications</Text>
                   </Pressable>
                    <Pressable className="flex-row items-center p-2" onPress={() => router.push('/(tabs)/profile')}>
-                    <Feather name="settings" size={16} color="#64748B" />
+                    <Settings size={16} color="#64748B" />
                     <Text className="text-sm">Settings</Text>
                   </Pressable>
                 </View>
@@ -112,7 +112,7 @@ export default function StudentIndex() {
                   className="mt-4"
                   onPress={() => router.push('/(tabs)/camera')}
                 >
-                  <Feather name="camera" size={16} color="white" />
+                  <Camera size={16} color="white" />
                   <Text className="text-primary-foreground ml-2">Take Today's Photo</Text>
                 </Button>
               </CardContent>
@@ -129,7 +129,7 @@ export default function StudentIndex() {
                 className="flex-1"
                 onPress={() => router.push('/ai-chat')}
               >
-                <Feather name="message-circle" size={16} />
+                <MessageCircle size={16} />
                 <Text className="ml-2">Ask AI</Text>
               </Button>
                <Button 
@@ -137,7 +137,7 @@ export default function StudentIndex() {
                 className="flex-1"
                 onPress={() => router.push('/(tabs)/progress')}
               >
-                <Feather name="users" size={16} />
+                <Users size={16} />
                 <Text className="ml-2">Class Plants</Text>
               </Button>
           </View>
