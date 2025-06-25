@@ -74,9 +74,16 @@ export default function StudentIndex() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={() => setShowNotificationMenu(false)}>
-      <SafeAreaView className="flex-1 bg-background" edges={['bottom', 'left', 'right']}>
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+    <SafeAreaView className="flex-1 bg-background" edges={['bottom', 'left', 'right']}>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        bounces={true}
+        onScroll={() => setShowNotificationMenu(false)}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+      >
         {/* Plant Stories Section */}
         <PlantStories 
           onAddPhoto={() => router.push('/(tabs)/camera')}
@@ -115,18 +122,18 @@ export default function StudentIndex() {
               {showNotificationMenu && (
                 <View className="absolute top-8 right-0 bg-card border border-border rounded-lg shadow-lg min-w-48 z-50">
                   <View className="p-1">
-                                         <Pressable 
-                       className="flex-row items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
-                       onPress={() => {
-                         setShowNotificationMenu(false);
-                         // Switch to teacher mode via context
-                       }}
-                     >
-                       <User size={16} color="#64748B" />
-                       <Text className="text-sm">Switch to Teacher View</Text>
-                     </Pressable>
                     <Pressable 
-                      className="flex-row items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
+                      className="flex-row items-center gap-3 px-3 py-2 rounded-md"
+                      onPress={() => {
+                        setShowNotificationMenu(false);
+                        // Switch to teacher mode via context
+                      }}
+                    >
+                      <User size={16} color="#64748B" />
+                      <Text className="text-sm">Switch to Teacher View</Text>
+                    </Pressable>
+                    <Pressable 
+                      className="flex-row items-center gap-3 px-3 py-2 rounded-md"
                       onPress={() => {
                         setShowNotificationMenu(false);
                         // TODO: Implement notifications view
@@ -136,7 +143,7 @@ export default function StudentIndex() {
                       <Text className="text-sm">View Notifications</Text>
                     </Pressable>
                     <Pressable 
-                      className="flex-row items-center gap-3 px-3 py-2 rounded-md hover:bg-accent"
+                      className="flex-row items-center gap-3 px-3 py-2 rounded-md"
                       onPress={() => {
                         setShowNotificationMenu(false);
                         // TODO: Implement settings
@@ -241,10 +248,11 @@ export default function StudentIndex() {
                 </Pressable>
                 
                 {tips.length > 1 && (
-                  <Pressable 
-                    className="mt-4"
-                    onPress={() => setShowPreviousTips(!showPreviousTips)}
-                  >
+                                  <Pressable 
+                  className="mt-4"
+                  onPress={() => setShowPreviousTips(!showPreviousTips)}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
                     <Text className="text-sm text-muted-foreground">
                       {showPreviousTips ? 'Hide' : 'Show'} previous tips ({tips.length - 1})
                     </Text>
@@ -288,6 +296,7 @@ export default function StudentIndex() {
                   key={task.id}
                   className="flex-row items-center gap-3"
                   onPress={() => handleTaskToggle(task.id)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <View className={cn(
                     "h-5 w-5 rounded border-2",
@@ -319,7 +328,7 @@ export default function StudentIndex() {
             <Button 
               variant="outline" 
               className="flex-1"
-              onPress={() => router.push('/(tabs)/community')}
+              onPress={() => router.push('/(tabs)/progress')}
             >
               <Users size={16} />
               <Text className="ml-2">Class Plants</Text>
@@ -328,6 +337,5 @@ export default function StudentIndex() {
         </View>
       </ScrollView>
     </SafeAreaView>
-    </TouchableWithoutFeedback>
   );
 }

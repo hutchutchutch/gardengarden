@@ -200,6 +200,10 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
           horizontal 
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingRight: 16 }}
+          scrollEventThrottle={16}
+          decelerationRate="fast"
+          snapToInterval={110}
+          snapToAlignment="start"
         >
           {/* Current user's story or add button */}
           {currentUserStory?.hasSubmittedToday ? (

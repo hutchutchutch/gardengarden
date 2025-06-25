@@ -8,11 +8,13 @@ export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInDemo: (role: 'student' | 'teacher') => Promise<void>;
   signUp: (email: string, password: string, name: string, role: 'student' | 'teacher', classId: string) => Promise<void>;
   signOut: () => Promise<void>;
   showFAB: boolean;
   setShowFAB: (show: boolean) => void;
   updateUserRole: (role: 'student' | 'teacher') => Promise<void>;
+  isDemoMode: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -29,14 +31,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showFAB, setShowFAB] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await loadUserData(session);
+        // Check for demo mode first
+        const demoMode = await AsyncStorage.getItem('isDemoMode');
+        const storedUser = await AsyncStorage.getItem('user');
+        
+        if (demoMode === 'true' && storedUser) {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+          setIsDemoMode(true);
+        } else {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            await loadUserData(session);
+          }
         }
       } catch (error) {
         console.error('Error checking user session:', error);
@@ -114,6 +127,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInDemo = async (role: 'student' | 'teacher') => {
+    try {
+      const demoUser: User = {
+        id: `demo-${role}-${Date.now()}`,
+        email: `demo-${role}@example.com`,
+        name: role === 'student' ? 'Demo Student' : 'Demo Teacher',
+        role,
+        classId: 'demo-class',
+        createdAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString(),
+        streak: 0
+      };
+
+      setUser(demoUser);
+      setIsDemoMode(true);
+      await AsyncStorage.setItem('user', JSON.stringify(demoUser));
+      await AsyncStorage.setItem('isDemoMode', 'true');
+    } catch (error) {
+      console.error('Demo sign in error:', error);
+      throw error;
+    }
+  };
+
   const signUp = async (
     email: string, 
     password: string, 
@@ -168,11 +204,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (!isDemoMode) {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+      }
       
       setUser(null);
+      setIsDemoMode(false);
       await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('isDemoMode');
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
@@ -205,11 +245,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     isLoading,
     signIn,
+    signInDemo,
     signUp,
     signOut,
     showFAB,
     setShowFAB,
-    updateUserRole
+    updateUserRole,
+    isDemoMode
   };
 
   return (
