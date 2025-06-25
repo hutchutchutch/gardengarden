@@ -74,7 +74,7 @@ export default function StudentIndex() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom', 'left', 'right']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['left', 'right']}>
       <ScrollView 
         className="flex-1" 
         showsVerticalScrollIndicator={false}

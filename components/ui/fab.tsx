@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { View, Pressable, StyleSheet, Animated, Text, ScrollView } from 'react-native';
+import { View, Pressable, StyleSheet, Animated, Text, ScrollView, Platform } from 'react-native';
 import { MessageCircle, Bot, User, Bell, Users, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface FABProps {
   visible?: boolean;
@@ -14,6 +15,7 @@ export function FAB({ visible = true }: FABProps) {
   const router = useRouter();
   const { user, showFAB, updateUserRole } = useAuth();
   const isTeacher = user?.role === 'teacher';
+  const insets = useSafeAreaInsets();
   
   // Animation values
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -83,11 +85,7 @@ export function FAB({ visible = true }: FABProps) {
     // Update user role
     await updateUserRole(newRole);
     // Navigate to appropriate interface
-    if (newRole === 'teacher') {
-      router.push('/teacher-dashboard');
-    } else {
-      router.push('/');
-    }
+    router.replace('/(tabs)');
   };
 
   if (!visible || !showFAB || !user) return null;
@@ -165,7 +163,12 @@ export function FAB({ visible = true }: FABProps) {
         </Animated.View>
       )}
 
-      <View style={styles.container}>
+      <View style={[
+        styles.container,
+        {
+          bottom: 64 + (Platform.OS === 'android' ? insets.bottom : 0) + 16, // Navigation height + safe area + padding
+        },
+      ]}>
         {/* Backdrop */}
         {(isExpanded || showRoleMenu) && (
           <Pressable 
@@ -281,7 +284,6 @@ export function FAB({ visible = true }: FABProps) {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 24,
     right: 16,
     zIndex: 1000,
   },

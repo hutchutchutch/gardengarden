@@ -7,7 +7,6 @@ import { useColorScheme } from 'react-native';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ModeProvider } from '@/contexts/ModeContext';
 import { View } from 'react-native';
-import { FAB } from '@/components/ui/fab';
 import '../global.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { trpc, trpcClient } from '@/lib/trpc';
@@ -60,8 +59,6 @@ function RootLayoutNav() {
                   <Stack.Screen name="ai-chat" options={{ presentation: 'modal' }} />
                   <Stack.Screen name="plant/[id]" options={{ headerShown: false }} />
                 </Stack>
-                {/* FAB appears on all screens */}
-                <FAB />
               </View>
               <StatusBar style="auto" />
             </ThemeProvider>

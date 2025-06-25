@@ -12,6 +12,7 @@ import {
   BottomNavigationLabel 
 } from '@/components/ui/bottom-navigation';
 import { HeaderWithToggle } from '@/components/ui/header-with-toggle';
+import { FAB } from '@/components/ui/fab';
 
 // Custom Tab Bar Component using BottomNavigation
 function TabBar({ state, descriptors, navigation }: any) {
@@ -81,18 +82,19 @@ export default function TabLayout() {
   const { isTeacherMode, setIsTeacherMode } = useMode();
 
   return (
-    <Tabs
-      tabBar={(props) => <TabBar {...props} />}
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#FFFFFF',
-        },
-        headerTitleStyle: {
-          color: '#020817',
-          fontWeight: '600',
-        },
-      }}
-    >
+    <View className="flex-1">
+      <Tabs
+        tabBar={(props) => <TabBar {...props} />}
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#FFFFFF',
+          },
+          headerTitleStyle: {
+            color: '#020817',
+            fontWeight: '600',
+          },
+        }}
+      >
       <Tabs.Screen
         name="index"
         options={{
@@ -164,5 +166,9 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    
+    {/* FAB positioned above bottom navigation */}
+    <FAB />
+  </View>
   );
 }
