@@ -39,6 +39,7 @@ export default function StudentIndexScreen() {
   const [yesterdaysFeedback, setYesterdaysFeedback] = React.useState<ImageAnalysisRecord | null>(null);
   const [latestAnalysis, setLatestAnalysis] = React.useState<ImageAnalysisRecord | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [expandedTipIndex, setExpandedTipIndex] = React.useState<number | null>(null);
 
   // Fetch plant and submission data from Supabase
   const fetchStudentData = async () => {
@@ -105,12 +106,43 @@ export default function StudentIndexScreen() {
       points: 10
     }));
 
-  // Tips
-  const tips = [
-    { icon: 'water', title: 'Watering Tip', description: 'Check soil moisture before watering' },
-    { icon: 'white-balance-sunny', title: 'Light Check', description: 'Ensure 6-8 hours of indirect sunlight' },
-    { icon: 'thermometer', title: 'Temperature', description: 'Keep between 65-75°F for optimal growth' }
-  ];
+  // Get tips from latest analysis, fallback to default tips if no analysis available
+  const getAnalysisTips = () => {
+    if (latestAnalysis?.tips && latestAnalysis.tips.length > 0) {
+      return latestAnalysis.tips.map((tip: any) => ({
+        icon: getTipIcon(tip.title),
+        title: tip.title,
+        description: tip.description
+      }));
+    }
+    
+    // Fallback tips if no analysis available
+    return [
+      { icon: 'water', title: 'Watering Tip', description: 'Check soil moisture before watering' },
+      { icon: 'white-balance-sunny', title: 'Light Check', description: 'Ensure 6-8 hours of indirect sunlight' },
+      { icon: 'thermometer', title: 'Temperature', description: 'Keep between 65-75°F for optimal growth' }
+    ];
+  };
+
+  // Helper function to assign appropriate icons based on tip content
+  const getTipIcon = (title: string) => {
+    const titleLower = title.toLowerCase();
+    
+    if (titleLower.includes('water') || titleLower.includes('irrigation')) return 'water';
+    if (titleLower.includes('nutrient') || titleLower.includes('fertiliz') || titleLower.includes('deficien')) return 'leaf';
+    if (titleLower.includes('prun') || titleLower.includes('air') || titleLower.includes('circulation')) return 'content-cut';
+    if (titleLower.includes('support') || titleLower.includes('cage') || titleLower.includes('tie')) return 'format-vertical-align-center';
+    if (titleLower.includes('pest') || titleLower.includes('disease') || titleLower.includes('monitor')) return 'bug-outline';
+    if (titleLower.includes('harvest') || titleLower.includes('fruit')) return 'fruit-grapes';
+    if (titleLower.includes('light') || titleLower.includes('sun')) return 'white-balance-sunny';
+    if (titleLower.includes('temperature') || titleLower.includes('heat')) return 'thermometer';
+    if (titleLower.includes('soil') || titleLower.includes('root')) return 'shovel';
+    
+    // Default icon
+    return 'lightbulb-outline';
+  };
+
+  const tips = getAnalysisTips();
 
   const completedTasksPercentage = todaysTasks.length > 0 
     ? Math.round((todaysTasks.filter(t => t.isCompleted).length / todaysTasks.length) * 100)
@@ -290,16 +322,47 @@ export default function StudentIndexScreen() {
             <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Tips & Reminders</Text>
             
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                {tips.map((tip, index) => (
-                  <GSCard key={index} variant="elevated" padding="medium" style={{ minWidth: 200 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <GSIconButton icon={tip.icon} onPress={() => {}} size={20} />
-                      <Text style={{ fontWeight: '500', fontSize: 16, color: '#000' }}>{tip.title}</Text>
-                    </View>
-                    <Text style={{ fontSize: 14, color: '#666' }}>{tip.description}</Text>
-                  </GSCard>
-                ))}
+              <View style={{ flexDirection: 'row', gap: 12, paddingRight: 16 }}>
+                {tips.map((tip, index) => {
+                  const isExpanded = expandedTipIndex === index;
+                  return (
+                    <Pressable
+                      key={index}
+                      onPress={() => setExpandedTipIndex(isExpanded ? null : index)}
+                      style={{ width: 320 }}
+                    >
+                      <GSCard 
+                        variant="elevated" 
+                        padding="medium" 
+                        style={{ 
+                          minHeight: isExpanded ? undefined : 220,
+                          height: isExpanded ? 'auto' : undefined
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
+                          <GSIconButton icon={tip.icon} onPress={() => {}} size={22} color="#4CAF50" />
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontWeight: '500', fontSize: 15, color: '#000', lineHeight: 20, flexWrap: 'wrap' }}>{tip.title}</Text>
+                          </View>
+                          <View style={{ marginLeft: 4 }}>
+                            <GSIconButton 
+                              icon={isExpanded ? "chevron-up" : "chevron-down"} 
+                              onPress={() => setExpandedTipIndex(isExpanded ? null : index)} 
+                              size={18} 
+                              color="#666" 
+                            />
+                          </View>
+                        </View>
+                        <Text 
+                          style={{ fontSize: 13, color: '#666', lineHeight: 18 }} 
+                          numberOfLines={isExpanded ? undefined : 7}
+                        >
+                          {tip.description}
+                        </Text>
+                      </GSCard>
+                    </Pressable>
+                  );
+                })}
               </View>
             </ScrollView>
           </View>

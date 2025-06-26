@@ -2,6 +2,15 @@
 
 This document explains the AI-powered image analysis system that processes student plant photos using Google's Gemini API.
 
+## Key Features
+
+- **Automatic Analysis**: Photos uploaded through tasks are automatically analyzed
+- **HEIC Support**: Automatically converts HEIC/HEIF images from iOS devices to JPG
+- **Image Compression**: Compresses large images to stay under API limits
+- **Educational Feedback**: AI provides growth stage, health assessment, and tips
+- **Data Storage**: Results stored in Supabase with student association
+- **Real-time Updates**: UI polls for analysis completion
+
 ## Overview
 
 The image analysis system consists of:
