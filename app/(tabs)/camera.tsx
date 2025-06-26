@@ -7,7 +7,9 @@ import { Camera, CameraType, CameraView, useCameraPermissions } from 'expo-camer
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { usePlantStore } from '@/store/plant-store';
-import { uploadPlantPhoto } from '@/services/photo-service';
+import { uploadPlantPhoto, PhotoService } from '@/services/photo-service';
+import { ImageAnalysisService } from '@/services/image-analysis-service';
+import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
 import { plants } from '@/mocks/plants';
 import TeacherMessagesScreen from '@/app/screens/teacher-messages';
@@ -26,6 +28,7 @@ export default function CameraScreen() {
   const router = useRouter();
   const cameraRef = useRef<CameraView>(null);
   const { plants, updatePlant } = usePlantStore();
+  const { user } = useAuth();
   const { isTeacherMode } = useMode();
   
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -114,40 +117,74 @@ export default function CameraScreen() {
   };
 
   const analyzeImage = async () => {
-    if (!capturedImage || !activePlant) return;
+    if (!capturedImage || !user?.id) return;
     
     setIsAnalyzing(true);
     try {
-      // Simulate AI analysis
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Upload photo and trigger AI analysis (compression is handled automatically)
+      const result = await PhotoService.uploadAndAnalyze(capturedImage, user.id);
       
-      // Mock analysis result
-      const mockResult = {
-        healthScore: Math.min(100, activePlant.healthScore + Math.floor(Math.random() * 10) - 3),
-        issues: Math.random() > 0.7 ? ['Yellow leaves detected on lower stem'] : [],
-        growthProgress: 'Normal growth for day ' + plantAge,
-        recommendations: [
-          'Continue current watering schedule',
-          'Rotate plant 1/4 turn for even light exposure'
-        ]
-      };
-      
-      setAnalysisResult(mockResult);
-      
-      // Update plant with new data
-      await updatePlant(activePlant.id, {
-        healthScore: mockResult.healthScore,
-        lastPhotoDate: new Date().toISOString()
-      });
-      
-      // In real app, upload photo and save analysis
-      // await uploadPlantPhoto(capturedImage, activePlant.id);
+      if (result.success && result.analysisId) {
+        // Poll for analysis completion
+        let attempts = 0;
+        const maxAttempts = 30; // 30 seconds max wait
+        
+        while (attempts < maxAttempts) {
+          const analysisData = await ImageAnalysisService.getAnalysisStatus(result.analysisId);
+          
+          if (analysisData?.processing_status === 'completed') {
+            // Convert to display format
+            const displayResult = {
+              healthScore: getHealthScoreFromRating(analysisData.health_rating),
+              issues: analysisData.areas_for_improvement || [],
+              growthProgress: `${analysisData.current_stage_name}: ${analysisData.current_stage_description}`,
+              recommendations: analysisData.tips?.map(tip => tip.title) || []
+            };
+            
+            setAnalysisResult(displayResult);
+            
+            // Update plant with new data
+            if (activePlant) {
+              await updatePlant(activePlant.id, {
+                healthScore: displayResult.healthScore,
+                lastPhotoDate: new Date().toISOString()
+              });
+            }
+            break;
+          } else if (analysisData?.processing_status === 'failed') {
+            throw new Error(analysisData.error_message || 'Analysis failed');
+          }
+          
+          // Wait 1 second before next check
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          attempts++;
+        }
+        
+        if (attempts >= maxAttempts) {
+          throw new Error('Analysis timed out');
+        }
+      } else {
+        throw new Error(result.error || 'Failed to upload and analyze image');
+      }
       
     } catch (error) {
       console.error('Analysis failed:', error);
+      Alert.alert('Analysis Failed', 'Unable to analyze your plant photo. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  // Helper function to convert rating to numeric score
+  const getHealthScoreFromRating = (rating: string): number => {
+    const ratingMap: Record<string, number> = {
+      'Excellent': 95,
+      'Good': 80,
+      'Fair': 65,
+      'Poor': 40,
+      'Critical': 20
+    };
+    return ratingMap[rating] || 70;
   };
 
   const retakePicture = () => {

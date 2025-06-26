@@ -14,116 +14,73 @@ export interface LessonDocument {
   updated_at: string;
 }
 
-export interface LessonStats {
-  id: string;
-  lesson_id: string;
-  status: 'active' | 'completed' | 'upcoming' | 'draft';
-  days_completed: number;
-  total_days: number;
-  active_students: number;
-  average_health: number;
-  completion_rate: number;
-  scheduled_date?: string;
-  date_range?: string;
-  plant_type?: string;
-  top_resource?: string;
-  is_ready: boolean;
-  processing_progress: number;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface Lesson {
-  lesson_id: string;
-  lesson_name: string;
-  lesson_description?: string;
-  teacher_id?: string;
+  id: string;
+  name: string;
+  description?: string;
+  plant_type: string;
+  created_by: string;
   class_id: string;
+  status: 'draft' | 'active' | 'completed';
+  vector_store_id?: string;
+  start_date?: string;
+  end_date?: string;
+  expected_duration_days: number;
   created_at: string;
   updated_at: string;
-  lesson_stats?: LessonStats | LessonStats[];
-  lesson_documents?: LessonDocument[];
+  lesson_urls?: LessonDocument[];
 }
 
 export class LessonService {
-  // Helper function to normalize lesson stats (handle array vs single object)
-  static normalizeStats(stats?: LessonStats | LessonStats[]): LessonStats | undefined {
-    if (!stats) return undefined;
-    return Array.isArray(stats) ? stats[0] : stats;
-  }
-  // Get current active lesson with stats and documents
+  // Get current active lesson
   static async getCurrentLesson(): Promise<Lesson | null> {
     try {
       console.log('Fetching current lesson...');
       
-      // First get the active lesson stats
-      const { data: activeStats, error: statsError } = await supabase
-        .from('lesson_stats')
-        .select('lesson_id')
-        .eq('status', 'active')
-        .single();
-
-      console.log('Active stats query result:', { activeStats, statsError });
-
-      if (statsError || !activeStats) {
-        console.error('No active lesson found:', statsError);
-        return null;
-      }
-
-      // Then get the full lesson with stats and documents
-      const { data, error } = await supabase
+      // Get lesson with status='active'
+      const { data: lessons, error } = await supabase
         .from('lessons')
-        .select(`
-          *,
-          lesson_stats(*),
-          lesson_documents(*)
-        `)
-        .eq('lesson_id', activeStats.lesson_id)
-        .single();
+        .select('*')
+        .eq('status', 'active');
 
-      console.log('Full lesson query result:', { data, error });
+      console.log('Active lessons query result:', { lessons, error });
 
-      if (error) {
-        console.error('Error fetching current lesson:', error);
+      if (error || !lessons || lessons.length === 0) {
+        console.error('No active lesson found');
         return null;
       }
 
-      return data;
+      // Get the first active lesson
+      const activeLesson = lessons[0];
+      
+      // Fetch lesson_urls separately
+      const { data: urls } = await supabase
+        .from('lesson_urls')
+        .select('*')
+        .eq('lesson_id', activeLesson.id);
+      
+      return {
+        ...activeLesson,
+        lesson_urls: urls || []
+      };
     } catch (error) {
       console.error('Error in getCurrentLesson:', error);
       return null;
     }
   }
 
-  // Get completed lessons with stats
+  // Get completed lessons
   static async getCompletedLessons(): Promise<Lesson[]> {
     try {
-      // First get completed lesson IDs
-      const { data: completedStats, error: statsError } = await supabase
-        .from('lesson_stats')
-        .select('lesson_id')
-        .eq('status', 'completed');
-
-      if (statsError) {
-        console.error('Error fetching completed lesson stats:', statsError);
-        return [];
-      }
-
-      if (!completedStats || completedStats.length === 0) {
-        return [];
-      }
-
-      const lessonIds = completedStats.map(stat => stat.lesson_id);
-
-      // Then get the full lessons with stats
+      // Get lessons where end_date is in the past
       const { data, error } = await supabase
         .from('lessons')
         .select(`
           *,
-          lesson_stats(*)
+          lesson_urls(*)
         `)
-        .in('lesson_id', lessonIds)
-        .order('created_at', { ascending: false });
+        .lt('end_date', new Date().toISOString())
+        .order('end_date', { ascending: false });
 
       if (error) {
         console.error('Error fetching completed lessons:', error);
@@ -137,37 +94,18 @@ export class LessonService {
     }
   }
 
-  // Get upcoming lessons with stats
+  // Get upcoming lessons
   static async getUpcomingLessons(): Promise<Lesson[]> {
     try {
-      // First get upcoming lesson IDs
-      const { data: upcomingStats, error: statsError } = await supabase
-        .from('lesson_stats')
-        .select('lesson_id, scheduled_date')
-        .eq('status', 'upcoming')
-        .order('scheduled_date', { ascending: true, nullsFirst: false });
-
-      if (statsError) {
-        console.error('Error fetching upcoming lesson stats:', statsError);
-        return [];
-      }
-
-      if (!upcomingStats || upcomingStats.length === 0) {
-        return [];
-      }
-
-      const lessonIds = upcomingStats.map(stat => stat.lesson_id);
-
-      // Then get the full lessons with stats
+      // Get lessons where start_date is in the future
       const { data, error } = await supabase
         .from('lessons')
         .select(`
           *,
-          lesson_stats(*),
-          lesson_documents(*)
+          lesson_urls(*)
         `)
-        .in('lesson_id', lessonIds)
-        .order('created_at', { ascending: false });
+        .gt('start_date', new Date().toISOString())
+        .order('start_date', { ascending: true });
 
       if (error) {
         console.error('Error fetching upcoming lessons:', error);
@@ -183,21 +121,28 @@ export class LessonService {
 
   // Create a new lesson
   static async createLesson(lessonData: {
-    lesson_name: string;
-    lesson_description?: string;
-    teacher_id?: string;
+    name: string;
+    description?: string;
+    plant_type: string;
+    created_by?: string;
     class_id?: string;
-    stats?: Partial<LessonStats>;
+    start_date?: string;
+    end_date?: string;
+    expected_duration_days: number;
   }): Promise<Lesson | null> {
     try {
-      // First create the lesson
       const { data: lesson, error: lessonError } = await supabase
         .from('lessons')
         .insert({
-          lesson_name: lessonData.lesson_name,
-          lesson_description: lessonData.lesson_description,
-          teacher_id: lessonData.teacher_id,
-          class_id: lessonData.class_id || 'default'
+          name: lessonData.name,
+          description: lessonData.description,
+          plant_type: lessonData.plant_type,
+          created_by: lessonData.created_by,
+          class_id: lessonData.class_id || 'default',
+          start_date: lessonData.start_date,
+          end_date: lessonData.end_date,
+          expected_duration_days: lessonData.expected_duration_days,
+          status: 'draft'
         })
         .select()
         .single();
@@ -207,21 +152,6 @@ export class LessonService {
         return null;
       }
 
-      // Then create the lesson stats
-      if (lessonData.stats) {
-        const { error: statsError } = await supabase
-          .from('lesson_stats')
-          .insert({
-            lesson_id: lesson.lesson_id,
-            ...lessonData.stats
-          });
-
-        if (statsError) {
-          console.error('Error creating lesson stats:', statsError);
-          // Continue anyway, stats can be added later
-        }
-      }
-
       return lesson;
     } catch (error) {
       console.error('Error in createLesson:', error);
@@ -229,34 +159,11 @@ export class LessonService {
     }
   }
 
-  // Update lesson stats
-  static async updateLessonStats(lessonId: string, stats: Partial<LessonStats>): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('lesson_stats')
-        .update({
-          ...stats,
-          updated_at: new Date().toISOString()
-        })
-        .eq('lesson_id', lessonId);
-
-      if (error) {
-        console.error('Error updating lesson stats:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error in updateLessonStats:', error);
-      return false;
-    }
-  }
-
   // Add document to lesson
   static async addLessonDocument(lessonId: string, document: Omit<LessonDocument, 'id' | 'lesson_id' | 'created_at' | 'updated_at'>): Promise<LessonDocument | null> {
     try {
       const { data, error } = await supabase
-        .from('lesson_documents')
+        .from('lesson_urls')
         .insert({
           lesson_id: lessonId,
           ...document
@@ -284,7 +191,7 @@ export class LessonService {
   ): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('lesson_documents')
+        .from('lesson_urls')
         .update({
           status,
           ...updates,
@@ -304,13 +211,13 @@ export class LessonService {
     }
   }
 
-  // Delete lesson (cascades to stats and documents)
+  // Delete lesson
   static async deleteLesson(lessonId: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('lessons')
         .delete()
-        .eq('lesson_id', lessonId);
+        .eq('id', lessonId);
 
       if (error) {
         console.error('Error deleting lesson:', error);
@@ -331,10 +238,9 @@ export class LessonService {
         .from('lessons')
         .select(`
           *,
-          lesson_stats(*),
-          lesson_documents(*)
+          lesson_urls(*)
         `)
-        .eq('teacher_id', teacherId)
+        .eq('created_by', teacherId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -356,8 +262,7 @@ export class LessonService {
         .from('lessons')
         .select(`
           *,
-          lesson_stats(*),
-          lesson_documents(*)
+          lesson_urls(*)
         `)
         .eq('class_id', classId)
         .order('created_at', { ascending: false });
@@ -374,16 +279,16 @@ export class LessonService {
     }
   }
 
-  // Activate a lesson (change status from upcoming to active)
+  // Activate a lesson (change status from draft to active)
   static async activateLesson(lessonId: string): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('lesson_stats')
+        .from('lessons')
         .update({
           status: 'active',
           updated_at: new Date().toISOString()
         })
-        .eq('lesson_id', lessonId);
+        .eq('id', lessonId);
 
       if (error) {
         console.error('Error activating lesson:', error);
@@ -401,12 +306,12 @@ export class LessonService {
   static async completeLesson(lessonId: string): Promise<boolean> {
     try {
       const { error } = await supabase
-        .from('lesson_stats')
+        .from('lessons')
         .update({
           status: 'completed',
           updated_at: new Date().toISOString()
         })
-        .eq('lesson_id', lessonId);
+        .eq('id', lessonId);
 
       if (error) {
         console.error('Error completing lesson:', error);
@@ -427,10 +332,9 @@ export class LessonService {
         .from('lessons')
         .select(`
           *,
-          lesson_stats(*),
-          lesson_documents(*)
+          lesson_urls(*)
         `)
-        .eq('lesson_id', lessonId)
+        .eq('id', lessonId)
         .single();
 
       if (error) {

@@ -14,6 +14,7 @@ export interface Plant {
   images: PlantImage[];
   predictedHarvestDate?: string;
   classId: string;
+  lessonId?: string;
 }
 
 export interface PlantImage {
@@ -67,13 +68,20 @@ export interface ClassStory {
   classId: string;
 }
 
+export interface Source {
+  url: string;
+  title: string;
+  snippet: string;
+  similarity?: number;
+}
+
 export interface AIMessage {
   id: string;
   role: 'user' | 'assistant' | 'teacher';
   content: string;
   timestamp: string;
   recipientId?: string; // 'ai-assistant' for AI, teacher ID for teacher messages
-  sources?: string[]; // For AI responses that reference lesson materials
+  sources?: Source[]; // For AI responses that reference lesson materials
 }
 
 // User authentication types

@@ -13,7 +13,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { GSButton, GSTextInput, GSURLInput, GSChip, GSIconButton } from '@/components/ui';
+import { GSButton } from './GSButton';
+import { GSTextInput } from './GSTextInput';
+import { GSURLInput } from './GSURLInput';
+import { GSChip } from './GSChip';
+import { GSIconButton } from './GSIconButton';
 import { supabase } from '@/config/supabase';
 
 
@@ -126,6 +130,7 @@ function CreateLessonModal() {
         <View style={styles.section}>
           <Text style={styles.label}>Lesson Name *</Text>
           <GSTextInput
+            label="Lesson Name"
             value={lessonName}
             onChangeText={setLessonName}
             placeholder="e.g., Introduction to Tomato Growing"

@@ -49,6 +49,7 @@ export { GSChip } from './GSChip';
 export { GSCheckbox } from './GSCheckbox';
 export { GSTaskChecklist } from './GSTaskChecklist';
 export { GSBadge } from './GSBadge';
+export { GSMilestone } from './GSMilestone';
 export { SectionHeader } from './SectionHeader';
 export { GSSegmentedButtons } from './GSSegmentedButtons';
 export { GSBottomSheet } from './GSBottomSheet';
@@ -66,4 +67,7 @@ export { Progress } from './progress';
 export { FAB } from './fab';
 export { BottomNavigation } from './bottom-navigation';
 export { default as ModeToggle } from './mode-toggle';
-export { HeaderWithToggle } from './header-with-toggle'; 
+export { HeaderWithToggle } from './header-with-toggle';
+export { GSAuthDebug } from './GSAuthDebug';
+
+ 

@@ -10,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { AIPlantAnalysis } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { GSChatBubble } from './ui/GSChatBubble';
 
 interface AIChatProps {
   analysis?: AIPlantAnalysis | null;
@@ -24,8 +25,13 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const [mode, setMode] = useState<'ai' | 'teacher'>(initialMode);
   const { messages, isLoading, sendMessage, fetchMessages } = useAIStore();
   const { user } = useAuth();
+  const { plants } = usePlantStore();
   const scrollViewRef = useRef<ScrollView>(null);
   const isTeacher = user?.role === 'teacher';
+
+  // Get the current lesson ID from the plant
+  const currentPlant = plants.find(p => p.id === plantId);
+  const lessonId = currentPlant?.lessonId;
 
   useEffect(() => {
     fetchMessages();
@@ -38,7 +44,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
           : 'No issues detected! Your plant looks healthy.\n\n'
       }Recommendations:\n${analysis.recommendations.map(r => `• ${r}`).join('\n')}`;
       
-      sendMessage(analysisMessage, photoUri);
+      sendMessage(analysisMessage, photoUri, 'ai', lessonId, plantId);
     }
   }, [fetchMessages]);
 
@@ -52,8 +58,8 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const handleSend = async () => {
     if (message.trim() === '' && !imageUri) return;
     
-    // In teacher mode, send to teacher; in AI mode, send to AI
-    await sendMessage(message, imageUri || undefined, mode);
+    // In teacher mode, send to teacher; in AI mode, send to AI with lesson context
+    await sendMessage(message, imageUri || undefined, mode, lessonId, plantId);
     setMessage('');
     setImageUri(null);
   };
@@ -125,44 +131,25 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
           </View>
         ) : (
           filteredMessages.map((msg) => (
-            <View
+            <GSChatBubble
               key={msg.id}
-              style={[
-                styles.messageBubble,
-                msg.role === 'user' ? styles.userBubble : 
-                mode === 'ai' ? styles.aiBubble : styles.teacherBubble,
-              ]}
-            >
-              <Text style={[
-                styles.messageText,
-                msg.role === 'user' && styles.userMessageText
-              ]}>
-                {msg.content}
-              </Text>
-              {/* Show sources for AI messages */}
-              {mode === 'ai' && msg.sources && msg.sources.length > 0 && (
-                <View style={styles.sourcesContainer}>
-                  <Text style={styles.sourcesTitle}>Sources:</Text>
-                  {msg.sources.map((source, index) => (
-                    <Text key={index} style={styles.sourceText}>• {source}</Text>
-                  ))}
-                </View>
-              )}
-              <Text style={[
-                styles.timestamp,
-                msg.role === 'user' && styles.userTimestamp
-              ]}>
-                {formatTime(msg.timestamp)}
-              </Text>
-            </View>
+              type={msg.role === 'user' ? 'student' : mode === 'ai' ? 'ai' : 'teacher'}
+              message={msg.content}
+              timestamp={msg.timestamp}
+              showSources={mode === 'ai' && msg.role === 'assistant' && msg.sources && msg.sources.length > 0}
+              sources={msg.sources}
+              isRead={true}
+              isLoading={false}
+            />
           ))
         )}
         {isLoading && (
-          <View style={[styles.messageBubble, mode === 'ai' ? styles.aiBubble : styles.teacherBubble]}>
-            <Text style={styles.messageText}>
-              {mode === 'ai' ? 'Thinking...' : 'Teacher is typing...'}
-            </Text>
-          </View>
+          <GSChatBubble
+            type={mode === 'ai' ? 'ai' : 'teacher'}
+            message={mode === 'ai' ? 'Thinking...' : 'Teacher is typing...'}
+            timestamp={new Date().toISOString()}
+            isLoading={true}
+          />
         )}
       </ScrollView>
 
@@ -232,60 +219,6 @@ const styles = StyleSheet.create({
   },
   messagesContent: {
     padding: 16,
-  },
-  messageBubble: {
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 8,
-    maxWidth: '80%',
-  },
-  userBubble: {
-    backgroundColor: colors.primary,
-    alignSelf: 'flex-end',
-    borderBottomRightRadius: 4,
-  },
-  aiBubble: {
-    backgroundColor: colors.white,
-    alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4,
-  },
-  teacherBubble: {
-    backgroundColor: colors.primaryLight,
-    alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    fontSize: 16,
-    color: colors.text,
-  },
-  userMessageText: {
-    color: colors.white,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: colors.textLight,
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
-  userTimestamp: {
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  sourcesContainer: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.grayLight,
-  },
-  sourcesTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textLight,
-    marginBottom: 4,
-  },
-  sourceText: {
-    fontSize: 12,
-    color: colors.textLight,
-    marginBottom: 2,
   },
   inputContainer: {
     flexDirection: 'row',

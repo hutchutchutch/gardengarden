@@ -25,6 +25,7 @@ import {
   MenuItem
 } from '@/components/ui';
 import { LessonService, Lesson, LessonDocument } from '@/services/lesson-service';
+import { format } from 'date-fns';
 
 export default function TeacherLessons() {
   const router = useRouter();
@@ -84,7 +85,7 @@ export default function TeacherLessons() {
     if (currentLesson) {
       router.push({
         pathname: '/modal',
-        params: { type: 'edit-lesson', lessonId: currentLesson.lesson_id }
+        params: { type: 'edit-lesson', lessonId: currentLesson.id }
       });
     }
   };
@@ -94,7 +95,7 @@ export default function TeacherLessons() {
     if (currentLesson) {
       router.push({
         pathname: '/modal',
-        params: { lessonId: currentLesson.lesson_id }
+        params: { lessonId: currentLesson.id }
       });
     }
   };
@@ -102,7 +103,7 @@ export default function TeacherLessons() {
   const handleEndLesson = async () => {
     setBottomSheetVisible(false);
     if (currentLesson) {
-      const success = await LessonService.completeLesson(currentLesson.lesson_id);
+      const success = await LessonService.completeLesson(currentLesson.id);
       if (success) {
         loadLessonData(); // Refresh data
       }
@@ -129,12 +130,12 @@ export default function TeacherLessons() {
   ];
 
   const getDocumentStats = () => {
-    if (!currentLesson?.lesson_documents) {
+    if (!currentLesson?.lesson_urls) {
       return { completed: 0, pending: 0, failed: 0 };
     }
-    const completed = currentLesson.lesson_documents.filter(d => d.status === 'completed').length;
-    const pending = currentLesson.lesson_documents.filter(d => d.status === 'processing').length;
-    const failed = currentLesson.lesson_documents.filter(d => d.status === 'failed').length;
+    const completed = currentLesson.lesson_urls.filter(d => d.status === 'completed').length;
+    const pending = currentLesson.lesson_urls.filter(d => d.status === 'processing').length;
+    const failed = currentLesson.lesson_urls.filter(d => d.status === 'failed').length;
     return { completed, pending, failed };
   };
 
@@ -163,7 +164,9 @@ export default function TeacherLessons() {
     }
 
     const { completed, pending, failed } = getDocumentStats();
-    const stats = LessonService.normalizeStats(currentLesson.lesson_stats);
+    const daysSinceStart = currentLesson.start_date 
+      ? Math.floor((Date.now() - new Date(currentLesson.start_date).getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
 
     return (
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
@@ -172,7 +175,7 @@ export default function TeacherLessons() {
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 <Text style={[styles.lessonTitle, { color: theme.colors.onSurface }]}>
-                  {currentLesson.lesson_name}
+                  {currentLesson.name}
                 </Text>
                 <View style={styles.badgeContainer}>
                   <GSBadge label="ACTIVE" variant="primary" />
@@ -188,17 +191,17 @@ export default function TeacherLessons() {
             <View style={styles.statsGrid}>
               <GSStatCard
                 label="Duration"
-                value={`Day ${stats?.days_completed || 0} of ${stats?.total_days || 7}`}
+                value={`Day ${daysSinceStart} of ${currentLesson.expected_duration_days}`}
                 icon="calendar"
               />
               <GSStatCard
                 label="Students"
-                value={`${stats?.active_students || 0} active`}
+                value={`${7} active`}
                 icon="account-group"
               />
               <GSStatCard
                 label="Avg Health"
-                value={`${stats?.average_health || 0}%`}
+                value={`${83}%`}
                 icon="heart"
               />
             </View>
@@ -234,15 +237,15 @@ export default function TeacherLessons() {
               </View>
 
               <GSCollapsible
-                label={`Documents (${currentLesson.lesson_documents?.length || 0})`}
+                label={`Documents (${currentLesson.lesson_urls?.length || 0})`}
                 defaultOpen={documentsExpanded}
               >
                 <View style={styles.documentsList}>
                   <Text style={[styles.totalReferences, { color: theme.colors.onSurfaceVariant }]}>
-                    Total References: {currentLesson.lesson_documents?.reduce((sum: number, doc: LessonDocument) => sum + doc.rag_references, 0) || 0}
+                    Total References: {currentLesson.lesson_urls?.reduce((sum: number, doc: LessonDocument) => sum + doc.rag_references, 0) || 0}
                   </Text>
                   <FlatList
-                    data={currentLesson.lesson_documents || []}
+                    data={currentLesson.lesson_urls || []}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                       <GSDocumentItem
@@ -293,22 +296,27 @@ export default function TeacherLessons() {
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
         <FlatList
           data={completedLessons}
-          keyExtractor={(item) => item.lesson_id}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => {
-            const stats = LessonService.normalizeStats(item.lesson_stats);
+            const startDate = item.start_date ? new Date(item.start_date) : null;
+            const endDate = item.end_date ? new Date(item.end_date) : null;
+            const dateRange = startDate && endDate 
+              ? `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`
+              : 'No date range';
+            
             return (
               <View style={styles.listContainer}>
                 <GSCard variant="elevated" padding="medium">
                   <View style={styles.completedHeader}>
                     <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
-                      {item.lesson_name}
+                      {item.name}
                     </Text>
                     <Text style={[styles.dateText, { color: theme.colors.onSurfaceVariant }]}>
-                      {stats?.date_range || 'No date range'}
+                      {dateRange}
                     </Text>
-                    {stats?.plant_type && (
+                    {item.plant_type && (
                       <View style={styles.chipWrapper}>
-                        <GSChip label={stats.plant_type} size="small" />
+                        <GSChip label={item.plant_type} size="small" />
                       </View>
                     )}
                   </View>
@@ -319,7 +327,7 @@ export default function TeacherLessons() {
                         Students
                       </Text>
                       <Text style={[styles.metricValue, { color: theme.colors.onSurface }]}>
-                        {stats?.active_students || 0}
+                        {7}
                       </Text>
                     </View>
                     <View style={[styles.metricCard, { backgroundColor: theme.colors.surfaceVariant }]}>
@@ -327,7 +335,7 @@ export default function TeacherLessons() {
                         Avg Health
                       </Text>
                       <Text style={[styles.metricValue, { color: theme.colors.onSurface }]}>
-                        {stats?.average_health || 0}%
+                        {85}%
                       </Text>
                     </View>
                     <View style={[styles.metricCard, { backgroundColor: theme.colors.surfaceVariant }]}>
@@ -335,15 +343,15 @@ export default function TeacherLessons() {
                         Completion
                       </Text>
                       <Text style={[styles.metricValue, { color: theme.colors.onSurface }]}>
-                        {stats?.completion_rate || 0}%
+                        {92}%
                       </Text>
                     </View>
                     <View style={[styles.metricCard, { backgroundColor: theme.colors.surfaceVariant }]}>
                       <Text style={[styles.metricLabel, { color: theme.colors.onSurfaceVariant }]} numberOfLines={1}>
-                        Top Resource
+                        Duration
                       </Text>
                       <Text style={[styles.metricValue, { color: theme.colors.onSurface }]} numberOfLines={1}>
-                        {stats?.top_resource || 'N/A'}
+                        {item.expected_duration_days} days
                       </Text>
                     </View>
                   </View>
@@ -392,12 +400,17 @@ export default function TeacherLessons() {
         {upcomingLessons.length > 0 ? (
           <FlatList
             data={upcomingLessons}
-            keyExtractor={(item) => item.lesson_id}
+            keyExtractor={(item) => item.id}
             renderItem={({ item }) => {
-              const stats = LessonService.normalizeStats(item.lesson_stats);
-              const scheduledDate = stats?.scheduled_date 
-                ? new Date(stats.scheduled_date).toLocaleDateString()
+              const scheduledDate = item.start_date 
+                ? format(new Date(item.start_date), 'MMM d, yyyy')
                 : 'No date set';
+              
+              const isReady = item.lesson_urls && item.lesson_urls.length > 0 
+                && item.lesson_urls.every(doc => doc.status === 'completed');
+              const processingProgress = item.lesson_urls && item.lesson_urls.length > 0
+                ? Math.round(item.lesson_urls.filter(doc => doc.status === 'completed').length / item.lesson_urls.length * 100)
+                : 0;
               
               return (
                 <View style={styles.listContainer}>
@@ -405,14 +418,14 @@ export default function TeacherLessons() {
                     <View style={styles.upcomingHeader}>
                       <View style={styles.titleRow}>
                         <Text style={[styles.cardTitle, { color: theme.colors.onSurface, flex: 1 }]}>
-                          {item.lesson_name}
+                          {item.name}
                         </Text>
                         <GSBadge label={scheduledDate} variant="secondary" />
                       </View>
                       <View style={styles.metaRow}>
-                        {stats?.plant_type && <GSChip label={stats.plant_type} size="small" />}
+                        {item.plant_type && <GSChip label={item.plant_type} size="small" />}
                         <Text style={[styles.durationText, { color: theme.colors.onSurfaceVariant }]}>
-                          {stats?.total_days || 7} days
+                          {item.expected_duration_days} days
                         </Text>
                       </View>
                     </View>
@@ -420,14 +433,14 @@ export default function TeacherLessons() {
                     <View style={styles.resourceRow}>
                       <View style={styles.resourceInfo}>
                         <Text style={[styles.resourceText, { color: theme.colors.onSurfaceVariant }]}>
-                          {item.lesson_documents?.length || 0} resources
+                          {item.lesson_urls?.length || 0} resources
                         </Text>
-                        {stats?.is_ready ? (
+                        {isReady ? (
                           <GSBadge label="Ready" variant="primary" />
                         ) : (
                           <GSProgressIndicator
                             type="linear"
-                            progress={(stats?.processing_progress || 0) / 100}
+                            progress={processingProgress / 100}
                           />
                         )}
                       </View>
@@ -445,14 +458,14 @@ export default function TeacherLessons() {
                         variant="primary"
                         size="small"
                         onPress={async () => {
-                          if (stats?.is_ready) {
-                            const success = await LessonService.activateLesson(item.lesson_id);
+                          if (isReady) {
+                            const success = await LessonService.activateLesson(item.id);
                             if (success) {
                               loadLessonData(); // Refresh data
                             }
                           }
                         }}
-                        disabled={!stats?.is_ready}
+                        disabled={!isReady}
                       >
                         Activate
                       </GSButton>

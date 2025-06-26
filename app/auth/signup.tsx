@@ -20,9 +20,9 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'student' | 'teacher'>('student');
-  const [classId, setClassId] = useState('');
+  const [classCode, setClassCode] = useState('DEFAULT001');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const { signUp, setShowFAB } = useAuth();
@@ -34,8 +34,8 @@ export default function SignUpScreen() {
   }, [setShowFAB]);
 
   const handleSignUp = async () => {
-    if (!email || !password || !name || !classId) {
-      Alert.alert('Error', 'Please fill in all fields');
+    if (!email || !password || !name) {
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
@@ -46,8 +46,13 @@ export default function SignUpScreen() {
 
     setIsLoading(true);
     try {
-      await signUp(email, password, name, role, classId);
-      router.replace('/(tabs)');
+      // Sign up will automatically use the Gardening class
+      await signUp(email, password, name);
+      Alert.alert(
+        'Welcome to GardenSnap!', 
+        'Your student account has been created. You can switch to Teacher mode to view the class dashboard.',
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+      );
     } catch (error: any) {
       Alert.alert('Sign Up Failed', error.message || 'Please try again');
     } finally {
@@ -71,6 +76,17 @@ export default function SignUpScreen() {
         </View>
 
         <View style={styles.form}>
+          <View style={styles.infoBox}>
+            <Text style={styles.infoTitle}>Welcome Student!</Text>
+            <Text style={styles.infoText}>
+              Create your personal account to:
+              {'\n'}• Track your plant's growth
+              {'\n'}• Complete daily tasks
+              {'\n'}• Get AI-powered guidance
+              {'\n'}• View class progress as a teacher
+            </Text>
+          </View>
+
           <TextInput
             style={styles.input}
             placeholder="Full Name"
@@ -89,55 +105,39 @@ export default function SignUpScreen() {
             autoCorrect={false}
           />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password (min 6 characters)"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={[styles.input, styles.passwordInput]}
+              placeholder="Password (min 6 characters)"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+            />
+            <Pressable 
+              style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <EyeOff size={20} color={colors.textLight} />
+              ) : (
+                <Eye size={20} color={colors.textLight} />
+              )}
+            </Pressable>
+          </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Class Code"
-            value={classId}
-            onChangeText={setClassId}
-            autoCapitalize="characters"
-            autoCorrect={false}
-          />
-
-          <View style={styles.roleContainer}>
-            <Text style={styles.roleLabel}>I am a:</Text>
-            <View style={styles.roleButtons}>
-              <Pressable 
-                style={[
-                  styles.roleButton, 
-                  role === 'student' && styles.roleButtonActive
-                ]}
-                onPress={() => setRole('student')}
-              >
-                                  <User size={20} color={role === 'student' ? colors.white : colors.text} />
-                  <Text style={[
-                  styles.roleButtonText,
-                  role === 'student' && styles.roleButtonTextActive
-                ]}>Student</Text>
-              </Pressable>
-
-              <Pressable 
-                style={[
-                  styles.roleButton, 
-                  role === 'teacher' && styles.roleButtonActive
-                ]}
-                onPress={() => setRole('teacher')}
-              >
-                                  <Book size={20} color={role === 'teacher' ? colors.white : colors.text} />
-                  <Text style={[
-                  styles.roleButtonText,
-                  role === 'teacher' && styles.roleButtonTextActive
-                ]}>Teacher</Text>
-              </Pressable>
-            </View>
+          <View style={styles.classCodeContainer}>
+            <TextInput
+              style={[styles.input, styles.classCodeInput]}
+              placeholder="Class Code"
+              value={classCode}
+              onChangeText={setClassCode}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+            <Text style={styles.classCodeHint}>
+              Class Code: GARDENING
+            </Text>
           </View>
 
           <Pressable 
@@ -148,7 +148,7 @@ export default function SignUpScreen() {
             {isLoading ? (
               <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.buttonText}>Create Account</Text>
+              <Text style={styles.buttonText}>Create Student Account</Text>
             )}
           </Pressable>
 
@@ -192,6 +192,23 @@ const styles = StyleSheet.create({
   form: {
     gap: 16,
   },
+  infoBox: {
+    backgroundColor: '#e7f3ff',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.textLight,
+    lineHeight: 20,
+  },
   input: {
     backgroundColor: colors.white,
     paddingHorizontal: 16,
@@ -201,41 +218,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.grayLight,
   },
-  roleContainer: {
-    marginTop: 8,
+  passwordContainer: {
+    position: 'relative',
   },
-  roleLabel: {
-    fontSize: 16,
-    color: colors.text,
-    marginBottom: 8,
+  passwordInput: {
+    paddingRight: 48,
   },
-  roleButtons: {
-    flexDirection: 'row',
-    gap: 12,
+  eyeButton: {
+    position: 'absolute',
+    right: 16,
+    top: 12,
+    padding: 4,
   },
-  roleButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.grayLight,
+  classCodeContainer: {
+    marginTop: 4,
   },
-  roleButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  classCodeInput: {
+    marginBottom: 4,
   },
-  roleButtonText: {
-    fontSize: 16,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  roleButtonTextActive: {
-    color: colors.white,
+  classCodeHint: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginLeft: 4,
   },
   button: {
     backgroundColor: colors.primary,

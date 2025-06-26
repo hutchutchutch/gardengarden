@@ -13,8 +13,9 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMode } from '@/contexts/ModeContext';
 import colors from '@/constants/colors';
-import { Eye, EyeOff, CheckCircle, PlayCircle, X, Book, Users } from 'lucide-react-native';
+import { Eye, EyeOff, CheckCircle, PlayCircle, X, Book, Users, User, GraduationCap } from 'lucide-react-native';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
@@ -22,8 +23,10 @@ export default function SignInScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const { signIn, signInDemo, setShowFAB } = useAuth();
+  const { signIn, signInDemo, setShowFAB, studentUser, masterTeacherUser } = useAuth();
+  const { setIsTeacherMode } = useMode();
 
   useEffect(() => {
     // Hide FAB on auth screens
@@ -39,7 +42,21 @@ export default function SignInScreen() {
 
     setIsLoading(true);
     try {
-      await signIn(email, password);
+      const lowerEmail = email.toLowerCase().trim();
+      
+      // Sign in with Supabase
+      await signIn(lowerEmail, password);
+      
+      // Check if this is the master teacher email
+      if (lowerEmail === 'herchenbach.hutch@gmail.com') {
+        // Set teacher mode for master teacher
+        setIsTeacherMode(true);
+      } else {
+        // Ensure student mode for all other users
+        setIsTeacherMode(false);
+      }
+      
+      // Navigate to main app
       router.replace('/(tabs)');
     } catch (error: any) {
       Alert.alert('Sign In Failed', error.message || 'Please check your credentials');
@@ -73,6 +90,54 @@ export default function SignInScreen() {
       </View>
 
       <View style={styles.form}>
+        {/* Account Status Info */}
+        <View style={styles.infoBox}>
+          <Text style={styles.infoTitle}>How it works:</Text>
+          <Text style={styles.infoText}>
+            • Sign in with your email to access your student portal{'\n'}
+            • Switch to Teacher mode to view the class as "Hutch Herchenbach"
+          </Text>
+        </View>
+
+        {/* Show logged in status */}
+        {studentUser && (
+          <View style={[styles.statusCard, styles.statusCardActive]}>
+            <User size={20} color={colors.primary} />
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={styles.statusTitle}>Logged in as</Text>
+              <Text style={styles.statusEmail}>{studentUser.email}</Text>
+            </View>
+            <CheckCircle size={16} color={colors.success} />
+          </View>
+        )}
+
+        {/* Quick Fill Buttons for Testing */}
+        <View style={styles.quickFillContainer}>
+          <Text style={styles.quickFillLabel}>Quick Fill (for testing):</Text>
+          <View style={styles.quickFillButtons}>
+            <Pressable
+              style={styles.quickFillButton}
+              onPress={() => {
+                setEmail('hutchenbach@gmail.com');
+                setPassword('password'); // You should set the actual password
+              }}
+            >
+              <User size={16} color={colors.primary} />
+              <Text style={styles.quickFillText}>Student</Text>
+            </Pressable>
+            <Pressable
+              style={styles.quickFillButton}
+              onPress={() => {
+                setEmail('herchenbach.hutch@gmail.com');
+                setPassword('password'); // You should set the actual password
+              }}
+            >
+              <GraduationCap size={16} color="#8B5CF6" />
+              <Text style={[styles.quickFillText, { color: '#8B5CF6' }]}>Teacher</Text>
+            </Pressable>
+          </View>
+        </View>
+
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -83,14 +148,26 @@ export default function SignInScreen() {
           autoCorrect={false}
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={[styles.input, styles.passwordInput]}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+          />
+          <Pressable 
+            style={styles.eyeButton}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? (
+              <EyeOff size={20} color={colors.textLight} />
+            ) : (
+              <Eye size={20} color={colors.textLight} />
+            )}
+          </Pressable>
+        </View>
 
         <Pressable 
           style={[styles.button, isLoading && styles.buttonDisabled]} 
@@ -204,6 +281,46 @@ const styles = StyleSheet.create({
   form: {
     gap: 16,
   },
+  infoBox: {
+    backgroundColor: '#e7f3ff',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: colors.textLight,
+    lineHeight: 20,
+  },
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.grayLight,
+  },
+  statusCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: '#f0f9ff',
+  },
+  statusTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  statusEmail: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginTop: 2,
+  },
   input: {
     backgroundColor: colors.white,
     paddingHorizontal: 16,
@@ -212,6 +329,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: colors.grayLight,
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 16,
+    top: 12,
+    padding: 4,
   },
   button: {
     backgroundColor: colors.primary,
@@ -321,5 +450,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     opacity: 0.9,
+  },
+  quickFillContainer: {
+    backgroundColor: '#f3f4f6',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  quickFillLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textLight,
+    marginBottom: 8,
+  },
+  quickFillButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickFillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.grayLight,
+  },
+  quickFillText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.primary,
   },
 }); 

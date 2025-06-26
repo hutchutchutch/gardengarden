@@ -74,6 +74,7 @@ export default function TeacherIndex() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [currentLesson, setCurrentLesson] = useState<any>(null);
   
   const [classStats, setClassStats] = useState<ClassStats>({
     totalStudents: 0,
@@ -121,7 +122,23 @@ export default function TeacherIndex() {
         .eq('teacher_id', user.id)
         .single();
       
-      if (!classData) return;
+      if (!classData) {
+        console.log('No class found for teacher');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Get current active lesson - use maybeSingle() to avoid errors
+      const { data: activeLesson } = await supabase
+        .from('lessons')
+        .select('*')
+        .eq('class_id', classData.id)
+        .lte('start_date', new Date().toISOString())
+        .gte('end_date', new Date().toISOString())
+        .maybeSingle();
+      
+      console.log('Active lesson:', activeLesson);
+      setCurrentLesson(activeLesson);
       
       // Get all students in class
       const { data: students } = await supabase
@@ -142,24 +159,32 @@ export default function TeacherIndex() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const { data: todaySubmissions } = await supabase
-        .from('daily_submissions')
-        .select(`
-          *,
-          plant:plants!inner(
+      let todaySubmissions: any[] = [];
+      
+      if (activeLesson) {
+        const { data: submissions } = await supabase
+          .from('daily_submissions')
+          .select(`
             *,
-            student:users!plants_student_id_fkey(*)
-          )
-        `)
-        .gte('created_at', today.toISOString())
-        .eq('plant.lesson_id', '11112222-3333-4444-5555-666677778888'); // Current active lesson
+            plant:plants!inner(
+              *,
+              student:users!plants_student_id_fkey(*)
+            )
+          `)
+          .gte('created_at', today.toISOString())
+          .eq('plant.lesson_id', activeLesson.id);
+        
+        todaySubmissions = submissions || [];
+      }
       
       // Calculate stats
-      const submissionsToday = todaySubmissions?.length || 0;
-      const avgHealth = todaySubmissions?.reduce((sum, sub) => sum + (sub.health_score || 0), 0) / (submissionsToday || 1);
+      const submissionsToday = todaySubmissions.length;
+      const avgHealth = submissionsToday > 0 
+        ? todaySubmissions.reduce((sum, sub) => sum + (sub.health_score || 0), 0) / submissionsToday
+        : 0;
       
       // Get students who haven't submitted today
-      const submittedStudentIds = new Set(todaySubmissions?.map(s => s.plant.student_id));
+      const submittedStudentIds = new Set(todaySubmissions.map(s => s.plant.student_id));
       const pendingStudentsList = students?.filter(s => 
         !submittedStudentIds.has(s.id) && s.plants.length > 0
       ).map(s => ({
@@ -174,7 +199,7 @@ export default function TeacherIndex() {
       } as StudentData)) || [];
       
       // Get recent submissions for display
-      const recentSubmissionsList = todaySubmissions?.slice(0, 6).map(sub => ({
+      const recentSubmissionsList = todaySubmissions.slice(0, 6).map(sub => ({
         id: sub.id,
         name: sub.plant.student.name,
         submitted: true,
@@ -197,10 +222,10 @@ export default function TeacherIndex() {
       
       // Health distribution
       const healthDist = {
-        excellent: todaySubmissions?.filter(s => s.health_score >= 90).length || 0,
-        good: todaySubmissions?.filter(s => s.health_score >= 80 && s.health_score < 90).length || 0,
-        fair: todaySubmissions?.filter(s => s.health_score >= 70 && s.health_score < 80).length || 0,
-        poor: todaySubmissions?.filter(s => s.health_score < 70).length || 0
+        excellent: todaySubmissions.filter(s => s.health_score >= 90).length || 0,
+        good: todaySubmissions.filter(s => s.health_score >= 80 && s.health_score < 90).length || 0,
+        fair: todaySubmissions.filter(s => s.health_score >= 70 && s.health_score < 80).length || 0,
+        poor: todaySubmissions.filter(s => s.health_score < 70).length || 0
       };
       
       setClassStats({
@@ -208,7 +233,7 @@ export default function TeacherIndex() {
         submissionsToday,
         averageHealthScore: Math.round(avgHealth),
         plantsNeedingAttention: pendingStudentsList.filter(s => s.needsAttention).length,
-        participationRate: Math.round((submissionsToday / totalStudents) * 100),
+        participationRate: totalStudents > 0 ? Math.round((submissionsToday / totalStudents) * 100) : 0,
         weeklyHealthScores: [78, 80, 79, 82, 85, 83, Math.round(avgHealth)], // TODO: Calculate actual weekly scores
         healthDistribution: healthDist
       });
@@ -293,51 +318,71 @@ export default function TeacherIndex() {
           {/* Current Lesson Progress Section */}
           <View style={{ marginBottom: 24 }}>
             <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Current Lesson Progress</Text>
-            <GSCard variant="elevated" padding="large">
-              <View style={{ marginBottom: 12 }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Growing Tomatoes</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-                  <GSChip label="Tomato" />
-                  <View style={{ marginLeft: 8 }}>
-                    <GSBadge label="Day 23 of 75" variant="secondary" />
+            {currentLesson ? (
+              <GSCard variant="elevated" padding="large">
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>{currentLesson.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                    <GSChip label={currentLesson.plant_type} />
+                    <View style={{ marginLeft: 8 }}>
+                      <GSBadge label={`Day ${Math.max(1, Math.floor((Date.now() - new Date(currentLesson.start_date).getTime()) / (1000 * 60 * 60 * 24)))} of ${currentLesson.expected_duration_days}`} variant="secondary" />
+                    </View>
                   </View>
                 </View>
-              </View>
-              
-              <View style={{ marginBottom: 12 }}>
-                <GSProgressIndicator type="linear" progress={0.31} />
-              </View>
-              <Text style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
-                {75 - 23} days remaining
-              </Text>
-              
-              {/* Health Stats */}
-              <GSCard variant="filled" padding="medium" margin="none">
-                <View style={{ marginBottom: 12 }}>
-                  <Text style={{ fontSize: 14, color: '#666' }}>Average Health</Text>
-                  <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#000' }}>
-                    {classStats.averageHealthScore}%
-                  </Text>
-                  <Text style={{ fontSize: 14, color: '#22c55e' }}>↑ +5% from yesterday</Text>
-                </View>
                 
-                <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 12 }}>
-                  {renderHealthRow('Excellent', classStats.healthDistribution.excellent, '#4CAF50')}
-                  {renderHealthRow('Good', classStats.healthDistribution.good, '#8BC34A')}
-                  {renderHealthRow('Fair', classStats.healthDistribution.fair, '#FFB74D')}
-                  {renderHealthRow('Poor', classStats.healthDistribution.poor, '#F44336')}
+                <View style={{ marginBottom: 12 }}>
+                  <GSProgressIndicator type="linear" progress={Math.min(1, Math.max(0, (Date.now() - new Date(currentLesson.start_date).getTime()) / (new Date(currentLesson.end_date).getTime() - new Date(currentLesson.start_date).getTime())))} />
+                </View>
+                <Text style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
+                  {Math.max(0, Math.floor((new Date(currentLesson.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days remaining
+                </Text>
+                
+                {/* Health Stats */}
+                <GSCard variant="filled" padding="medium" margin="none">
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ fontSize: 14, color: '#666' }}>Average Health</Text>
+                    <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#000' }}>
+                      {classStats.averageHealthScore}%
+                    </Text>
+                    <Text style={{ fontSize: 14, color: '#22c55e' }}>↑ +5% from yesterday</Text>
+                  </View>
+                  
+                  <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 12 }}>
+                    {renderHealthRow('Excellent', classStats.healthDistribution.excellent, '#4CAF50')}
+                    {renderHealthRow('Good', classStats.healthDistribution.good, '#8BC34A')}
+                    {renderHealthRow('Fair', classStats.healthDistribution.fair, '#FFB74D')}
+                    {renderHealthRow('Poor', classStats.healthDistribution.poor, '#F44336')}
+                  </View>
+                </GSCard>
+                
+                <View style={{ marginTop: 16 }}>
+                  <GSButton
+                    variant="secondary"
+                    onPress={() => router.push('/(tabs)/lessons')}
+                  >
+                    View Details →
+                  </GSButton>
                 </View>
               </GSCard>
-              
-              <View style={{ marginTop: 16 }}>
-                <GSButton
-                  variant="secondary"
-                  onPress={() => router.push('/(tabs)/lessons')}
-                >
-                  View Details →
-                </GSButton>
-              </View>
-            </GSCard>
+            ) : (
+              <GSCard variant="filled" padding="large">
+                <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                  <Feather name="book-open" size={48} color="#666" style={{ marginBottom: 16 }} />
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: '#000', marginBottom: 8 }}>
+                    No Active Lesson
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 16 }}>
+                    Start a new lesson to track your class progress
+                  </Text>
+                  <GSButton
+                    variant="primary"
+                    onPress={() => router.push('/(tabs)/lessons')}
+                  >
+                    Create New Lesson
+                  </GSButton>
+                </View>
+              </GSCard>
+            )}
           </View>
 
           {/* Task Completion Section */}

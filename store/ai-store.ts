@@ -3,6 +3,7 @@ import { AIMessage } from '@/types';
 import { aiConversations as mockConversations } from '@/mocks/ai-conversations';
 import { storage } from '@/utils/storage';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { supabase } from '@/config/supabase';
 
 interface AIState {
   messages: AIMessage[];
@@ -11,7 +12,7 @@ interface AIState {
   
   // Actions
   fetchMessages: () => Promise<void>;
-  sendMessage: (content: string, imageUri?: string, mode?: 'ai' | 'teacher') => Promise<void>;
+  sendMessage: (content: string, imageUri?: string, mode?: 'ai' | 'teacher', lessonId?: string, plantId?: string) => Promise<void>;
   clearConversation: () => Promise<void>;
 }
 
@@ -32,7 +33,7 @@ export const useAIStore = create<AIState>()(
         }
       },
 
-      sendMessage: async (content, imageUri, mode = 'ai') => {
+      sendMessage: async (content, imageUri, mode = 'ai', lessonId, plantId) => {
         set({ isLoading: true, error: null });
         try {
           // Add user message
@@ -66,71 +67,68 @@ export const useAIStore = create<AIState>()(
               isLoading: false
             }));
           } else {
-            // AI mode - existing logic
-            // In a real app, this would call an AI API
-            // For now, we'll simulate a response
-            
-            // Prepare the message content for the AI
-            let messages = [];
-            
-            // Add system message
-            messages.push({
-              role: 'system',
-              content: 'You are a helpful gardening assistant that provides advice on plant care, identification, and troubleshooting. Keep responses concise and educational.'
-            });
-            
-            // Add conversation history (last 5 messages)
-            const history = [...get().messages].slice(-5);
-            messages = [
-              ...messages,
-              ...history.map(msg => ({
-                role: msg.role,
-                content: msg.content
-              }))
-            ];
-            
-            // Add image if provided - but we need to handle this differently
-            // since our AIMessage type expects content to be a string
-            if (imageUri) {
-              // In a real implementation, we would handle image content properly
-              // For now, we'll just add a note about the image in the content
-              messages.push({
-                role: 'user',
-                content: `${content} [Image attached]`
+            // AI mode - use the new edge function
+            try {
+              // Prepare conversation history (last 5 messages)
+              const history = [...get().messages]
+                .filter(msg => msg.recipientId === 'ai-assistant' || msg.role === 'assistant')
+                .slice(-5)
+                .map(msg => ({
+                  role: msg.role === 'user' ? 'user' : 'assistant',
+                  content: msg.content
+                }));
+
+              // Call the edge function
+              const { data, error } = await supabase.functions.invoke('ai-chat-with-sources', {
+                body: {
+                  message: content,
+                  lesson_id: lessonId,
+                  plant_id: plantId,
+                  conversation_history: history,
+                  include_sources: true
+                }
               });
+
+              if (error) throw error;
+
+              if (data.success) {
+                // Add AI response with sources
+                const aiResponse: AIMessage = {
+                  id: (Date.now() + 1).toString(),
+                  role: 'assistant',
+                  content: data.message,
+                  timestamp: new Date().toISOString(),
+                  sources: data.sources // This will be the array of source objects
+                };
+                
+                set(state => ({
+                  messages: [...state.messages, aiResponse],
+                  isLoading: false
+                }));
+              } else {
+                throw new Error(data.error || 'Failed to get AI response');
+              }
+            } catch (error) {
+              console.error('Error calling AI edge function:', error);
+              
+              // Fallback to a generic response
+              const fallbackResponse: AIMessage = {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant',
+                content: "I'm having trouble connecting right now. Please try again in a moment. If this persists, please contact your teacher.",
+                timestamp: new Date().toISOString()
+              };
+              
+              set(state => ({
+                messages: [...state.messages, fallbackResponse],
+                isLoading: false,
+                error: 'Failed to get AI response'
+              }));
             }
-            
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Generate a mock response based on the user's query
-            let responseContent = '';
-            if (content.toLowerCase().includes('water')) {
-              responseContent = "Watering depends on the plant type and current weather. Most garden plants need about 1-2 inches of water per week. Check the soil moisture by inserting your finger about an inch deep - if it feels dry, it's time to water. The current weather forecast shows it will be warm, so you might need to water more frequently.";
-            } else if (content.toLowerCase().includes('fertilize') || content.toLowerCase().includes('feed')) {
-              responseContent = "Most plants benefit from fertilization during their growing season. Use a balanced fertilizer (like 10-10-10) for general feeding, or choose specialized formulations for flowering or fruiting plants. Apply fertilizer every 4-6 weeks during the growing season, following package instructions for amounts.";
-            } else if (content.toLowerCase().includes('pest') || content.toLowerCase().includes('bug')) {
-              responseContent = "I notice some potential pest damage in your photo. Common garden pests include aphids, caterpillars, and slugs. For organic control, try neem oil spray, insecticidal soap, or introducing beneficial insects like ladybugs. Remember to inspect the undersides of leaves regularly, as many pests hide there.";
-            } else {
-              responseContent = "Your plants are looking healthy overall! Continue with your regular care routine, making sure to water consistently and monitor for any signs of stress. As the weather warms up, watch for increased water needs. The growth pattern looks normal for this stage of development.";
-            }
-            
-            // Add AI response
-            const aiResponse: AIMessage = {
-              id: (Date.now() + 1).toString(),
-              role: 'assistant',
-              content: responseContent,
-              timestamp: new Date().toISOString()
-            };
-            
-            set(state => ({
-              messages: [...state.messages, aiResponse],
-              isLoading: false
-            }));
           }
         } catch (error) {
           set({ 
-            error: 'Failed to get AI response', 
+            error: 'Failed to send message', 
             isLoading: false 
           });
         }

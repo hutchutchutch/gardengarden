@@ -7,6 +7,7 @@ import { useMode } from '@/contexts/ModeContext';
 import PlantStories from '@/components/PlantStories';
 import { supabase } from '@/config/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { ImageAnalysisService, ImageAnalysisRecord } from '@/services/image-analysis-service';
 
 import {
   GSModeToggle,
@@ -35,7 +36,8 @@ export default function StudentIndexScreen() {
   const activePlant = plants[0];
 
   const [plantProgress, setPlantProgress] = React.useState<any>(null);
-  const [yesterdaysFeedback, setYesterdaysFeedback] = React.useState<any>(null);
+  const [yesterdaysFeedback, setYesterdaysFeedback] = React.useState<ImageAnalysisRecord | null>(null);
+  const [latestAnalysis, setLatestAnalysis] = React.useState<ImageAnalysisRecord | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   // Fetch plant and submission data from Supabase
@@ -61,40 +63,26 @@ export default function StudentIndexScreen() {
         const plantingDate = new Date(plantData.planting_date);
         const dayNumber = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         
+        // Get latest health score from image analysis
+        const healthScore = await ImageAnalysisService.getLatestHealthScore(user.id) || plantData.current_health_score || 0;
+        
         setPlantProgress({
           currentStage: plantData.current_stage,
           dayNumber,
-          healthScore: plantData.current_health_score || 0,
+          healthScore,
           height: plantData.predictions?.current_height || '0',
           streak: 7, // TODO: Calculate actual streak
           imageUrl: 'https://picsum.photos/400/300?random=plant'
         });
       }
       
-      // Fetch yesterday's submission and guidance
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(0, 0, 0, 0);
+      // Fetch latest analysis for current stage info
+      const latestAnalysisData = await ImageAnalysisService.getLatestAnalysis(user.id);
+      setLatestAnalysis(latestAnalysisData);
       
-      const { data: submissionData } = await supabase
-        .from('daily_submissions')
-        .select(`
-          *,
-          guidance_history(*)
-        `)
-        .eq('student_id', user.id)
-        .gte('created_at', yesterday.toISOString())
-        .lt('created_at', new Date(yesterday.getTime() + 24 * 60 * 60 * 1000).toISOString())
-        .single();
-        
-      if (submissionData && submissionData.guidance_history?.[0]) {
-        setYesterdaysFeedback({
-          score: submissionData.health_score || 0,
-          guidanceText: submissionData.guidance_history[0].guidance_text,
-          issues: submissionData.issues || [],
-          sources: submissionData.guidance_history[0].source_refs || []
-        });
-      }
+      // Fetch yesterday's analysis for feedback
+      const yesterdayAnalysisData = await ImageAnalysisService.getYesterdayAnalysis(user.id);
+      setYesterdaysFeedback(yesterdayAnalysisData);
       
     } catch (error) {
       console.error('Error fetching student data:', error);
@@ -163,8 +151,7 @@ export default function StudentIndexScreen() {
           {/* Plant Stories Section */}
           <View style={{ marginBottom: 24, marginTop: 24 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Class Gardens</Text>
-              <GSIconButton icon="information" onPress={() => {}} size={20} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#000' }}>Class Gardens</Text>
             </View>
             
             <PlantStories 
@@ -225,50 +212,63 @@ export default function StudentIndexScreen() {
           )}
 
           {/* Yesterday's Feedback Section with proper GSGuidanceCard */}
-          <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Yesterday's Feedback</Text>
-            
-            <View style={{ marginTop: 12 }}>
-              <GSGuidanceCard
-                emoji="📊"
-                title={`Day ${plantProgress?.dayNumber - 1} Analysis`}
-                content={yesterdaysFeedback?.guidanceText}
-              />
-            </View>
-
-            {/* Additional feedback details */}
-            <GSCard variant="elevated" padding="medium" margin="none" style={{ marginTop: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <Text style={{ fontWeight: '500', fontSize: 16, color: '#000' }}>Health Score</Text>
-                <GSHealthBadge size="small" score={yesterdaysFeedback?.score} />
+          {yesterdaysFeedback && (
+            <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Yesterday's Feedback</Text>
+              
+              <View style={{ marginTop: 12 }}>
+                <GSGuidanceCard
+                  emoji="📊"
+                  title={`Day ${plantProgress?.dayNumber - 1} Analysis`}
+                  content={yesterdaysFeedback.current_stage_description || 'Analysis completed for your plant.'}
+                />
               </View>
 
-              {/* Issues */}
-              {yesterdaysFeedback?.issues && yesterdaysFeedback.issues.length > 0 && (
-                <View style={{ marginBottom: 12 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8, color: '#000' }}>Issues Detected:</Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {yesterdaysFeedback.issues.map((issue: string, index: number) => (
-                      <GSChip key={index} label={issue} variant="warning" />
-                    ))}
-                  </View>
+              {/* Additional feedback details */}
+              <GSCard variant="elevated" padding="medium" margin="none" style={{ marginTop: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <Text style={{ fontWeight: '500', fontSize: 16, color: '#000' }}>Health Assessment</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#4CAF50' }}>{yesterdaysFeedback.health_rating}</Text>
                 </View>
-              )}
 
-              {/* Sources */}
-              <GSCollapsible label="View Sources">
-                {yesterdaysFeedback?.sources?.map((source: any, index: number) => (
-                  <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 }}>
-                    <GSIconButton icon="link-2" onPress={() => {}} size={16} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '500', color: '#000' }}>{source.title}</Text>
-                      <Text style={{ fontSize: 12, color: '#666' }}>{source.domain}</Text>
+                {/* Positive Signs */}
+                {yesterdaysFeedback.positive_signs && yesterdaysFeedback.positive_signs.length > 0 && (
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8, color: '#000' }}>Positive Signs:</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {yesterdaysFeedback.positive_signs.map((sign: string, index: number) => (
+                        <GSChip key={index} label={sign} variant="success" />
+                      ))}
                     </View>
                   </View>
-                ))}
-              </GSCollapsible>
-            </GSCard>
-          </View>
+                )}
+
+                {/* Areas for Improvement */}
+                {yesterdaysFeedback.areas_for_improvement && yesterdaysFeedback.areas_for_improvement.length > 0 && (
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8, color: '#000' }}>Areas for Improvement:</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {yesterdaysFeedback.areas_for_improvement.map((area: string, index: number) => (
+                        <GSChip key={index} label={area} variant="warning" />
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Tips */}
+                {yesterdaysFeedback.tips && yesterdaysFeedback.tips.length > 0 && (
+                  <GSCollapsible label="View Tips">
+                    {yesterdaysFeedback.tips.map((tip: any, index: number) => (
+                      <View key={index} style={{ paddingVertical: 8 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#000', marginBottom: 4 }}>{tip.title}</Text>
+                        <Text style={{ fontSize: 12, color: '#666', lineHeight: 16 }}>{tip.description}</Text>
+                      </View>
+                    ))}
+                  </GSCollapsible>
+                )}
+              </GSCard>
+            </View>
+          )}
 
           {/* Today's Tasks Section */}
           <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
