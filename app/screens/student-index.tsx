@@ -643,11 +643,20 @@ export default function StudentIndexScreen() {
                           borderBottomColor: '#f0f0f0'
                         }}>
                           {/* Checkbox */}
-                          <Checkbox
-                            status={task.isCompleted ? 'checked' : 'unchecked'}
-                            onPress={() => handleTaskToggle(task.id)}
-                            color="#4CAF50"
-                          />
+                          <View style={{
+                            borderWidth: 1,
+                            borderColor: task.isCompleted ? '#4CAF50' : '#d0d0d0',
+                            borderRadius: 3,
+                            padding: 1,
+                            backgroundColor: task.isCompleted ? '#4CAF5008' : 'transparent'
+                          }}>
+                            <Checkbox
+                              status={task.isCompleted ? 'checked' : 'unchecked'}
+                              onPress={() => handleTaskToggle(task.id)}
+                              color="#4CAF50"
+                              uncheckedColor="#757575"
+                            />
+                          </View>
                           
                           {/* Task Title - Clickable */}
                           <Pressable 

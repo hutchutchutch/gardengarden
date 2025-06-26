@@ -32,33 +32,21 @@ const MASTER_TEACHER_PASSWORD = 'MasterSplinter';
 const DEFAULT_STUDENT_EMAIL = 'hutchenbach@gmail.com';
 const DEFAULT_STUDENT_PASSWORD = 'Donatello'; // In production, use proper password management
 
-// Track if we've already initialized to prevent clearing session after sign-in
-let hasInitialized = false;
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showFAB, setShowFAB] = useState(true);
 
   useEffect(() => {
-    // Only clear session on first app load, not on subsequent component mounts
+    // Always clear session on app load to force fresh sign-in
     const initializeAuth = async () => {
       try {
-        if (!hasInitialized) {
-          console.log('🔄 First app load - clearing existing session to force fresh sign-in');
-          await supabase.auth.signOut();
-          setUser(null);
-          hasInitialized = true;
-        } else {
-          console.log('🔄 Checking existing session');
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            await loadUserFromSession(session);
-          }
-        }
+        console.log('🔄 App load - clearing session to force fresh sign-in');
+        await supabase.auth.signOut();
+        setUser(null);
+        setIsLoading(false);
       } catch (error) {
         console.error('Error in auth initialization:', error);
-      } finally {
         setIsLoading(false);
       }
     };
@@ -106,9 +94,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('✅ Loaded user from session:', userData.email, userData.role);
       } else {
         console.error('❌ Failed to load user profile:', error);
+        // If we can't load the user profile, sign them out to force fresh sign-in
+        await supabase.auth.signOut();
+        setUser(null);
       }
     } catch (error) {
       console.error('Error loading user from session:', error);
+      // If there's an error, sign them out to force fresh sign-in
+      await supabase.auth.signOut();
+      setUser(null);
     }
   };
 
