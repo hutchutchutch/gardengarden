@@ -65,14 +65,29 @@ export const useAIStore = create<AIState>()(
           // Get current user to determine message roles
           const { data: { user } } = await supabase.auth.getUser();
           
+          // Get user roles for proper message classification
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('id, role')
+            .in('id', messages.map(m => m.sender_id));
+          
+          const userRoles = new Map(usersData?.map(u => [u.id, u.role]) || []);
+          
           // Convert database messages to AIMessage format
           const aiMessages: AIMessage[] = messages.map(msg => {
             // Determine role based on sender
             let role: 'user' | 'assistant' | 'teacher' = 'user';
+            
             if (msg.sender_id === '00000000-0000-0000-0000-000000000000') {
               role = 'assistant';
-            } else if (msg.sender_id !== user?.id) {
-              role = 'teacher';
+            } else {
+              // Check the actual role of the sender
+              const senderRole = userRoles.get(msg.sender_id);
+              if (senderRole === 'teacher') {
+                role = 'teacher';
+              } else {
+                role = 'user'; // student messages
+              }
             }
             
             return {
@@ -100,13 +115,44 @@ export const useAIStore = create<AIState>()(
 
         set({ isLoading: true, error: null });
         try {
-          // For now, we'll need to get the current user ID
-          // In a real app, this would come from the auth context
+          // Get the current user
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) {
             throw new Error('User not authenticated');
           }
 
+          // Get user's role from database
+          const { data: userData } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+          const userRole = userData?.role;
+
+          // If current user is a teacher, always save as teacher message regardless of mode
+          if (userRole === 'teacher') {
+            // Teacher sending message - just save to database, no AI response
+            const teacherMessage = await MessageService.sendMessage(currentThreadId, user.id, content, imageUri);
+            
+            // Update local state with the saved teacher message
+            const savedTeacherMessage: AIMessage = {
+              id: teacherMessage.id,
+              role: 'teacher',
+              content: teacherMessage.content,
+              timestamp: teacherMessage.created_at
+            };
+            
+            set(state => ({
+              messages: [...state.messages, savedTeacherMessage],
+              isLoading: false
+            }));
+
+            console.log('Teacher message sent to thread:', currentThreadId);
+            return; // Exit early - no AI response for teacher messages
+          }
+
+          // Student sending message - continue with existing logic
           // Add user message to local state immediately
           const userMessage: AIMessage = {
             id: Date.now().toString(),
@@ -120,15 +166,15 @@ export const useAIStore = create<AIState>()(
           }));
 
           if (mode === 'teacher') {
-            // Send user message to teacher via Supabase
-            const userMessage = await MessageService.sendMessage(currentThreadId, user.id, content, imageUri);
+            // Student sending message to teacher - save to database only
+            const studentMessage = await MessageService.sendMessage(currentThreadId, user.id, content, imageUri);
             
             // Update local state with the saved user message
             const savedUserMessage: AIMessage = {
-              id: userMessage.id,
+              id: studentMessage.id,
               role: 'user',
-              content: userMessage.content,
-              timestamp: userMessage.created_at
+              content: studentMessage.content,
+              timestamp: studentMessage.created_at
             };
             
             set(state => ({
@@ -136,10 +182,9 @@ export const useAIStore = create<AIState>()(
               isLoading: false
             }));
 
-            // Don't generate automatic teacher response - let the real teacher respond
-            console.log('Message sent to teacher via thread:', currentThreadId);
+            console.log('Student message sent to teacher via thread:', currentThreadId);
           } else {
-            // AI mode - use the edge function
+            // Student sending message to AI - process with AI
             try {
               // Prepare conversation history (last 5 messages)
               const history = [...get().messages]

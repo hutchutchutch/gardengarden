@@ -7,11 +7,13 @@ import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 import { Source } from '@/types';
 
 type ChatBubbleType = 'ai' | 'teacher' | 'student';
+type UserRole = 'student' | 'teacher';
 
 interface GSChatBubbleProps {
   type: ChatBubbleType;
   message: string;
   timestamp: string;
+  currentUserRole?: UserRole;
   showSources?: boolean;
   sources?: Source[];
   isRead?: boolean;
@@ -23,6 +25,7 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   type,
   message,
   timestamp,
+  currentUserRole = 'student',
   showSources = false,
   sources = [],
   isRead = false,
@@ -33,7 +36,13 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   const [showExpandedSources, setShowExpandedSources] = useState(false);
 
   const getAlignment = () => {
-    return type === 'student' ? 'flex-end' : 'flex-start';
+    // Current user's messages go on the right
+    if (currentUserRole === 'student' && type === 'student') return 'flex-end';
+    if (currentUserRole === 'teacher' && type === 'teacher') return 'flex-end';
+    // AI messages always go on the right (they're helpful responses)
+    if (type === 'ai') return 'flex-end';
+    // Other messages go on the left
+    return 'flex-start';
   };
 
   const getBubbleColor = () => {

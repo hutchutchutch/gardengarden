@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Pressable, ActivityIndicator, FlatList } from 'react-native';
+import { View, Pressable, ActivityIndicator, FlatList, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MessageService, MessageThread } from '@/services/message-service';
@@ -10,8 +10,7 @@ import {
   GSCard,
   GSIconButton,
   GSSearchBar,
-  GSChip,
-  Text
+  GSChip
 } from '@/components/ui';
 
 export default function TeacherMessagesScreen() {

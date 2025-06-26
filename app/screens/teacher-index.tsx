@@ -491,7 +491,7 @@ export default function TeacherIndex() {
                 <GSStatCard
                   value={classStats.overdueTasksCount?.toString() || "0"}
                   label="Tasks Overdue"
-                  icon="alert-triangle"
+                  icon="alert"
                 />
               </View>
             </View>
@@ -533,7 +533,7 @@ export default function TeacherIndex() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Today's Gardens</Text>
               <GSIconButton
-                icon="refresh-ccw"
+                icon="refresh"
                 size={20}
                 onPress={onRefresh}
               />
@@ -590,7 +590,7 @@ export default function TeacherIndex() {
                     onPress={() => router.push('/ai-chat')}
                     size="medium"
                     fullWidth
-                    icon="message-square"
+                    icon="message-text-outline"
                   >
                     Messages
                   </GSButton>
@@ -617,7 +617,7 @@ export default function TeacherIndex() {
                   onPress={() => router.push('/(tabs)/profile')}
                   size="medium"
                   fullWidth
-                  icon="users"
+                  icon="account-multiple"
                 >
                   Students
                 </GSButton>
@@ -628,7 +628,7 @@ export default function TeacherIndex() {
                   onPress={() => router.push('/(tabs)/progress')}
                   size="medium"
                   fullWidth
-                  icon="bar-chart-3"
+                  icon="chart-bar"
                 >
                   Analytics
                 </GSButton>
