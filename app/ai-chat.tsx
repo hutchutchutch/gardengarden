@@ -8,7 +8,13 @@ import { AIPlantAnalysis } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function AIChatScreen() {
-  const { photoUri, plantId, mode } = useLocalSearchParams<{ photoUri: string; plantId: string; mode: string }>();
+  const { photoUri, plantId, mode, threadId, studentId } = useLocalSearchParams<{ 
+    photoUri: string; 
+    plantId: string; 
+    mode: string;
+    threadId: string;
+    studentId: string;
+  }>();
   const [analysis, setAnalysis] = useState<AIPlantAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { setShowFAB } = useAuth();
@@ -41,7 +47,7 @@ export default function AIChatScreen() {
     <View style={styles.container}>
       <Stack.Screen 
         options={{
-          title: mode === 'teacher' ? 'Message Teacher' : 'Garden Mentor AI',
+          title: mode === 'teacher' ? `Chat with ${studentId ? 'Student' : 'Teacher'}` : 'Garden Mentor AI',
           headerStyle: {
             backgroundColor: colors.white,
           },
@@ -68,6 +74,8 @@ export default function AIChatScreen() {
         photoUri={photoUri} 
         plantId={plantId} 
         initialMode={mode as 'ai' | 'teacher' || 'ai'}
+        threadId={threadId}
+        studentId={studentId}
       />
     </View>
   );

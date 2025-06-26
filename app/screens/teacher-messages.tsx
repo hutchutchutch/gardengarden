@@ -64,7 +64,11 @@ export default function TeacherMessagesScreen() {
     // Navigate to individual message thread
     router.push({
       pathname: '/ai-chat',
-      params: { threadId: thread.id, studentId: thread.student_id }
+      params: { 
+        threadId: thread.id, 
+        studentId: thread.student_id,
+        mode: 'teacher'
+      }
     });
   };
 

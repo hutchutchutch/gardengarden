@@ -20,14 +20,16 @@ interface AIChatProps {
   photoUri?: string;
   plantId?: string;
   initialMode?: 'ai' | 'teacher';
+  threadId?: string;
+  studentId?: string;
 }
 
-export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai' }: AIChatProps) {
+export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai', threadId, studentId }: AIChatProps) {
   const [message, setMessage] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(photoUri || null);
   const [mode, setMode] = useState<'ai' | 'teacher'>(initialMode);
   const [isAIThinking, setIsAIThinking] = useState(false);
-  const { messages, isLoading, sendMessage, fetchMessages, initializeThread, initializeDefaultThread } = useAIStore();
+  const { messages, isLoading, sendMessage, fetchMessages, initializeThread, initializeDefaultThread, initializeExistingThread } = useAIStore();
   const { user } = useAuth();
   const { plants } = usePlantStore();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -40,7 +42,13 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   useEffect(() => {
     const initializeChat = async () => {
       if (user) {
-        // Get the teacher for this student's active lesson
+        // If threadId is provided (from teacher interface), use existing thread
+        if (threadId) {
+          await initializeExistingThread(threadId);
+          return;
+        }
+
+        // Otherwise, get the teacher for this student's active lesson
         if (user.role === 'student') {
           try {
             // Query to get the teacher for the student's active lesson
@@ -116,10 +124,18 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const handleSend = async () => {
     if (message.trim() === '' && !imageUri) return;
     
+    // If current user is a teacher, just send the message and exit
+    if (user?.role === 'teacher') {
+      await sendMessage(message, imageUri || undefined, 'teacher', lessonId, plantId);
+      setMessage('');
+      setImageUri(null);
+      return;
+    }
+    
     let finalImageUrl = imageUri;
     let aiAnalysisMessage = '';
     
-    // Handle image upload and analysis for AI mode
+    // Handle image upload and analysis for AI mode (students only)
     if (imageUri && mode === 'ai' && user?.id) {
       try {
         setIsAIThinking(true);
@@ -153,7 +169,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
       }
     }
     
-    // Send the user message with image
+    // Send the user message with image (students only)
     await sendMessage(message, finalImageUrl || undefined, mode, lessonId, plantId);
     
     // If we have AI analysis from the image, send it as a follow-up AI message

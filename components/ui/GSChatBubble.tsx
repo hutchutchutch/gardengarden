@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Surface, Text, Icon } from 'react-native-paper';
-import { View, StyleSheet, Pressable, Linking } from 'react-native';
+import { View, StyleSheet, Pressable, Linking, ViewStyle } from 'react-native';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react-native';
 import { useAppTheme } from '../../config/theme';
 import { ShimmerPlaceholder } from './ShimmerPlaceholder';
@@ -13,7 +13,7 @@ interface GSChatBubbleProps {
   type: ChatBubbleType;
   message: string;
   timestamp: string;
-  currentUserRole?: UserRole;
+  currentUserRole?: 'student' | 'teacher';
   showSources?: boolean;
   sources?: Source[];
   isRead?: boolean;
@@ -35,29 +35,34 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   const theme = useAppTheme();
   const [showExpandedSources, setShowExpandedSources] = useState(false);
 
-  const getAlignment = () => {
-    // Current user's messages go on the right
-    if (currentUserRole === 'student' && type === 'student') return 'flex-end';
-    if (currentUserRole === 'teacher' && type === 'teacher') return 'flex-end';
-    // AI messages always go on the right (they're helpful responses)
-    if (type === 'ai') return 'flex-end';
-    // Other messages go on the left
+  const getAlignment = (): 'flex-start' | 'flex-end' => {
+    // Current user's messages always go on the right
+    if (type === 'student' && currentUserRole === 'student') return 'flex-end';
+    if (type === 'teacher' && currentUserRole === 'teacher') return 'flex-end';
+    
+    // AI messages positioning depends on who's viewing
+    if (type === 'ai') {
+      return currentUserRole === 'student' ? 'flex-start' : 'flex-end';
+    }
+    
+    // Other user's messages go on the left
     return 'flex-start';
   };
 
   const getBubbleColor = () => {
-    switch (type) {
-      case 'teacher':
-        return '#2196F3'; // Blue
-      case 'ai':
-        return '#4CAF50'; // Green
-      case 'student':
-        return theme.colors.surfaceVariant;
-    }
+    const alignment = getAlignment();
+    
+    if (type === 'ai') return '#4CAF50'; // Green for AI
+    if (alignment === 'flex-end') return '#E5E7EB'; // Gray for current user (right side)
+    return '#2196F3'; // Blue for other user (left side)
   };
 
   const getTextColor = () => {
-    return type === 'student' ? theme.colors.onSurface : '#FFFFFF';
+    const alignment = getAlignment();
+    
+    if (type === 'ai') return '#FFFFFF'; // White text on green
+    if (alignment === 'flex-end') return '#374151'; // Dark text on gray (current user)
+    return '#FFFFFF'; // White text on blue (other user)
   };
 
   const formatTime = (timestamp: string) => {
@@ -72,7 +77,23 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
     }
   };
 
-  const color = getBubbleColor();
+  const getBubbleStyle = (): ViewStyle => {
+    const alignment = getAlignment();
+    const baseRadius = theme.borderRadius.lg;
+    
+    return {
+      backgroundColor: getBubbleColor(),
+      borderRadius: baseRadius,
+      // Reduce the corner radius for the appropriate corner based on alignment
+      borderTopLeftRadius: alignment === 'flex-start' ? baseRadius : baseRadius,
+      borderTopRightRadius: alignment === 'flex-end' ? baseRadius : baseRadius,
+      borderBottomLeftRadius: alignment === 'flex-start' ? theme.borderRadius.xs : baseRadius,
+      borderBottomRightRadius: alignment === 'flex-end' ? theme.borderRadius.xs : baseRadius,
+      padding: theme.spacing.md,
+      maxWidth: '80%',
+      minWidth: 100,
+    };
+  };
 
   if (isLoading) {
     return (
@@ -102,11 +123,7 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
       testID={testID}
     >
       <Surface
-        style={[
-          styles.bubble,
-          type === 'student' ? styles.studentBubble : styles.otherBubble,
-          { backgroundColor: color },
-        ]}
+        style={getBubbleStyle()}
         elevation={type === 'student' ? 1 : 2}
       >
         <Text 

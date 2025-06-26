@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Pressable, Alert } from 'react-native';
-import { Text } from 'react-native-paper';
+import { View, Pressable, Alert, Text } from 'react-native';
 import { useMode } from '@/contexts/ModeContext';
 import { useAuth } from '@/contexts/AuthContext';
 

@@ -14,6 +14,7 @@ interface AIState {
   
   // Actions
   initializeThread: (studentId: string, teacherId: string) => Promise<void>;
+  initializeExistingThread: (threadId: string) => Promise<void>;
   initializeDefaultThread: () => Promise<void>; // Helper for testing with Hutch users
   fetchMessages: (threadId?: string) => Promise<void>;
   sendMessage: (content: string, imageUri?: string, mode?: 'ai' | 'teacher', lessonId?: string, plantId?: string) => Promise<void>;
@@ -40,6 +41,20 @@ export const useAIStore = create<AIState>()(
           await get().fetchMessages(thread.id);
         } catch (error) {
           console.error('Error initializing thread:', error);
+          set({ error: 'Failed to initialize conversation', isLoading: false });
+        }
+      },
+
+      initializeExistingThread: async (threadId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          // Set the thread ID directly
+          set({ currentThreadId: threadId });
+          
+          // Fetch existing messages for this thread
+          await get().fetchMessages(threadId);
+        } catch (error) {
+          console.error('Error initializing existing thread:', error);
           set({ error: 'Failed to initialize conversation', isLoading: false });
         }
       },
