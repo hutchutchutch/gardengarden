@@ -20,7 +20,7 @@ export default function ProfileScreen() {
   const [classLoading, setClassLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch all students when component mounts (only if we're a teacher)
+    // Fetch all students when component mounts (for both teachers and students)
     const fetchStudents = async () => {
       try {
         const allStudents = await getAllStudents();
@@ -30,10 +30,10 @@ export default function ProfileScreen() {
       }
     };
     
-    if (user?.role === 'teacher') {
+    if (user) {
       fetchStudents();
     }
-  }, [user?.role]);
+  }, [user]);
 
   useEffect(() => {
     // Fetch class name when user changes
@@ -146,20 +146,17 @@ export default function ProfileScreen() {
           </Text>
         </View>
         
-        {/* Student Switcher - Only show for teachers */}
-        {user?.role === 'teacher' && (
+        {/* Student Switcher - Show for both teachers and students */}
+        {user && (
           <Pressable
             style={styles.studentSwitcher}
             onPress={() => setShowStudentPicker(true)}
           >
-            <Text style={styles.profileName}>Viewing: {user?.name || 'Select Student'}</Text>
+            <Text style={styles.profileName}>
+              {user.role === 'teacher' ? `Viewing: ${user.name || 'Select Student'}` : user.name || 'Select Student'}
+            </Text>
             <ChevronDown size={20} color={colors.textLight} />
           </Pressable>
-        )}
-        
-        {/* Regular name display */}
-        {user?.role === 'student' && (
-          <Text style={styles.profileName}>{user?.name || 'Garden Student'}</Text>
         )}
         
         <Text style={styles.profileClass}>
