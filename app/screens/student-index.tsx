@@ -13,7 +13,6 @@ import {
   GSModeToggle,
   GSIconButton,
   GSHealthBadge,
-  GSStatCard,
   GSButton,
   GSGuidanceCard,
   GSCollapsible,
@@ -184,6 +183,14 @@ export default function StudentIndexScreen() {
 
   const tips = getAnalysisTips();
 
+  // Get current day analysis data (prefer latest analysis, fallback to yesterday's feedback)
+  const getCurrentAnalysisData = () => {
+    if (latestAnalysis) {
+      return latestAnalysis;
+    }
+    return yesterdaysFeedback;
+  };
+
   const completedTasksPercentage = todaysTasks.length > 0 
     ? Math.round((todaysTasks.filter(t => t.isCompleted).length / todaysTasks.length) * 100)
     : 0;
@@ -300,30 +307,13 @@ export default function StudentIndexScreen() {
                   plantName={activePlant.name}
                   dayNumber={plantProgress.dayNumber || 1}
                   healthScore={plantProgress.healthScore || 0}
-                  analysis="Thriving! Your plant is showing excellent growth patterns."
+                  currentStage={plantProgress.currentStage}
+                  streak={plantProgress.streak}
+                  height={plantProgress.height}
+                  positiveSigns={getCurrentAnalysisData()?.positive_signs || []}
+                  areasForImprovement={getCurrentAnalysisData()?.areas_for_improvement || []}
                 />
               </View>
-
-              {/* Horizontal scrollable stats */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }}>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <GSStatCard 
-                    label="Stage" 
-                    value={plantProgress.currentStage} 
-                    icon="sprout" 
-                  />
-                  <GSStatCard 
-                    label="Streak" 
-                    value={`${plantProgress.streak} days`} 
-                    icon="flame" 
-                  />
-                  <GSStatCard 
-                    label="Health" 
-                    value={`${plantProgress.healthScore}%`} 
-                    icon="heart" 
-                  />
-                </View>
-              </ScrollView>
 
               {/* Today's Photo CTA */}
               <View style={{ marginTop: 16 }}>

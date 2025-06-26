@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Card, Text, Surface, IconButton, ProgressBar } from 'react-native-paper';
-import { View, StyleSheet, Image, Dimensions } from 'react-native';
+import { Card, Text, Surface, IconButton } from 'react-native-paper';
+import { View, StyleSheet, Dimensions } from 'react-native';
 import { useAppTheme } from '../../config/theme';
 import { GSHealthBadge } from './GSHealthBadge';
 import { ShimmerPlaceholder } from './ShimmerPlaceholder';
+import { GSIconButton } from './GSIconButton';
+import { GSChip } from './GSChip';
 
 interface GSPlantCardProps {
   imageUrl?: string | null;
@@ -11,7 +13,11 @@ interface GSPlantCardProps {
   plantName: string;
   dayNumber: number;
   healthScore: number;
-  analysis?: string;
+  currentStage?: string;
+  streak?: number;
+  height?: string;
+  positiveSigns?: string[];
+  areasForImprovement?: string[];
   onExpand?: () => void;
   isLoading?: boolean;
   testID?: string;
@@ -26,14 +32,17 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
   plantName,
   dayNumber,
   healthScore,
-  analysis,
+  currentStage,
+  streak,
+  height,
+  positiveSigns = [],
+  areasForImprovement = [],
   onExpand,
   isLoading = false,
   testID = 'gs-plant-card',
 }) => {
   const theme = useAppTheme();
   const [expanded, setExpanded] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
 
   if (isLoading) {
     return (
@@ -46,24 +55,23 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
           },
         ]}
       >
-        <View style={styles.imageContainer}>
-          <ShimmerPlaceholder width="100%" height={200} />
-          
-          <View style={styles.healthBadgeOverlay}>
-            <ShimmerPlaceholder width={60} height={24} borderRadius={12} />
-          </View>
-          
-          <Surface style={[styles.dayBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <ShimmerPlaceholder width={60} height={14} borderRadius={7} />
-          </Surface>
-        </View>
-        
         <Card.Content style={styles.content}>
           <View style={styles.header}>
             <View style={styles.info}>
-              <ShimmerPlaceholder width={100} height={18} borderRadius={4} style={{ marginBottom: 4 }} />
-              <ShimmerPlaceholder width={60} height={14} borderRadius={4} />
+              <View style={styles.titleRow}>
+                <ShimmerPlaceholder width={100} height={18} borderRadius={4} />
+                <View style={styles.badgeContainer}>
+                  <ShimmerPlaceholder width={50} height={20} borderRadius={10} />
+                  <ShimmerPlaceholder width={40} height={20} borderRadius={10} />
+                </View>
+              </View>
+              <ShimmerPlaceholder width={60} height={14} borderRadius={4} style={{ marginTop: 4 }} />
             </View>
+          </View>
+          <View style={styles.statsRow}>
+            <ShimmerPlaceholder width={60} height={40} borderRadius={8} />
+            <ShimmerPlaceholder width={60} height={40} borderRadius={8} />
+            <ShimmerPlaceholder width={60} height={40} borderRadius={8} />
           </View>
         </Card.Content>
       </Card>
@@ -86,58 +94,36 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
       ]}
       testID={testID}
     >
-      <View style={styles.imageContainer}>
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.image}
-            onLoadStart={() => setImageLoading(true)}
-            onLoadEnd={() => setImageLoading(false)}
-            testID={`${testID}-image`}
-          />
-        ) : (
-          <View style={[styles.image, styles.placeholderImage, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-              No Image
-            </Text>
-          </View>
-        )}
-        
-        {imageLoading && imageUrl && (
-          <View style={[styles.loadingOverlay, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <ProgressBar indeterminate color={theme.colors.primary} />
-          </View>
-        )}
 
-        <View style={styles.healthBadgeOverlay}>
-          <GSHealthBadge
-            score={healthScore}
-            size="medium"
-            showLabel={false}
-            testID={`${testID}-health`}
-          />
-        </View>
-
-        <Surface style={[styles.dayBadge, { backgroundColor: theme.colors.primaryContainer }]}>
-          <Text 
-            variant="labelMedium" 
-            style={{ color: theme.colors.onPrimaryContainer, fontWeight: '600' }}
-          >
-            Day {dayNumber}
-          </Text>
-        </Surface>
-      </View>
 
       <Card.Content style={styles.content}>
         <View style={styles.header}>
           <View style={styles.info}>
-            <Text 
-              variant="titleMedium" 
-              style={[styles.studentName, { color: theme.colors.onSurface }]}
-              numberOfLines={1}
-            >
-              {studentName}
-            </Text>
+            <View style={styles.titleRow}>
+              <Text 
+                variant="titleMedium" 
+                style={[styles.studentName, { color: theme.colors.onSurface }]}
+                numberOfLines={1}
+              >
+                {studentName}
+              </Text>
+              <View style={styles.badgeContainer}>
+                <Surface style={[styles.dayBadgeCompact, { backgroundColor: theme.colors.primaryContainer }]}>
+                  <Text 
+                    variant="labelSmall" 
+                    style={{ color: theme.colors.onPrimaryContainer, fontWeight: '600' }}
+                  >
+                    Day {dayNumber}
+                  </Text>
+                </Surface>
+                <GSHealthBadge
+                  score={healthScore}
+                  size="small"
+                  showLabel={false}
+                  testID={`${testID}-health`}
+                />
+              </View>
+            </View>
             <Text 
               variant="bodySmall" 
               style={[styles.plantName, { color: theme.colors.textLight }]}
@@ -146,7 +132,7 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
             </Text>
           </View>
 
-          {analysis && (
+          {(positiveSigns.length > 0 || areasForImprovement.length > 0) && (
             <IconButton
               icon={expanded ? 'chevron-up' : 'chevron-down'}
               size={20}
@@ -156,14 +142,58 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
           )}
         </View>
 
-        {expanded && analysis && (
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          {currentStage && (
+            <View style={styles.statItem}>
+              <GSIconButton icon="sprout" onPress={() => {}} size={16} color={theme.colors.primary} />
+              <Text variant="labelSmall" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Stage</Text>
+              <Text variant="labelMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>{currentStage}</Text>
+            </View>
+          )}
+          {streak && (
+            <View style={styles.statItem}>
+              <GSIconButton icon="flame" onPress={() => {}} size={16} color={theme.colors.primary} />
+              <Text variant="labelSmall" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Streak</Text>
+              <Text variant="labelMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>{streak} days</Text>
+            </View>
+          )}
+          {height && (
+            <View style={styles.statItem}>
+              <GSIconButton icon="ruler" onPress={() => {}} size={16} color={theme.colors.primary} />
+              <Text variant="labelSmall" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Height</Text>
+              <Text variant="labelMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>{height}cm</Text>
+            </View>
+          )}
+        </View>
+
+        {expanded && (positiveSigns.length > 0 || areasForImprovement.length > 0) && (
           <View style={styles.analysisContainer}>
-            <Text 
-              variant="bodyMedium" 
-              style={[styles.analysis, { color: theme.colors.onSurfaceVariant }]}
-            >
-              {analysis}
-            </Text>
+            {positiveSigns.length > 0 && (
+              <View style={styles.signSection}>
+                <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                  Positive Signs
+                </Text>
+                <View style={styles.chipContainer}>
+                  {positiveSigns.map((sign, index) => (
+                    <GSChip key={index} label={sign} variant="success" />
+                  ))}
+                </View>
+              </View>
+            )}
+            
+            {areasForImprovement.length > 0 && (
+              <View style={[styles.signSection, positiveSigns.length > 0 && { marginTop: 12 }]}>
+                <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                  Areas for Improvement
+                </Text>
+                <View style={styles.chipContainer}>
+                  {areasForImprovement.map((area, index) => (
+                    <GSChip key={index} label={area} variant="warning" />
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
         )}
       </Card.Content>
@@ -178,53 +208,36 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: 'hidden',
   },
-  imageContainer: {
-    position: 'relative',
-    height: 200,
-    overflow: 'hidden',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  placeholderImage: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  healthBadgeOverlay: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-  },
-  dayBadge: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    elevation: 2,
-  },
   content: {
     padding: 16,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   info: {
     flex: 1,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dayBadgeCompact: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
   studentName: {
     fontWeight: '600',
-    marginBottom: 2,
+    flex: 1,
   },
   plantName: {
     lineHeight: 16,
@@ -235,7 +248,34 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(0, 0, 0, 0.08)',
   },
-  analysis: {
-    lineHeight: 20,
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statLabel: {
+    marginTop: 4,
+    fontSize: 10,
+  },
+  statValue: {
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  signSection: {
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
 }); 
