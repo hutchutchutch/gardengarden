@@ -23,7 +23,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const [message, setMessage] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(photoUri || null);
   const [mode, setMode] = useState<'ai' | 'teacher'>(initialMode);
-  const { messages, isLoading, sendMessage, fetchMessages } = useAIStore();
+  const { messages, isLoading, sendMessage, fetchMessages, initializeThread, initializeDefaultThread } = useAIStore();
   const { user } = useAuth();
   const { plants } = usePlantStore();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -34,7 +34,15 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const lessonId = currentPlant?.lessonId;
 
   useEffect(() => {
-    fetchMessages();
+    const initializeChat = async () => {
+      if (user) {
+        // Use one shared thread that contains both AI and teacher messages
+        // For testing, use the default thread with Hutch users
+        await initializeDefaultThread();
+      }
+    };
+
+    initializeChat();
     
     // If we have analysis results, show them
     if (analysis && mode === 'ai') {
@@ -46,7 +54,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
       
       sendMessage(analysisMessage, photoUri, 'ai', lessonId, plantId);
     }
-  }, [fetchMessages]);
+  }, [user, mode]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -86,10 +94,9 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
     setMode(mode === 'ai' ? 'teacher' : 'ai');
   };
 
-  // Filter messages based on mode
-  const filteredMessages = messages.filter(msg => 
-    mode === 'ai' ? msg.recipientId === 'ai-assistant' : msg.recipientId !== 'ai-assistant'
-  );
+  // For now, show all messages in the current thread
+  // In the future, we might want to filter by message type or have separate threads for AI vs teacher
+  const filteredMessages = messages;
 
   return (
     <KeyboardAvoidingView
@@ -97,24 +104,6 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={100}
     >
-      {/* Mode Toggle - Only show for students */}
-      {!isTeacher && (
-        <View style={styles.modeToggleContainer}>
-          <Text style={[styles.modeLabel, mode === 'ai' && styles.modeLabelActive]}>
-            AI Assistant
-          </Text>
-          <Switch
-            value={mode === 'teacher'}
-            onValueChange={toggleMode}
-            trackColor={{ false: colors.secondary, true: colors.primaryDark }}
-            thumbColor={colors.white}
-          />
-          <Text style={[styles.modeLabel, mode === 'teacher' && styles.modeLabelActive]}>
-            Teacher
-          </Text>
-        </View>
-      )}
-
       <ScrollView
         ref={scrollViewRef}
         style={styles.messagesContainer}
@@ -130,18 +119,30 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
             </Text>
           </View>
         ) : (
-          filteredMessages.map((msg) => (
-            <GSChatBubble
-              key={msg.id}
-              type={msg.role === 'user' ? 'student' : mode === 'ai' ? 'ai' : 'teacher'}
-              message={msg.content}
-              timestamp={msg.timestamp}
-              showSources={mode === 'ai' && msg.role === 'assistant' && msg.sources && msg.sources.length > 0}
-              sources={msg.sources}
-              isRead={true}
-              isLoading={false}
-            />
-          ))
+          filteredMessages.map((msg) => {
+            // Determine bubble type based on actual message role/sender
+            let bubbleType: 'student' | 'ai' | 'teacher' = 'student';
+            if (msg.role === 'user') {
+              bubbleType = 'student';
+            } else if (msg.role === 'assistant') {
+              bubbleType = 'ai';
+            } else if (msg.role === 'teacher') {
+              bubbleType = 'teacher';
+            }
+            
+            return (
+              <GSChatBubble
+                key={msg.id}
+                type={bubbleType}
+                message={msg.content}
+                timestamp={msg.timestamp}
+                showSources={bubbleType === 'ai' && msg.sources && msg.sources.length > 0}
+                sources={msg.sources}
+                isRead={true}
+                isLoading={false}
+              />
+            );
+          })
         )}
         {isLoading && (
           <GSChatBubble
@@ -165,6 +166,25 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
             <Text style={styles.placeholderText}>No Image</Text>
           </View>
         )}
+        </View>
+      )}
+
+      {/* Mode Toggle - Only show for students - Above input */}
+      {!isTeacher && (
+        <View style={styles.modeToggleContainer}>
+          <Text style={styles.chatWithLabel}>Chat with: </Text>
+          <Text style={[styles.modeLabel, mode === 'ai' && styles.modeLabelActive]}>
+            AI Assistant
+          </Text>
+          <Switch
+            value={mode === 'teacher'}
+            onValueChange={toggleMode}
+            trackColor={{ false: colors.secondary, true: colors.primaryDark }}
+            thumbColor={colors.white}
+          />
+          <Text style={[styles.modeLabel, mode === 'teacher' && styles.modeLabelActive]}>
+            Teacher
+          </Text>
         </View>
       )}
 
@@ -204,6 +224,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.grayLight,
+  },
+  chatWithLabel: {
+    fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+    marginRight: 8,
   },
   modeLabel: {
     fontSize: 16,

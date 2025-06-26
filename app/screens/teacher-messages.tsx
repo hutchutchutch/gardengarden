@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Image, Pressable, ActivityIndicator, FlatList } from 'react-native';
+import { View, Pressable, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MessageService, MessageThread } from '@/services/message-service';
@@ -21,6 +21,12 @@ export default function TeacherMessagesScreen() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'unread' | 'online'>('all');
+
+  // Helper function to get student initials
+  const getStudentInitials = (studentName?: string) => {
+    if (!studentName) return 'U';
+    return studentName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
+  };
 
   // Fetch messages on component mount and when filters change
   useEffect(() => {
@@ -123,12 +129,22 @@ export default function TeacherMessagesScreen() {
             <Pressable onPress={() => handleMessagePress(item)}>
               <GSCard variant="filled" padding="medium" margin="none" style={{ marginHorizontal: 16, marginBottom: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  {/* Student Avatar */}
-                  <View style={{ position: 'relative' }}>
-                    <Image 
-                      source={{ uri: item.student?.profile_image || 'https://picsum.photos/40/40?random=default' }}
-                      style={{ width: 48, height: 48, borderRadius: 24 }}
-                    />
+                  {/* Student Avatar - Display Initials */}
+                  <View style={{ 
+                    width: 48, 
+                    height: 48, 
+                    borderRadius: 24, 
+                    backgroundColor: '#3B82F6',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Text style={{ 
+                      color: 'white', 
+                      fontSize: 18, 
+                      fontWeight: '600' 
+                    }}>
+                      {getStudentInitials(item.student?.name)}
+                    </Text>
                   </View>
 
                   {/* Message Content */}

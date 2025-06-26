@@ -80,7 +80,6 @@ export interface AIMessage {
   role: 'user' | 'assistant' | 'teacher';
   content: string;
   timestamp: string;
-  recipientId?: string; // 'ai-assistant' for AI, teacher ID for teacher messages
   sources?: Source[]; // For AI responses that reference lesson materials
 }
 

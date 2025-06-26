@@ -39,9 +39,9 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   const getBubbleColor = () => {
     switch (type) {
       case 'teacher':
-        return '#4CAF50'; // Green
-      case 'ai':
         return '#2196F3'; // Blue
+      case 'ai':
+        return '#4CAF50'; // Green
       case 'student':
         return theme.colors.surfaceVariant;
     }

@@ -4,13 +4,13 @@ export interface MessageThread {
   id: string;
   student_id: string;
   teacher_id: string;
+  thread_type: string;
+  last_message_at: string;
   created_at: string;
-  updated_at: string;
   // Joined data
   student?: {
     id: string;
     name: string;
-    profile_image: string | null;
   };
   last_message?: {
     id: string;
@@ -29,7 +29,8 @@ export interface Message {
   content: string;
   is_read: boolean;
   created_at: string;
-  updated_at: string;
+  ai_sources?: any;
+  read_at?: string;
 }
 
 export interface MessageFilters {
@@ -40,23 +41,23 @@ export interface MessageFilters {
 export class MessageService {
   static async getTeacherMessageThreads(teacherId: string, filters?: MessageFilters): Promise<MessageThread[]> {
     try {
-      // Get message threads with last message and student info
+      // Get message threads with student info
       let query = supabase
         .from('message_threads')
         .select(`
           id,
           student_id,
           teacher_id,
+          thread_type,
+          last_message_at,
           created_at,
-          updated_at,
           student:users!message_threads_student_id_fkey (
             id,
-            name,
-            profile_image
+            name
           )
         `)
         .eq('teacher_id', teacherId)
-        .order('updated_at', { ascending: false });
+        .order('last_message_at', { ascending: false, nullsFirst: false });
 
       const { data: threads, error: threadsError } = await query;
 
@@ -129,16 +130,23 @@ export class MessageService {
         messageThreads = messageThreads.filter(thread => thread.unread_count > 0);
       }
 
+      // Fix student data structure first (Supabase returns array, we want single object)
+      const fixedThreads = messageThreads.map(thread => ({
+        ...thread,
+        student: Array.isArray(thread.student) ? thread.student[0] : thread.student
+      }));
+
       // Apply search filter
+      let filteredThreads = fixedThreads;
       if (filters?.search) {
         const searchLower = filters.search.toLowerCase();
-        messageThreads = messageThreads.filter(thread => 
+        filteredThreads = fixedThreads.filter(thread => 
           thread.student?.name.toLowerCase().includes(searchLower) ||
           thread.last_message?.content.toLowerCase().includes(searchLower)
         );
       }
 
-      return messageThreads;
+      return filteredThreads;
     } catch (error) {
       console.error('Error in getTeacherMessageThreads:', error);
       throw error;
@@ -189,7 +197,8 @@ export class MessageService {
         .from('message_threads')
         .insert({
           student_id: studentId,
-          teacher_id: teacherId
+          teacher_id: teacherId,
+          thread_type: 'teacher_chat'
         })
         .select()
         .single();
@@ -210,7 +219,7 @@ export class MessageService {
     try {
       const { error } = await supabase
         .from('messages')
-        .update({ is_read: true, updated_at: new Date().toISOString() })
+        .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('thread_id', threadId)
         .neq('sender_id', userId)
         .eq('is_read', false);
@@ -248,10 +257,10 @@ export class MessageService {
         throw messageError;
       }
 
-      // Update thread's updated_at timestamp
+      // Update thread's last_message_at timestamp
       const { error: threadError } = await supabase
         .from('message_threads')
-        .update({ updated_at: new Date().toISOString() })
+        .update({ last_message_at: new Date().toISOString() })
         .eq('id', threadId);
 
       if (threadError) {

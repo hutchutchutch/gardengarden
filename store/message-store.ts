@@ -91,7 +91,7 @@ export const useMessageStore = create<MessageState>((set, get) => ({
         // Update last message in thread list
         messageThreads: messageThreads.map(thread => 
           thread.id === threadId 
-            ? { ...thread, last_message: newMessage, updated_at: newMessage.created_at }
+            ? { ...thread, last_message: newMessage, last_message_at: newMessage.created_at }
             : thread
         )
       });
