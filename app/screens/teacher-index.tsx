@@ -140,7 +140,7 @@ export default function TeacherIndex() {
         return;
       }
       
-      // Get all students in class
+      // Get students enrolled in the current lesson (those with plants for this lesson)
       const { data: students } = await supabase
         .from('users')
         .select(`
@@ -151,9 +151,10 @@ export default function TeacherIndex() {
           )
         `)
         .eq('class_id', classData.id)
-        .eq('role', 'student');
+        .eq('role', 'student')
+        .eq('plants.lesson_id', activeLesson.id);
       
-      const totalStudents = students?.length || 0;
+      const enrolledStudents = students?.length || 0;
       
       // Get today's submissions
       const today = new Date();
@@ -179,8 +180,13 @@ export default function TeacherIndex() {
       
       // Calculate stats
       const submissionsToday = todaySubmissions.length;
-      const avgHealth = submissionsToday > 0 
-        ? todaySubmissions.reduce((sum, sub) => sum + (sub.health_score || 0), 0) / submissionsToday
+      
+      // Calculate average health from all enrolled students' current health scores
+      const avgHealth = enrolledStudents > 0 && students && students.length > 0
+        ? students.reduce((sum, student) => {
+            const currentHealth = student.plants[0]?.current_health_score || 0;
+            return sum + currentHealth;
+          }, 0) / enrolledStudents
         : 0;
       
       // Get students who haven't submitted today
@@ -220,20 +226,31 @@ export default function TeacherIndex() {
       
       setUnreadMessages(count || 0);
       
-      // Health distribution
-      const healthDist = {
-        excellent: todaySubmissions.filter(s => s.health_score >= 90).length || 0,
-        good: todaySubmissions.filter(s => s.health_score >= 80 && s.health_score < 90).length || 0,
-        fair: todaySubmissions.filter(s => s.health_score >= 70 && s.health_score < 80).length || 0,
-        poor: todaySubmissions.filter(s => s.health_score < 70).length || 0
+      // Health distribution based on all enrolled students' current health
+      const healthDist = students ? {
+        excellent: students.filter(s => (s.plants[0]?.current_health_score || 0) >= 90).length,
+        good: students.filter(s => {
+          const health = s.plants[0]?.current_health_score || 0;
+          return health >= 80 && health < 90;
+        }).length,
+        fair: students.filter(s => {
+          const health = s.plants[0]?.current_health_score || 0;
+          return health >= 70 && health < 80;
+        }).length,
+        poor: students.filter(s => (s.plants[0]?.current_health_score || 0) < 70).length
+      } : {
+        excellent: 0,
+        good: 0,
+        fair: 0,
+        poor: 0
       };
       
       setClassStats({
-        totalStudents,
+        totalStudents: enrolledStudents,
         submissionsToday,
         averageHealthScore: Math.round(avgHealth),
         plantsNeedingAttention: pendingStudentsList.filter(s => s.needsAttention).length,
-        participationRate: totalStudents > 0 ? Math.round((submissionsToday / totalStudents) * 100) : 0,
+        participationRate: enrolledStudents > 0 ? Math.round((submissionsToday / enrolledStudents) * 100) : 0,
         weeklyHealthScores: [78, 80, 79, 82, 85, 83, Math.round(avgHealth)], // TODO: Calculate actual weekly scores
         healthDistribution: healthDist
       });
@@ -321,12 +338,16 @@ export default function TeacherIndex() {
             {currentLesson ? (
               <GSCard variant="elevated" padding="large">
                 <View style={{ marginBottom: 12 }}>
-                  <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>{currentLesson.name}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-                    <GSChip label={currentLesson.plant_type} />
-                    <View style={{ marginLeft: 8 }}>
-                      <GSBadge label={`Day ${Math.max(1, Math.floor((Date.now() - new Date(currentLesson.start_date).getTime()) / (1000 * 60 * 60 * 24)))} of ${currentLesson.expected_duration_days}`} variant="secondary" />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 18, fontWeight: '600', color: '#000', flex: 1 }}>{currentLesson.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Feather name="users" size={16} color="#666" style={{ marginRight: 4 }} />
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: '#666' }}>{classStats.totalStudents}</Text>
                     </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
+                    <GSChip label={currentLesson.plant_type} />
+                    <GSBadge label={`Day ${Math.max(1, Math.floor((Date.now() - new Date(currentLesson.start_date).getTime()) / (1000 * 60 * 60 * 24)))} of ${currentLesson.expected_duration_days}`} variant="secondary" />
                   </View>
                 </View>
                 
