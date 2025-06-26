@@ -227,6 +227,104 @@ export class PhotoService {
   }
 
   /**
+   * Upload image for chat and analyze with conversation context
+   */
+  static async uploadAndAnalyzeForChat(
+    imageUri: string,
+    userId: string,
+    threadId: string,
+    conversationHistory: Array<{
+      role: string;
+      content: string;
+      timestamp: string;
+    }>,
+    plantId?: string,
+    lessonId?: string
+  ): Promise<{ success: boolean; photoUrl?: string; analysisMessage?: string; error?: string }> {
+    try {
+      // Generate filename for chat images
+      const fileName = `chat-${threadId}-${Date.now()}.jpg`;
+      
+      // Convert HEIC to JPG if necessary
+      const convertedUri = await this.convertHeicToJpg(imageUri);
+      
+      // Compress image for chat (smaller size for faster processing)
+      const compressedUri = await this.compressImage(convertedUri, SaveFormat.JPEG, 800, 0.6);
+      
+      // Convert to blob for upload
+      const response = await fetch(compressedUri);
+      const blob = await response.blob();
+      
+      // Upload to Supabase Storage in chat folder
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('plant-photos')
+        .upload(`chat/${userId}/${fileName}`, blob, {
+          contentType: 'image/jpeg',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        return {
+          success: false,
+          error: 'Failed to upload image'
+        };
+      }
+
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('plant-photos')
+        .getPublicUrl(uploadData.path);
+
+      const photoUrl = publicUrlData.publicUrl;
+
+      // Call the chat image analysis Edge Function
+      const analysisResponse = await supabase.functions.invoke('analyze-chat-image', {
+        body: {
+          imageUrl: photoUrl,
+          threadId: threadId,
+          conversationHistory: conversationHistory,
+          plantId: plantId,
+          lessonId: lessonId
+        }
+      });
+
+      if (analysisResponse.error) {
+        console.error('Analysis error:', analysisResponse.error);
+        return {
+          success: true, // Image uploaded successfully
+          photoUrl,
+          error: 'Image uploaded but analysis failed'
+        };
+      }
+
+      const analysisData = analysisResponse.data;
+      
+      if (!analysisData?.success) {
+        console.error('Analysis failed:', analysisData);
+        return {
+          success: true, // Image uploaded successfully
+          photoUrl,
+          error: 'Image uploaded but analysis failed'
+        };
+      }
+
+      return {
+        success: true,
+        photoUrl,
+        analysisMessage: analysisData.message
+      };
+
+    } catch (error) {
+      console.error('Error in uploadAndAnalyzeForChat:', error);
+      return {
+        success: false,
+        error: 'Unexpected error occurred'
+      };
+    }
+  }
+
+  /**
    * Upload a photo and trigger analysis
    */
   static async uploadAndAnalyze(

@@ -12,6 +12,7 @@ import { Image } from 'expo-image';
 import { AIPlantAnalysis } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { GSChatBubble } from './ui/GSChatBubble';
+import { PhotoService } from '@/services/photo-service';
 
 interface AIChatProps {
   analysis?: AIPlantAnalysis | null;
@@ -79,25 +80,73 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const handleSend = async () => {
     if (message.trim() === '' && !imageUri) return;
     
-    // Only show loading shimmer for AI mode
-    if (mode === 'ai') {
-      setIsAIThinking(true);
-      
-      // Start a timer to hide loading after response
-      setTimeout(() => {
-        setIsAIThinking(false);
-      }, 3000); // Hide after 3 seconds max
+    let finalImageUrl = imageUri;
+    let aiAnalysisMessage = '';
+    
+    // Handle image upload and analysis for AI mode
+    if (imageUri && mode === 'ai' && user?.id) {
+      try {
+        setIsAIThinking(true);
+        
+        // Get current thread ID and recent message history for context
+        const { currentThreadId } = useAIStore.getState();
+        const conversationHistory = messages.slice(-10).map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp
+        }));
+        
+        // Upload and analyze image with chat context
+        const result = await PhotoService.uploadAndAnalyzeForChat(
+          imageUri,
+          user.id,
+          currentThreadId || 'default',
+          conversationHistory,
+          plantId,
+          lessonId
+        );
+        
+        if (result.success && result.photoUrl) {
+          finalImageUrl = result.photoUrl;
+          aiAnalysisMessage = result.analysisMessage || '';
+        } else {
+          console.error('Chat image analysis failed:', result.error);
+        }
+      } catch (error) {
+        console.error('Error in chat image analysis:', error);
+      }
     }
     
-    // Send the message
-    await sendMessage(message, imageUri || undefined, mode, lessonId, plantId);
+    // Send the user message with image
+    await sendMessage(message, finalImageUrl || undefined, mode, lessonId, plantId);
+    
+    // If we have AI analysis from the image, send it as a follow-up AI message
+    if (aiAnalysisMessage && mode === 'ai') {
+      // Small delay to ensure the user message is sent first
+      setTimeout(() => {
+        sendMessage(aiAnalysisMessage, undefined, 'ai', lessonId, plantId);
+        setIsAIThinking(false);
+      }, 500);
+    } else {
+      // Only show loading shimmer for AI mode without image analysis
+      if (mode === 'ai') {
+        setIsAIThinking(true);
+        
+        // Start a timer to hide loading after response
+        setTimeout(() => {
+          setIsAIThinking(false);
+        }, 3000); // Hide after 3 seconds max
+      }
+      
+      // For teacher mode, hide loading immediately since no response expected
+      if (mode === 'teacher') {
+        setIsAIThinking(false);
+      }
+    }
+    
+    // Clear form
     setMessage('');
     setImageUri(null);
-    
-    // For teacher mode, hide loading immediately since no response expected
-    if (mode === 'teacher') {
-      setIsAIThinking(false);
-    }
   };
 
   const handlePickImage = async () => {
