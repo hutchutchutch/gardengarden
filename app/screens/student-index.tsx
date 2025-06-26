@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, ScrollView, Pressable, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Checkbox } from 'react-native-paper';
 import { usePlantStore } from '@/store/plant-store';
 import { useTaskStore } from '@/store/task-store';
 import { useMode } from '@/contexts/ModeContext';
@@ -39,6 +40,7 @@ export default function StudentIndexScreen() {
   const [latestAnalysis, setLatestAnalysis] = React.useState<ImageAnalysisRecord | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [expandedTipIndex, setExpandedTipIndex] = React.useState<number | null>(null);
+  const [expandedTaskIndex, setExpandedTaskIndex] = React.useState<number | null>(null);
   const [lessonData, setLessonData] = React.useState<any>(null);
 
   // Fetch plant and submission data from Supabase
@@ -197,9 +199,10 @@ export default function StudentIndexScreen() {
     return yesterdaysFeedback;
   };
 
-  const completedTasksPercentage = todaysTasks.length > 0 
-    ? Math.round((todaysTasks.filter(t => t.isCompleted).length / todaysTasks.length) * 100)
-    : 0;
+  // Calculate progress based on points earned vs total points
+  const totalPoints = todaysTasks.reduce((sum, task) => sum + (task.points || 0), 0);
+  const earnedPoints = todaysTasks.filter(t => t.isCompleted).reduce((sum, task) => sum + (task.points || 0), 0);
+  const completedTasksPercentage = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
 
   useEffect(() => {
     if (isTeacherMode) {
@@ -408,15 +411,106 @@ export default function StudentIndexScreen() {
           <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Today's Tasks</Text>
-              {todaysTasks.length > 0 && <GSProgressIndicator progress={completedTasksPercentage / 100} size="small" />}
+              {todaysTasks.length > 0 && (
+                <View style={{ alignItems: 'flex-end' }}>
+                  <GSProgressIndicator progress={completedTasksPercentage / 100} size="small" />
+                  <Text style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                    {earnedPoints}/{totalPoints} points
+                  </Text>
+                </View>
+              )}
             </View>
             
             <View style={{ marginTop: 12 }}>
               {todaysTasks.length > 0 ? (
-                <GSTaskChecklist 
-                  tasks={todaysTasks}
-                  onTaskToggle={handleTaskToggle}
-                />
+                <GSCard variant="elevated" padding="none">
+                  {todaysTasks.map((task, index) => {
+                    const isExpanded = expandedTaskIndex === index;
+                    return (
+                      <View key={task.id}>
+                        {/* Task Row */}
+                        <View style={{ 
+                          flexDirection: 'row', 
+                          alignItems: 'center', 
+                          paddingHorizontal: 16, 
+                          paddingVertical: 12,
+                          borderBottomWidth: index < todaysTasks.length - 1 || isExpanded ? 1 : 0,
+                          borderBottomColor: '#f0f0f0'
+                        }}>
+                          {/* Checkbox */}
+                          <Checkbox
+                            status={task.isCompleted ? 'checked' : 'unchecked'}
+                            onPress={() => handleTaskToggle(task.id)}
+                            color="#4CAF50"
+                          />
+                          
+                          {/* Task Title - Clickable */}
+                          <Pressable 
+                            style={{ flex: 1, marginLeft: 8 }}
+                            onPress={() => setExpandedTaskIndex(isExpanded ? null : index)}
+                          >
+                            <Text style={{ 
+                              fontSize: 15, 
+                              fontWeight: '500', 
+                              color: '#000',
+                              textDecorationLine: task.isCompleted ? 'line-through' : 'none',
+                              opacity: task.isCompleted ? 0.6 : 1
+                            }}>
+                              {task.name}
+                            </Text>
+                          </Pressable>
+                          
+                          {/* Task Points - Clickable */}
+                          <Pressable 
+                            onPress={() => setExpandedTaskIndex(isExpanded ? null : index)}
+                            style={{ 
+                              backgroundColor: task.isCompleted ? '#4CAF50' : '#f5f5f5',
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                              borderRadius: 12,
+                              marginLeft: 8
+                            }}
+                          >
+                            <Text style={{ 
+                              fontSize: 12, 
+                              fontWeight: '600',
+                              color: task.isCompleted ? 'white' : '#666'
+                            }}>
+                              {task.points || 0}pts
+                            </Text>
+                          </Pressable>
+                        </View>
+                        
+                        {/* Task Description - Expandable */}
+                        {isExpanded && (
+                          <View style={{ 
+                            paddingHorizontal: 16, 
+                            paddingVertical: 12, 
+                            backgroundColor: '#f9f9f9',
+                            borderBottomWidth: index < todaysTasks.length - 1 ? 1 : 0,
+                            borderBottomColor: '#f0f0f0'
+                          }}>
+                            {task.description && (
+                              <Text style={{ fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 8 }}>
+                                {task.description}
+                              </Text>
+                            )}
+                            {task.instructions && (
+                              <View>
+                                <Text style={{ fontSize: 13, fontWeight: '500', color: '#333', marginBottom: 4 }}>
+                                  Instructions:
+                                </Text>
+                                <Text style={{ fontSize: 13, color: '#666', lineHeight: 18 }}>
+                                  {task.instructions}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </GSCard>
               ) : (
                 <GSCard variant="elevated" padding="large" style={{ alignItems: 'center' }}>
                   <Text style={{ fontSize: 16, fontWeight: '500', color: '#333' }}>No active lesson</Text>
