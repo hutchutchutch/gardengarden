@@ -13,6 +13,13 @@ export default function ModeToggle({ style }: ModeToggleProps) {
   const { switchAuthMode, studentUser, masterTeacherUser, isDemoMode, user } = useAuth();
 
   const handleModeChange = async (toTeacherMode: boolean) => {
+    console.log('=== MODE TOGGLE DEBUG ===');
+    console.log('Switching to teacher mode:', toTeacherMode);
+    console.log('Current user:', user?.email);
+    console.log('Student user:', studentUser?.email);
+    console.log('Master teacher user:', masterTeacherUser?.email);
+    console.log('Is demo mode:', isDemoMode);
+    
     if (isDemoMode) {
       setIsTeacherMode(toTeacherMode);
       return;
@@ -36,7 +43,9 @@ export default function ModeToggle({ style }: ModeToggleProps) {
     }
 
     // Switch mode and auth
+    console.log('Calling switchAuthMode with:', toTeacherMode ? 'teacher' : 'student');
     await switchAuthMode(toTeacherMode ? 'teacher' : 'student');
+    console.log('=== MODE TOGGLE COMPLETE ===');
   };
 
   // Get display info for current mode

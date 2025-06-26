@@ -39,6 +39,7 @@ export default function StudentIndexScreen() {
   const [latestAnalysis, setLatestAnalysis] = React.useState<ImageAnalysisRecord | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [expandedTipIndex, setExpandedTipIndex] = React.useState<number | null>(null);
+  const [lessonData, setLessonData] = React.useState<any>(null);
 
   // Fetch plant and submission data from Supabase
   const fetchStudentData = async () => {
@@ -74,6 +75,11 @@ export default function StudentIndexScreen() {
           streak: 7, // TODO: Calculate actual streak
           imageUrl: 'https://picsum.photos/400/300?random=plant'
         });
+        
+        // Store lesson data
+        if (plantData.lesson) {
+          setLessonData(plantData.lesson);
+        }
       }
       
       // Fetch latest analysis for current stage info
@@ -327,8 +333,20 @@ export default function StudentIndexScreen() {
             </View>
           )}
 
-          {/* Yesterday's Feedback Section with proper GSGuidanceCard */}
-          {yesterdaysFeedback && (
+          {/* Yesterday's Feedback Section - Show Welcome on Day 1 */}
+          {(plantProgress?.dayNumber === 1 && lessonData) ? (
+            <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Welcome to Your Garden Journey</Text>
+              
+              <View style={{ marginTop: 12 }}>
+                <GSGuidanceCard
+                  emoji="🌱"
+                  title={`Welcome to ${lessonData.name || 'Your Lesson'}`}
+                  content={lessonData.description || 'Start your exciting journey of growing and learning with plants!'}
+                />
+              </View>
+            </View>
+          ) : yesterdaysFeedback && (
             <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Yesterday's Feedback</Text>
               

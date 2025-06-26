@@ -423,18 +423,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchAuthMode = async (role: 'student' | 'teacher') => {
     if (isDemoMode) return;
     
+    console.log('=== SWITCH AUTH MODE DEBUG ===');
     console.log('Switching to mode:', role);
-    console.log('Current studentUser:', studentUser?.email);
-    console.log('Current masterTeacherUser:', masterTeacherUser?.email);
+    console.log('Current user:', user?.email, user?.id);
+    console.log('Current studentUser:', studentUser?.email, studentUser?.id);
+    console.log('Current masterTeacherUser:', masterTeacherUser?.email, masterTeacherUser?.id);
+    console.log('Current isTeacherMode:', isTeacherMode);
     
     if (role === 'student') {
       // Switching back to student mode
       if (studentUser) {
+        console.log('✅ Setting user to studentUser:', studentUser.email);
         setUser(studentUser);
         setIsTeacherMode(false);
-        console.log('Restored student user:', studentUser.email);
+        console.log('✅ Restored student user:', studentUser.email);
       } else {
-        console.warn('No student user to restore');
+        console.warn('❌ No student user to restore');
         setUser(null);
         setIsTeacherMode(false);
       }
@@ -445,49 +449,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Update the stored student user to ensure it's current
         setStudentUser(user);
         await storage.setItem('studentUser', JSON.stringify(user));
-        console.log('Preserved current student user:', user.email);
+        console.log('✅ Preserved current student user:', user.email);
       }
       
       // Now switch to teacher
       if (masterTeacherUser) {
+        console.log('✅ Setting user to masterTeacherUser:', masterTeacherUser.email);
         setUser(masterTeacherUser);
         setIsTeacherMode(true);
-        console.log('Switched to master teacher:', masterTeacherUser.email);
+        console.log('✅ Switched to master teacher:', masterTeacherUser.email, masterTeacherUser.id);
       } else {
         // Try to load master teacher if not already loaded
-        console.log('Master teacher not loaded, attempting to load...');
-        await loadMasterTeacher();
+        console.log('🔍 Master teacher not loaded, attempting to load...');
         
-        // Check again after loading
-        const { data: teacherProfile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', MASTER_TEACHER_EMAIL)
-          .single();
+        try {
+          // Load master teacher from database
+          const { data: teacherProfile, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', MASTER_TEACHER_EMAIL)
+            .single();
+
+          console.log('Teacher profile query result:', { teacherProfile, error });
           
-        if (teacherProfile) {
-          // Map database fields to User interface
-          const userData: User = {
-            id: teacherProfile.id,
-            email: teacherProfile.email,
-            name: teacherProfile.name,
-            role: teacherProfile.role,
-            classId: teacherProfile.class_id, // Map class_id to classId
-            createdAt: teacherProfile.created_at,
-            lastActiveAt: teacherProfile.updated_at,
-            streak: 0 // Default value
-          };
-          
-          setMasterTeacherUser(userData);
-          await storage.setItem('masterTeacherUser', JSON.stringify(userData));
-          setUser(userData);
-          setIsTeacherMode(true);
-          console.log('Loaded and switched to master teacher');
-        } else {
-          console.error('Master teacher account not found in database');
+          if (teacherProfile && !error) {
+            // Map database fields to User interface
+            const userData: User = {
+              id: teacherProfile.id,
+              email: teacherProfile.email,
+              name: teacherProfile.name,
+              role: teacherProfile.role,
+              classId: teacherProfile.class_id, // Map class_id to classId
+              createdAt: teacherProfile.created_at,
+              lastActiveAt: teacherProfile.updated_at,
+              streak: 0 // Default value
+            };
+            
+            console.log('✅ Mapped teacher userData:', userData);
+            
+            setMasterTeacherUser(userData);
+            await storage.setItem('masterTeacherUser', JSON.stringify(userData));
+            setUser(userData);
+            setIsTeacherMode(true);
+            console.log('✅ Loaded and switched to master teacher:', userData.email, userData.id);
+          } else {
+            console.error('❌ Master teacher account not found in database:', error);
+          }
+        } catch (error) {
+          console.error('❌ Error loading master teacher:', error);
         }
       }
     }
+    
+    console.log('=== END SWITCH AUTH MODE DEBUG ===');
   };
 
   const value: AuthContextType = {

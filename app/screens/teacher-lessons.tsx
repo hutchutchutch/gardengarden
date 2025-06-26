@@ -29,7 +29,7 @@ import { format } from 'date-fns';
 
 export default function TeacherLessons() {
   const router = useRouter();
-  const { } = useAuth();
+  const { user } = useAuth();
   const { isTeacherMode } = useMode();
   const theme = useAppTheme();
   const [selectedTab, setSelectedTab] = useState('current');
@@ -46,10 +46,16 @@ export default function TeacherLessons() {
   const loadLessonData = async () => {
     try {
       setLoading(true);
+      
+      if (!user?.id) {
+        console.error('No user ID available for loading lessons');
+        return;
+      }
+
       const [current, completed, upcoming] = await Promise.all([
-        LessonService.getCurrentLesson(),
-        LessonService.getCompletedLessons(),
-        LessonService.getUpcomingLessons()
+        LessonService.getCurrentLesson(user.id),
+        LessonService.getCompletedLessons(user.id),
+        LessonService.getUpcomingLessons(user.id)
       ]);
       setCurrentLesson(current);
       setCompletedLessons(completed);
@@ -64,10 +70,10 @@ export default function TeacherLessons() {
   useEffect(() => {
     if (!isTeacherMode) {
       router.replace('/screens/student-lessons');
-    } else {
+    } else if (user?.id) {
       loadLessonData();
     }
-  }, [isTeacherMode]);
+  }, [isTeacherMode, user?.id]);
 
   const handleCreateLesson = () => {
     router.push({

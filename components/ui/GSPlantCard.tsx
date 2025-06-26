@@ -65,8 +65,8 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
                 <ShimmerPlaceholder width={16} height={16} borderRadius={8} />
                 <ShimmerPlaceholder width={100} height={14} borderRadius={4} />
               </View>
-                          </View>
             </View>
+          </View>
         </Card.Content>
       </Card>
     );
@@ -88,118 +88,118 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
       ]}
       testID={testID}
     >
-
-
-      <Card.Content style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.info}>
-            <View style={styles.titleRow}>
-              <Text 
-                variant="titleMedium" 
-                style={[styles.plantName, { color: theme.colors.onSurface }]}
-                numberOfLines={1}
-              >
-                {plantName}
-              </Text>
-              <View style={styles.badgeContainer}>
-                <Surface style={[styles.dayBadgeCompact, { backgroundColor: theme.colors.primaryContainer }]}>
-                  <Text 
-                    variant="labelSmall" 
-                    style={{ color: theme.colors.onPrimaryContainer, fontWeight: '600' }}
-                  >
-                    Day {dayNumber}
-                  </Text>
-                </Surface>
-                <GSHealthBadge
-                  score={healthScore}
-                  size="small"
-                  showLabel={false}
-                  testID={`${testID}-health`}
-                />
-              </View>
-            </View>
-            {/* First Positive Sign */}
-            {positiveSigns.length > 0 && (
-              <View style={styles.firstSignRow}>
-                <GSIconButton icon="check-circle" onPress={() => {}} size={16} color="#4CAF50" />
+      <View style={{ borderRadius: 12, overflow: 'hidden' }}>
+        <Card.Content style={styles.content}>
+          <View style={styles.header}>
+            <View style={styles.info}>
+              <View style={styles.titleRow}>
                 <Text 
-                  variant="bodySmall" 
-                  style={[styles.firstSignText, { color: theme.colors.onSurfaceVariant }]}
+                  variant="titleMedium" 
+                  style={[styles.plantName, { color: theme.colors.onSurface }]}
+                  numberOfLines={1}
                 >
-                  {positiveSigns[0]}
+                  {plantName}
                 </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Bottom Row with Stage and More Details */}
-        <View style={styles.bottomRow}>
-          {/* Stage on the left */}
-          {currentStage && (
-            <View style={styles.stageBottomRow}>
-              <GSIconButton icon="sprout" onPress={() => {}} size={16} color={theme.colors.primary} />
-              <Text 
-                variant="labelMedium" 
-                style={[styles.stageBottomText, { color: theme.colors.onSurfaceVariant }]}
-              >
-                {currentStage}
-              </Text>
-            </View>
-          )}
-          
-          {/* More Details on the right */}
-          {(positiveSigns.length > 1 || areasForImprovement.length > 0) && (
-            <Pressable onPress={handleExpand} style={styles.moreDetailsButton}>
-              <Text 
-                variant="labelMedium" 
-                style={[styles.moreDetailsText, { color: theme.colors.primary }]}
-              >
-                More details
-              </Text>
-              <IconButton
-                icon={expanded ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                onPress={handleExpand}
-                testID={`${testID}-expand`}
-                style={styles.moreDetailsIcon}
-              />
-            </Pressable>
-          )}
-        </View>
-
-
-
-        {expanded && (positiveSigns.length > 1 || areasForImprovement.length > 0) && (
-          <View style={styles.analysisContainer}>
-            {positiveSigns.length > 1 && (
-              <View style={styles.signSection}>
-                <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                  Additional Positive Signs
-                </Text>
-                <View style={styles.chipContainer}>
-                  {positiveSigns.slice(1).map((sign, index) => (
-                    <GSChip key={index} label={sign} variant="success" />
-                  ))}
+                <View style={styles.badgeContainer}>
+                  <Surface style={[styles.dayBadgeCompact, { backgroundColor: theme.colors.primaryContainer }]}>
+                    <Text 
+                      variant="labelSmall" 
+                      style={{ color: theme.colors.onPrimaryContainer, fontWeight: '600' }}
+                    >
+                      Day {dayNumber}
+                    </Text>
+                  </Surface>
+                  <GSHealthBadge
+                    score={healthScore}
+                    size="small"
+                    showLabel={false}
+                    testID={`${testID}-health`}
+                  />
                 </View>
+              </View>
+              {/* First Positive Sign */}
+              {positiveSigns.length > 0 && (
+                <View style={styles.firstSignRow}>
+                  <GSIconButton icon="check-circle" onPress={() => {}} size={16} color="#4CAF50" />
+                  <Text 
+                    variant="bodySmall" 
+                    style={[styles.firstSignText, { color: theme.colors.onSurfaceVariant }]}
+                  >
+                    {positiveSigns[0]}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Bottom Row with Stage and More Details */}
+          <View style={styles.bottomRow}>
+            {/* Stage on the left */}
+            {currentStage && (
+              <View style={styles.stageBottomRow}>
+                <GSIconButton icon="sprout" onPress={() => {}} size={16} color={theme.colors.primary} />
+                <Text 
+                  variant="labelMedium" 
+                  style={[styles.stageBottomText, { color: theme.colors.onSurfaceVariant }]}
+                >
+                  {currentStage}
+                </Text>
               </View>
             )}
             
-            {areasForImprovement.length > 0 && (
-              <View style={[styles.signSection, positiveSigns.length > 1 && { marginTop: 12 }]}>
-                <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                  Areas for Improvement
+            {/* More Details on the right */}
+            {(positiveSigns.length > 1 || areasForImprovement.length > 0) && (
+              <Pressable onPress={handleExpand} style={styles.moreDetailsButton}>
+                <Text 
+                  variant="labelMedium" 
+                  style={[styles.moreDetailsText, { color: theme.colors.primary }]}
+                >
+                  More details
                 </Text>
-                <View style={styles.chipContainer}>
-                  {areasForImprovement.map((area, index) => (
-                    <GSChip key={index} label={area} variant="warning" />
-                  ))}
-                </View>
-              </View>
+                <IconButton
+                  icon={expanded ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  onPress={handleExpand}
+                  testID={`${testID}-expand`}
+                  style={styles.moreDetailsIcon}
+                />
+              </Pressable>
             )}
           </View>
-        )}
-      </Card.Content>
+
+
+
+          {expanded && (positiveSigns.length > 1 || areasForImprovement.length > 0) && (
+            <View style={styles.analysisContainer}>
+              {positiveSigns.length > 1 && (
+                <View style={styles.signSection}>
+                  <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                    Additional Positive Signs
+                  </Text>
+                  <View style={styles.chipContainer}>
+                    {positiveSigns.slice(1).map((sign, index) => (
+                      <GSChip key={index} label={sign} variant="success" />
+                    ))}
+                  </View>
+                </View>
+              )}
+              
+              {areasForImprovement.length > 0 && (
+                <View style={[styles.signSection, positiveSigns.length > 1 && { marginTop: 12 }]}>
+                  <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                    Areas for Improvement
+                  </Text>
+                  <View style={styles.chipContainer}>
+                    {areasForImprovement.map((area, index) => (
+                      <GSChip key={index} label={area} variant="warning" />
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+        </Card.Content>
+      </View>
     </Card>
   );
 };
@@ -209,7 +209,6 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 12,
     elevation: 2,
-    overflow: 'hidden',
   },
   content: {
     padding: 16,

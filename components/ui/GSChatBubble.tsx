@@ -112,26 +112,32 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
 
         {showSources && sources.length > 0 && type === 'ai' && (
           <Pressable
-            style={[styles.sourcesToggle, { borderTopColor: theme.colors.outline }]}
+            style={[styles.sourcesToggle, { borderTopColor: 'rgba(255, 255, 255, 0.2)' }]}
             onPress={() => setShowExpandedSources(!showExpandedSources)}
           >
-            <Text style={[styles.sourcesToggleText, { color: theme.colors.onSurfaceVariant }]}>
+            <Text style={[styles.sourcesToggleText, { color: getTextColor(), opacity: 0.9 }]}>
               See sources ({sources.length})
             </Text>
             {showExpandedSources ? (
-              <ChevronUp size={16} color={theme.colors.onSurfaceVariant} />
+              <ChevronUp size={16} color={getTextColor()} style={{ opacity: 0.9 }} />
             ) : (
-              <ChevronDown size={16} color={theme.colors.onSurfaceVariant} />
+              <ChevronDown size={16} color={getTextColor()} style={{ opacity: 0.9 }} />
             )}
           </Pressable>
         )}
 
         {showExpandedSources && sources && (
-          <View style={[styles.sourcesContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
+          <View style={styles.sourcesContainer}>
             {sources.map((source, index) => (
               <Pressable
                 key={index}
-                style={[styles.sourceItem, { borderBottomColor: theme.colors.outline }]}
+                style={[
+                  styles.sourceItem,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    shadowColor: theme.colors.shadow,
+                  },
+                ]}
                 onPress={() => handleOpenURL(source.url)}
               >
                 <View style={styles.sourceContent}>
@@ -214,14 +220,17 @@ const styles = StyleSheet.create({
   },
   sourcesContainer: {
     marginTop: 8,
-    borderRadius: 8,
-    overflow: 'hidden',
+    gap: 8,
   },
   sourceItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderBottomWidth: 1,
+    borderRadius: 8,
+    elevation: 1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
   sourceContent: {
     flex: 1,
@@ -250,4 +259,4 @@ const styles = StyleSheet.create({
   timestamp: {
     marginRight: 4,
   },
-}); 
+});

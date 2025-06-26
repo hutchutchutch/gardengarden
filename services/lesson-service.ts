@@ -32,53 +32,169 @@ export interface Lesson {
 }
 
 export class LessonService {
-  // Get current active lesson
-  static async getCurrentLesson(): Promise<Lesson | null> {
+  // Get current active lesson for a specific teacher
+  static async getCurrentLesson(teacherId?: string): Promise<Lesson | null> {
     try {
-      console.log('Fetching current lesson...');
+      console.log('=== LessonService.getCurrentLesson DEBUG ===');
+      console.log('Input teacherId:', teacherId);
       
-      // Get lesson with status='active'
-      const { data: lessons, error } = await supabase
-        .from('lessons')
-        .select('*')
-        .eq('status', 'active');
-
-      console.log('Active lessons query result:', { lessons, error });
-
-      if (error || !lessons || lessons.length === 0) {
-        console.error('No active lesson found');
+      if (!teacherId) {
+        console.error('❌ No teacher ID provided');
         return null;
       }
 
+      // First get the teacher's class
+      console.log('🔍 Step 1: Looking for teacher class...');
+      const { data: teacherClass, error: teacherClassError } = await supabase
+        .from('classes')
+        .select('id')
+        .eq('teacher_id', teacherId)
+        .single();
+
+      console.log('Teacher class query result:', { teacherClass, teacherClassError });
+
+      if (teacherClassError || !teacherClass) {
+        console.error('❌ No class found for teacher:', teacherId, 'Error:', teacherClassError);
+        return null;
+      }
+
+      console.log('✅ Found teacher class:', teacherClass.id);
+
+      // Get active lesson for the teacher's class
+      console.log('🔍 Step 2: Looking for active lessons...');
+      const currentDate = new Date().toISOString();
+      console.log('Current date for comparison:', currentDate);
+      
+      // First, let's test the Supabase connection with a simple query
+      const { data: testQuery, error: testError } = await supabase
+        .from('lessons')
+        .select('id, name, status, class_id')
+        .limit(5);
+      
+      console.log('=== Supabase connection test ===');
+      console.log('All lessons (first 5):', testQuery);
+      console.log('Test error:', testError);
+      
+      // Now test lessons in this specific class
+      const { data: allLessons, error: allError } = await supabase
+        .from('lessons')
+        .select('*')
+        .eq('status', 'active')
+        .eq('class_id', teacherClass.id);
+      
+      console.log('=== Active lessons in class query ===');
+      console.log('Class ID being searched:', teacherClass.id);
+      console.log('Class ID type:', typeof teacherClass.id);
+      console.log('All lessons:', allLessons);
+      console.log('All lessons error:', allError);
+      
+      // Also test without the status filter
+      const { data: classLessons, error: classLessonsError } = await supabase
+        .from('lessons')
+        .select('*')
+        .eq('class_id', teacherClass.id);
+        
+      console.log('=== All lessons in class (no status filter) ===');
+      console.log('Class lessons:', classLessons);
+      console.log('Class error:', classLessonsError);
+      
+      if (allLessons && allLessons.length > 0) {
+        console.log('Found lessons, checking dates manually...');
+        for (const lesson of allLessons) {
+          const startDate = new Date(lesson.start_date);
+          const endDate = new Date(lesson.end_date);
+          const now = new Date(currentDate);
+          
+          console.log(`Lesson "${lesson.name}":`);
+          console.log(`  Start: ${lesson.start_date} (${startDate.getTime()})`);
+          console.log(`  End: ${lesson.end_date} (${endDate.getTime()})`);
+          console.log(`  Now: ${currentDate} (${now.getTime()})`);
+          console.log(`  Start <= Now: ${startDate <= now}`);
+          console.log(`  End >= Now: ${endDate >= now}`);
+          console.log(`  Should match: ${startDate <= now && endDate >= now}`);
+        }
+      }
+      
+      // Now try the original query
+      const { data: lessons, error } = await supabase
+        .from('lessons')
+        .select('*')
+        .eq('status', 'active')
+        .eq('class_id', teacherClass.id)
+        .lte('start_date', currentDate)
+        .gte('end_date', currentDate);
+
+      console.log('=== Filtered lessons query ===');
+      console.log('Query result:', { lessons, error });
+
+      if (error) {
+        console.error('❌ Supabase query error:', error);
+        return null;
+      }
+
+      if (!lessons || lessons.length === 0) {
+        console.log('❌ No active lesson found - lessons array:', lessons);
+        return null;
+      }
+
+      console.log('✅ Found', lessons.length, 'active lesson(s)');
+      
       // Get the first active lesson
       const activeLesson = lessons[0];
+      console.log('Selected lesson:', activeLesson.name, '(ID:', activeLesson.id, ')');
       
       // Fetch lesson_urls separately
+      console.log('🔍 Step 3: Fetching lesson URLs...');
       const { data: urls } = await supabase
         .from('lesson_urls')
         .select('*')
         .eq('lesson_id', activeLesson.id);
       
-      return {
+      console.log('Found', urls?.length || 0, 'lesson URLs');
+      
+      const result = {
         ...activeLesson,
         lesson_urls: urls || []
       };
+      
+      console.log('✅ Final result:', result);
+      console.log('=== END LessonService.getCurrentLesson DEBUG ===');
+      
+      return result;
     } catch (error) {
-      console.error('Error in getCurrentLesson:', error);
+      console.error('❌ Exception in getCurrentLesson:', error);
       return null;
     }
   }
 
-  // Get completed lessons
-  static async getCompletedLessons(): Promise<Lesson[]> {
+  // Get completed lessons for a specific teacher
+  static async getCompletedLessons(teacherId?: string): Promise<Lesson[]> {
     try {
-      // Get lessons where end_date is in the past
+      if (!teacherId) {
+        console.error('No teacher ID provided for completed lessons');
+        return [];
+      }
+
+      // First get the teacher's class
+      const { data: teacherClass, error: completedClassError } = await supabase
+        .from('classes')
+        .select('id')
+        .eq('teacher_id', teacherId)
+        .single();
+
+      if (completedClassError || !teacherClass) {
+        console.error('No class found for teacher:', teacherId);
+        return [];
+      }
+
+      // Get lessons where end_date is in the past for this teacher's class
       const { data, error } = await supabase
         .from('lessons')
         .select(`
           *,
           lesson_urls(*)
         `)
+        .eq('class_id', teacherClass.id)
         .lt('end_date', new Date().toISOString())
         .order('end_date', { ascending: false });
 
@@ -94,16 +210,34 @@ export class LessonService {
     }
   }
 
-  // Get upcoming lessons
-  static async getUpcomingLessons(): Promise<Lesson[]> {
+  // Get upcoming lessons for a specific teacher
+  static async getUpcomingLessons(teacherId?: string): Promise<Lesson[]> {
     try {
-      // Get lessons where start_date is in the future
+      if (!teacherId) {
+        console.error('No teacher ID provided for upcoming lessons');
+        return [];
+      }
+
+      // First get the teacher's class
+      const { data: teacherClass, error: upcomingClassError } = await supabase
+        .from('classes')
+        .select('id')
+        .eq('teacher_id', teacherId)
+        .single();
+
+      if (upcomingClassError || !teacherClass) {
+        console.error('No class found for teacher:', teacherId);
+        return [];
+      }
+
+      // Get lessons where start_date is in the future for this teacher's class
       const { data, error } = await supabase
         .from('lessons')
         .select(`
           *,
           lesson_urls(*)
         `)
+        .eq('class_id', teacherClass.id)
         .gt('start_date', new Date().toISOString())
         .order('start_date', { ascending: true });
 

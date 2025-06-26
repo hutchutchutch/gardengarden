@@ -25,6 +25,7 @@ import { useMode } from '@/contexts/ModeContext';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { supabase } from '@/config/supabase';
+import { LessonService } from '@/services/lesson-service';
 import {
   GSModeToggle,
   GSProgressIndicator,
@@ -115,7 +116,18 @@ export default function TeacherIndex() {
     
     setIsLoading(true);
     try {
-      // Get teacher's class
+      // Get current active lesson using the LessonService
+      const activeLesson = await LessonService.getCurrentLesson(user.id);
+      console.log('Active lesson from service:', activeLesson);
+      setCurrentLesson(activeLesson);
+      
+      if (!activeLesson) {
+        console.log('No active lesson found for teacher');
+        setIsLoading(false);
+        return;
+      }
+
+      // Get teacher's class for other queries
       const { data: classData } = await supabase
         .from('classes')
         .select('*')
@@ -127,18 +139,6 @@ export default function TeacherIndex() {
         setIsLoading(false);
         return;
       }
-      
-      // Get current active lesson - use maybeSingle() to avoid errors
-      const { data: activeLesson } = await supabase
-        .from('lessons')
-        .select('*')
-        .eq('class_id', classData.id)
-        .lte('start_date', new Date().toISOString())
-        .gte('end_date', new Date().toISOString())
-        .maybeSingle();
-      
-      console.log('Active lesson:', activeLesson);
-      setCurrentLesson(activeLesson);
       
       // Get all students in class
       const { data: students } = await supabase
