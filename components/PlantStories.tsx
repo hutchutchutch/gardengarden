@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Pressable, Image, StyleSheet } from 'react-native';
-import { Heart, MessageCircle, Camera, Plus } from 'lucide-react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, ScrollView, Pressable, Image, StyleSheet, Animated } from 'react-native';
+import { Heart, MessageCircle, Camera, Plus, Loader, AlertTriangle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Text } from 'react-native-paper';
@@ -26,9 +26,11 @@ export interface PlantStory {
 interface PlantStoriesProps {
   onAddPhoto?: () => void;
   onStoryPress?: (story: PlantStory) => void;
+  isAnalyzing?: boolean;
+  analysisError?: boolean;
 }
 
-export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesProps) {
+export default function PlantStories({ onAddPhoto, onStoryPress, isAnalyzing = false, analysisError = false }: PlantStoriesProps) {
   const { user } = useAuth();
   const router = useRouter();
   const [stories, setStories] = useState<PlantStory[]>([]);
@@ -102,21 +104,70 @@ export default function PlantStories({ onAddPhoto, onStoryPress }: PlantStoriesP
     }
   };
 
-  const AddStoryButton = () => (
-    <Pressable 
-      style={styles.storyItem}
-      onPress={handleAddPhoto}
-    >
-      <View style={styles.relative}>
-        <View style={styles.addPhotoCircle}>
-          <Plus size={24} color="#64748B" />
+  const AddStoryButton = () => {
+    const spinValue = useRef(new Animated.Value(0)).current;
+
+    // Spinning animation for loading state
+    useEffect(() => {
+      if (isAnalyzing) {
+        const spin = Animated.loop(
+          Animated.timing(spinValue, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          })
+        );
+        spin.start();
+        return () => spin.stop();
+      }
+    }, [isAnalyzing, spinValue]);
+
+    const spin = spinValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0deg', '360deg'],
+    });
+
+    const getButtonContent = () => {
+      if (isAnalyzing) {
+        return {
+          icon: <Animated.View style={{ transform: [{ rotate: spin }] }}><Loader size={24} color="#4CAF50" /></Animated.View>,
+          text: 'Analyzing...',
+          circleStyle: [styles.addPhotoCircle, styles.analyzingCircle]
+        };
+      } else if (analysisError) {
+        return {
+          icon: <AlertTriangle size={24} color="#EF4444" />,
+          text: 'Try Again',
+          circleStyle: [styles.addPhotoCircle, styles.errorCircle]
+        };
+      } else {
+        return {
+          icon: <Plus size={24} color="#64748B" />,
+          text: 'Add Photo',
+          circleStyle: styles.addPhotoCircle
+        };
+      }
+    };
+
+    const { icon, text, circleStyle } = getButtonContent();
+
+    return (
+      <Pressable 
+        style={styles.storyItem}
+        onPress={handleAddPhoto}
+        disabled={isAnalyzing}
+      >
+        <View style={styles.relative}>
+          <View style={circleStyle}>
+            {icon}
+          </View>
         </View>
-      </View>
-      <View style={styles.storyTextContainer}>
-        <Text variant="labelSmall" style={styles.storyName}>Add Photo</Text>
-      </View>
-    </Pressable>
-  );
+        <View style={styles.storyTextContainer}>
+          <Text variant="labelSmall" style={styles.storyName}>{text}</Text>
+        </View>
+      </Pressable>
+    );
+  };
 
   const formatName = (fullName: string) => {
     const nameParts = fullName.split(' ');
@@ -296,5 +347,13 @@ const styles = StyleSheet.create({
   storyName: {
     fontWeight: '500',
     maxWidth: 80,
+  },
+  analyzingCircle: {
+    borderColor: '#4CAF50',
+    borderStyle: 'solid',
+  },
+  errorCircle: {
+    borderColor: '#EF4444',
+    borderStyle: 'solid',
   },
 }); 

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, ScrollView, Pressable, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Checkbox } from 'react-native-paper';
 import { usePlantStore } from '@/store/plant-store';
 import { useTaskStore } from '@/store/task-store';
@@ -41,6 +42,9 @@ export default function StudentIndexScreen() {
   const [expandedTipIndex, setExpandedTipIndex] = React.useState<number | null>(null);
   const [expandedTaskIndex, setExpandedTaskIndex] = React.useState<number | null>(null);
   const [lessonData, setLessonData] = React.useState<any>(null);
+  const [pendingPhotoTaskId, setPendingPhotoTaskId] = React.useState<string | null>(null);
+  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = React.useState(false);
+  const [analysisError, setAnalysisError] = React.useState(false);
 
   // Fetch plant and submission data from Supabase
   const fetchStudentData = async () => {
@@ -214,6 +218,141 @@ export default function StudentIndexScreen() {
   const earnedPoints = todaysTasks.filter(t => t.isCompleted).reduce((sum, task) => sum + (task.points || 0), 0);
   const completedTasksPercentage = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
 
+  // Check for completed photo submissions when returning from camera
+  const checkForPhotoSubmission = React.useCallback(async () => {
+    if (!pendingPhotoTaskId || !user?.id || !activePlant) return;
+
+    try {
+      // Check if there's a recent photo submission (within last 5 minutes)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      
+      const { data: recentSubmission } = await supabase
+        .from('daily_submissions')
+        .select('*')
+        .eq('student_id', user.id)
+        .eq('plant_id', activePlant.id)
+        .gte('created_at', fiveMinutesAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (recentSubmission) {
+        // Mark the photo task as completed
+        await markTaskAsCompleted(pendingPhotoTaskId);
+        setPendingPhotoTaskId(null);
+      }
+    } catch (error) {
+      console.error('Error checking photo submission:', error);
+    }
+  }, [pendingPhotoTaskId, user?.id, activePlant]);
+
+  // Check for ongoing photo analysis
+  const checkAnalysisStatus = React.useCallback(async () => {
+    if (!user?.id || !activePlant) return;
+
+    try {
+      // Check for recent submissions that might be processing
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      
+      const { data: recentSubmissions } = await supabase
+        .from('daily_submissions')
+        .select('id, processing_status, error_message')
+        .eq('student_id', user.id)
+        .eq('plant_id', activePlant.id)
+        .gte('created_at', fiveMinutesAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (recentSubmissions && recentSubmissions.length > 0) {
+        const submission = recentSubmissions[0];
+        
+        if (submission.processing_status === 'processing') {
+          setIsAnalyzingPhoto(true);
+          setAnalysisError(false);
+        } else if (submission.processing_status === 'failed') {
+          setIsAnalyzingPhoto(false);
+          setAnalysisError(true);
+        } else if (submission.processing_status === 'completed') {
+          setIsAnalyzingPhoto(false);
+          setAnalysisError(false);
+          // Refresh the data to show updated plant info
+          fetchStudentData();
+        }
+      } else {
+        setIsAnalyzingPhoto(false);
+        setAnalysisError(false);
+      }
+    } catch (error) {
+      console.error('Error checking analysis status:', error);
+      setIsAnalyzingPhoto(false);
+      setAnalysisError(true);
+    }
+  }, [user?.id, activePlant, fetchStudentData]);
+
+  // Function to mark a task as completed
+  const markTaskAsCompleted = async (taskId: string) => {
+    if (!user?.id || !activePlant) return;
+
+    const task = todaysTasks.find(t => t.id === taskId);
+    if (!task || task.isCompleted) return;
+
+    try {
+      const plantingDate = new Date(activePlant.plantingDate || Date.now());
+      const currentDayNumber = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      // Check if task record exists in student_daily_tasks
+      const { data: existingTask } = await supabase
+        .from('student_daily_tasks')
+        .select('*')
+        .eq('student_id', user.id)
+        .eq('plant_id', activePlant.id)
+        .eq('template_id', taskId)
+        .eq('day_number', currentDayNumber)
+        .single();
+
+      if (existingTask) {
+        // Update existing task
+        await supabase
+          .from('student_daily_tasks')
+          .update({ 
+            completed: true,
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', existingTask.id);
+      } else {
+        // Create new task record
+        await supabase
+          .from('student_daily_tasks')
+          .insert({
+            student_id: user.id,
+            plant_id: activePlant.id,
+            lesson_id: activePlant.lessonId,
+            template_id: taskId,
+            task_name: task.name,
+            task_type: task.taskType,
+            points: task.points,
+            day_number: currentDayNumber,
+            completed: true,
+            completed_at: new Date().toISOString(),
+            task_date: new Date().toISOString().split('T')[0]
+          });
+      }
+
+      // Update local state
+      setTodaysTasks(prev => 
+        prev.map(t => 
+          t.id === taskId 
+            ? { ...t, isCompleted: true }
+            : t
+        )
+      );
+
+      console.log('Photo task marked as completed:', taskId);
+    } catch (error) {
+      console.error('Error marking task as completed:', error);
+    }
+  };
+
   useEffect(() => {
     if (isTeacherMode) {
       router.replace('/screens/teacher-index');
@@ -222,11 +361,50 @@ export default function StudentIndexScreen() {
     }
   }, [isTeacherMode, user?.id]);
 
+  // Check for photo submission when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (pendingPhotoTaskId) {
+        // Small delay to ensure photo processing is complete
+        const timer = setTimeout(() => {
+          checkForPhotoSubmission();
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+      
+      // Also check analysis status when screen comes into focus
+      checkAnalysisStatus();
+      
+      // Set up polling for analysis status if analyzing
+      let pollInterval: ReturnType<typeof setInterval> | undefined;
+      if (isAnalyzingPhoto) {
+        pollInterval = setInterval(() => {
+          checkAnalysisStatus();
+        }, 3000); // Check every 3 seconds
+      }
+      
+      return () => {
+        if (pollInterval) clearInterval(pollInterval);
+      };
+    }, [checkForPhotoSubmission, checkAnalysisStatus, pendingPhotoTaskId, isAnalyzingPhoto])
+  );
+
   const handleTaskToggle = async (taskId: string) => {
     if (!user?.id || !activePlant) return;
 
     const task = todaysTasks.find(t => t.id === taskId);
     if (!task) return;
+
+    // Check if this is a photo task and it's currently unchecked
+    const isPhotoTask = task.name.toLowerCase().includes('take') && task.name.toLowerCase().includes('photo') ||
+                       task.name.toLowerCase().includes('photo');
+    
+    if (isPhotoTask && !task.isCompleted) {
+      // Set pending photo task and navigate to camera screen
+      setPendingPhotoTaskId(taskId);
+      router.push('/(tabs)/camera');
+      return;
+    }
 
     try {
       const plantingDate = new Date(activePlant.plantingDate || Date.now());
@@ -321,8 +499,13 @@ export default function StudentIndexScreen() {
             </View>
             
             <PlantStories 
-              onAddPhoto={() => router.push('/(tabs)/camera')}
+              onAddPhoto={() => {
+                setAnalysisError(false);
+                router.push('/(tabs)/camera');
+              }}
               onStoryPress={(story) => console.log('View story:', story.id)}
+              isAnalyzing={isAnalyzingPhoto}
+              analysisError={analysisError}
             />
           </View>
 

@@ -125,44 +125,8 @@ export default function CameraScreen() {
       const result = await PhotoService.uploadAndAnalyze(capturedImage, user.id);
       
       if (result.success && result.analysisId) {
-        // Poll for analysis completion
-        let attempts = 0;
-        const maxAttempts = 30; // 30 seconds max wait
-        
-        while (attempts < maxAttempts) {
-          const analysisData = await ImageAnalysisService.getAnalysisStatus(result.analysisId);
-          
-          if (analysisData?.processing_status === 'completed') {
-            // Convert to display format
-            const displayResult = {
-              healthScore: getHealthScoreFromRating(analysisData.health_rating),
-              issues: analysisData.areas_for_improvement || [],
-              growthProgress: `${analysisData.current_stage_name}: ${analysisData.current_stage_description}`,
-              recommendations: analysisData.tips?.map(tip => tip.title) || []
-            };
-            
-            setAnalysisResult(displayResult);
-            
-            // Update plant with new data
-            if (activePlant) {
-              await updatePlant(activePlant.id, {
-                healthScore: displayResult.healthScore,
-                lastPhotoDate: new Date().toISOString()
-              });
-            }
-            break;
-          } else if (analysisData?.processing_status === 'failed') {
-            throw new Error(analysisData.error_message || 'Analysis failed');
-          }
-          
-          // Wait 1 second before next check
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          attempts++;
-        }
-        
-        if (attempts >= maxAttempts) {
-          throw new Error('Analysis timed out');
-        }
+        // Navigate back to student index immediately after starting analysis
+        router.push('/(tabs)');
       } else {
         throw new Error(result.error || 'Failed to upload and analyze image');
       }
@@ -170,7 +134,6 @@ export default function CameraScreen() {
     } catch (error) {
       console.error('Analysis failed:', error);
       Alert.alert('Analysis Failed', 'Unable to analyze your plant photo. Please try again.');
-    } finally {
       setIsAnalyzing(false);
     }
   };
@@ -227,73 +190,7 @@ export default function CameraScreen() {
     );
   }
 
-  // Analysis Results Screen
-  if (analysisResult) {
-    const healthColor = analysisResult.healthScore >= 80 ? '#10B981' :
-                       analysisResult.healthScore >= 70 ? '#059669' :
-                       analysisResult.healthScore >= 60 ? '#F59E0B' : '#EF4444';
 
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.contentPadding}>
-          <GSCard variant="elevated" padding="large">
-            <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 16, color: '#000' }}>Analysis Complete</Text>
-              {/* Health Score */}
-              <View style={styles.healthScoreContainer}>
-                <View style={[styles.healthScoreCircle, { backgroundColor: `${healthColor}20` }]}>
-                  <Text variant="headlineMedium" style={[styles.healthScoreText, { color: healthColor }]}>
-                    {analysisResult.healthScore}%
-                  </Text>
-                </View>
-                <Text variant="bodySmall" style={styles.healthScoreChange}>
-                  {analysisResult.healthScore > activePlant.healthScore ? '↑' : '↓'} 
-                  {Math.abs(analysisResult.healthScore - activePlant.healthScore)}% from yesterday
-                </Text>
-              </View>
-
-              {/* Issues Detected */}
-              {analysisResult.issues.length > 0 && (
-                <View style={styles.section}>
-                  <Text variant="titleSmall" style={styles.sectionTitle}>Issues Detected</Text>
-                  {analysisResult.issues.map((issue: string, index: number) => (
-                    <View key={index} style={styles.listItem}>
-                      <Text style={styles.bulletPoint}>•</Text>
-                      <Text variant="bodySmall" style={styles.listText}>{issue}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Growth Progress */}
-              <View style={styles.section}>
-                <Text variant="titleSmall" style={styles.sectionTitle}>Growth Progress</Text>
-                <Text variant="bodySmall" style={styles.mutedText}>{analysisResult.growthProgress}</Text>
-              </View>
-
-              {/* Recommendations */}
-              <View style={styles.section}>
-                <Text variant="titleSmall" style={styles.sectionTitle}>Today's Care Tips</Text>
-                {analysisResult.recommendations.map((tip: string, index: number) => (
-                  <View key={index} style={styles.listItem}>
-                    <Text style={[styles.bulletPoint, { color: '#10B981' }]}>•</Text>
-                    <Text variant="bodySmall" style={styles.listText}>{tip}</Text>
-                  </View>
-                ))}
-              </View>
-          </GSCard>
-
-          <View style={styles.buttonRow}>
-            <GSButton variant="secondary" onPress={retakePicture}>
-              Retake Photo
-            </GSButton>
-            <GSButton variant="primary" onPress={continueToHome}>
-              Continue
-            </GSButton>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   // Photo Preview Screen
   if (capturedImage) {

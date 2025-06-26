@@ -179,13 +179,8 @@ export default function TeacherProgressScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-      <View style={{ flex: 1 }}>
-        {/* Fixed Mode Toggle at the top */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
-          <GSModeToggle />
-        </View>
-        <ScrollView
+    <GSScreenLayout showModeToggle={true}>
+      <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 80 }}
         >
@@ -299,7 +294,6 @@ export default function TeacherProgressScreen() {
             </GSCard>
           </View>
         </ScrollView>
-      </View>
-    </SafeAreaView>
+    </GSScreenLayout>
   );
 }

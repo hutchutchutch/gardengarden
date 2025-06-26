@@ -103,7 +103,7 @@ export default function StudentProgressScreen() {
   }
 
   return (
-    <GSScreenLayout showModeToggle={false}>
+    <GSScreenLayout showModeToggle={true}>
       <GSHeader
         title="My Progress"
         variant="back"
