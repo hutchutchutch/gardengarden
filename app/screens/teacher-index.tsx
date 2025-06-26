@@ -119,6 +119,13 @@ export default function TeacherIndex() {
   const loadDashboardData = async () => {
     if (!user?.id) return;
     
+    // Only load teacher data if user is actually a teacher
+    if (user.role !== 'teacher') {
+      console.log('User is not a teacher, skipping teacher dashboard data load');
+      setIsLoading(false);
+      return;
+    }
+    
     setIsLoading(true);
     try {
       // Get current active lesson using the LessonService

@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, Pressable, Alert, Text } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Pressable, Text } from 'react-native';
 import { useMode } from '@/contexts/ModeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
 
 interface ModeToggleProps {
   style?: any;
@@ -9,50 +10,58 @@ interface ModeToggleProps {
 
 export default function ModeToggle({ style }: ModeToggleProps) {
   const { isTeacherMode, setIsTeacherMode } = useMode();
-  const { switchAuthMode, studentUser, masterTeacherUser, isDemoMode, user } = useAuth();
+  const { user, switchToTeacher, switchToStudent, getAllStudents } = useAuth();
+  const router = useRouter();
+
+  // Set initial mode based on user role (only on first load, not during switches)
+  useEffect(() => {
+    if (user) {
+      const shouldBeTeacherMode = user.role === 'teacher';
+      console.log('🔄 Mode toggle useEffect triggered - User:', user.email, 'Role:', user.role, 'Current mode:', isTeacherMode, 'Should be teacher mode:', shouldBeTeacherMode);
+      
+      // Only auto-correct mode if it's significantly different (not during auth switches)
+      if (isTeacherMode !== shouldBeTeacherMode) {
+        // Add a small delay to allow authentication switches to complete
+        const timer = setTimeout(() => {
+          if (isTeacherMode !== shouldBeTeacherMode) {
+            setIsTeacherMode(shouldBeTeacherMode);
+            console.log('✅ Mode auto-corrected from', isTeacherMode, 'to', shouldBeTeacherMode);
+          }
+        }, 500);
+        
+        return () => clearTimeout(timer);
+      }
+    } else {
+      console.log('🔄 No user, setting teacher mode to false');
+      setIsTeacherMode(false);
+    }
+  }, [user?.id, user?.role]); // Only depend on user ID and role, not the mode itself
 
   const handleModeChange = async (toTeacherMode: boolean) => {
-    console.log('=== MODE TOGGLE DEBUG ===');
-    console.log('Switching to teacher mode:', toTeacherMode);
-    console.log('Current user:', user?.email);
-    console.log('Student user:', studentUser?.email);
-    console.log('Master teacher user:', masterTeacherUser?.email);
-    console.log('Is demo mode:', isDemoMode);
-    
-    if (isDemoMode) {
-      setIsTeacherMode(toTeacherMode);
-      return;
-    }
-
-    // Check if user is logged in
-    if (toTeacherMode && !studentUser && !masterTeacherUser) {
-      Alert.alert(
-        'Not Logged In', 
-        'Please sign in to access teacher mode.',
-        [{ text: 'OK' }]
-      );
-      return;
-    } else if (!toTeacherMode && !studentUser) {
-      Alert.alert(
-        'Not Logged In', 
-        'Please sign in with your account first.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    // Switch mode and auth
-    console.log('Calling switchAuthMode with:', toTeacherMode ? 'teacher' : 'student');
-    await switchAuthMode(toTeacherMode ? 'teacher' : 'student');
-    console.log('=== MODE TOGGLE COMPLETE ===');
-  };
-
-  // Get display info for current mode
-  const getCurrentModeInfo = () => {
-    if (isTeacherMode) {
-      return user?.name || 'Teacher';
-    } else {
-      return studentUser?.name?.split(' ')[0] || 'Student';
+    try {
+      console.log('🔄 Mode change requested:', toTeacherMode ? 'Teacher' : 'Student');
+      
+      if (toTeacherMode) {
+        // Switch to teacher authentication
+        console.log('🔄 Switching to teacher...');
+        setIsTeacherMode(true); // Set mode immediately to prevent UI flicker
+        await switchToTeacher();
+        router.replace('/screens/teacher-index');
+      } else {
+        // Switch to default student authentication
+        console.log('🔄 Switching to default student...');
+        setIsTeacherMode(false); // Set mode immediately to prevent UI flicker
+        // Get the first student and switch to them
+        const students = await getAllStudents();
+        if (students.length > 0) {
+          await switchToStudent(students[0].id);
+        }
+        router.replace('/screens/student-index');
+      }
+    } catch (error) {
+      console.error('Error switching mode:', error);
+      // Revert mode on error
+      setIsTeacherMode(!toTeacherMode);
     }
   };
 
@@ -112,18 +121,6 @@ export default function ModeToggle({ style }: ModeToggleProps) {
           </Text>
         </Pressable>
       </View>
-      
-      {/* Show current user info */}
-      {user && (
-        <Text style={{
-          fontSize: 12,
-          color: '#666',
-          textAlign: 'center',
-          marginTop: 4,
-        }}>
-          {getCurrentModeInfo()}
-        </Text>
-      )}
     </View>
   );
 } 

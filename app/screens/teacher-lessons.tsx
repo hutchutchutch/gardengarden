@@ -52,6 +52,13 @@ export default function TeacherLessons() {
         return;
       }
 
+      // Only load teacher data if user is actually a teacher
+      if (user.role !== 'teacher') {
+        console.log('User is not a teacher, skipping teacher lesson data load');
+        setLoading(false);
+        return;
+      }
+
       const [current, completed, upcoming] = await Promise.all([
         LessonService.getCurrentLesson(user.id),
         LessonService.getCompletedLessons(user.id),

@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { GSChatBubble } from './ui/GSChatBubble';
 import { PhotoService } from '@/services/photo-service';
 import { supabase } from '@/config/supabase';
+import { useMode } from '@/contexts/ModeContext';
 
 interface AIChatProps {
   analysis?: AIPlantAnalysis | null;
@@ -34,6 +35,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const { plants } = usePlantStore();
   const scrollViewRef = useRef<ScrollView>(null);
   const isTeacher = user?.role === 'teacher';
+  const { isTeacherMode } = useMode();
 
   // Get the current lesson ID from the plant
   const currentPlant = plants.find(p => p.id === plantId);
@@ -257,13 +259,16 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
               bubbleType = 'teacher';
             }
             
+            // Ensure message content is never null/undefined
+            const messageContent = msg.content || '';
+            
             return (
               <GSChatBubble
                 key={msg.id}
                 type={bubbleType}
-                message={msg.content}
+                message={messageContent}
                 timestamp={msg.timestamp}
-                currentUserRole={user?.role as 'student' | 'teacher'}
+                currentUserRole={isTeacherMode ? 'teacher' : 'student'}
                 showSources={bubbleType === 'ai' && msg.sources && msg.sources.length > 0}
                 sources={msg.sources}
                 isRead={true}
@@ -277,7 +282,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
             type="ai"
             message="Thinking..."
             timestamp={new Date().toISOString()}
-            currentUserRole={user?.role as 'student' | 'teacher'}
+            currentUserRole={isTeacherMode ? 'teacher' : 'student'}
             isLoading={true}
           />
         )}

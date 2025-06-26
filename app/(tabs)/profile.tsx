@@ -1,18 +1,116 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Modal, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Plus, MessageSquare, Book, Settings, LogOut } from 'lucide-react-native';
+import { Plus, MessageSquare, Book, Settings, LogOut, ChevronDown, Check } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMode } from '@/contexts/ModeContext';
 import colors from '@/constants/colors';
+import { User } from '@/types';
+import { supabase } from '@/utils/supabase';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, getAllStudents, switchToStudent } = useAuth();
+  const { isTeacherMode } = useMode();
+  const [showStudentPicker, setShowStudentPicker] = useState(false);
+  const [students, setStudents] = useState<User[]>([]);
+  const [className, setClassName] = useState<string>('Loading...');
+  const [classLoading, setClassLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch all students when component mounts (only if we're a teacher)
+    const fetchStudents = async () => {
+      try {
+        const allStudents = await getAllStudents();
+        setStudents(allStudents);
+      } catch (error) {
+        console.error('Failed to fetch students:', error);
+      }
+    };
+    
+    if (user?.role === 'teacher') {
+      fetchStudents();
+    }
+  }, [user?.role]);
+
+  useEffect(() => {
+    // Fetch class name when user changes
+    const fetchClassName = async () => {
+      console.log('🔍 fetchClassName called with user:', user?.email, user?.role);
+      
+      setClassLoading(true);
+      
+      try {
+        if (!user) {
+          console.log('⚠️ No user found, skipping class fetch');
+          setClassName('No User');
+          setClassLoading(false);
+          return;
+        }
+
+        if (user.role === 'teacher') {
+          console.log('👨‍🏫 User is teacher, no class needed');
+          setClassName('Teacher');
+          setClassLoading(false);
+          return;
+        }
+
+        if (!user.classId) {
+          console.log('⚠️ No classId found for user');
+          setClassName('No Class Assigned');
+          setClassLoading(false);
+          return;
+        }
+
+        console.log('🔄 Fetching class data for classId:', user.classId);
+        
+        // Direct class name query
+        const { data: classData, error } = await supabase
+          .from('classes')
+          .select('name')
+          .eq('id', user.classId)
+          .single();
+        
+        console.log('📊 Direct query result - data:', classData, 'error:', error);
+        
+        if (error) {
+          console.error('❌ Direct query error:', error);
+          setClassName('Error Loading Class');
+          setClassLoading(false);
+          return;
+        }
+        
+        if (classData?.name) {
+          console.log('✅ Successfully got class name:', classData.name);
+          setClassName(classData.name);
+        } else {
+          console.log('⚠️ No class data found');
+          setClassName('Class Not Found');
+        }
+      } catch (error) {
+        console.error('💥 Exception in fetchClassName:', error);
+        setClassName('Error Loading Class');
+      } finally {
+        setClassLoading(false);
+      }
+    };
+    
+    fetchClassName();
+  }, [user]);
 
   const handleAIChat = () => {
     router.push('/ai-chat');
+  };
+
+  const handleStudentSelect = async (studentId: string) => {
+    try {
+      await switchToStudent(studentId);
+      setShowStudentPicker(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to switch student. Please try again.');
+    }
   };
 
   const handleSignOut = () => {
@@ -47,9 +145,25 @@ export default function ProfileScreen() {
             {user?.name?.charAt(0).toUpperCase() || 'G'}
           </Text>
         </View>
-        <Text style={styles.profileName}>{user?.name || 'Garden Student'}</Text>
+        
+        {/* Student Switcher - Only show for teachers */}
+        {user?.role === 'teacher' && (
+          <Pressable
+            style={styles.studentSwitcher}
+            onPress={() => setShowStudentPicker(true)}
+          >
+            <Text style={styles.profileName}>Viewing: {user?.name || 'Select Student'}</Text>
+            <ChevronDown size={20} color={colors.textLight} />
+          </Pressable>
+        )}
+        
+        {/* Regular name display */}
+        {user?.role === 'student' && (
+          <Text style={styles.profileName}>{user?.name || 'Garden Student'}</Text>
+        )}
+        
         <Text style={styles.profileClass}>
-          {user?.role === 'teacher' ? 'Teacher' : `Class: ${user?.classId || 'N/A'}`}
+          {user?.role === 'teacher' ? 'Teacher' : `Class: ${classLoading ? 'Loading...' : className}`}
         </Text>
       </View>
 
@@ -97,6 +211,56 @@ export default function ProfileScreen() {
       </View>
 
       <Text style={styles.versionText}>GardenSnap v1.0.0</Text>
+
+      {/* Student Picker Modal */}
+      <Modal
+        visible={showStudentPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowStudentPicker(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowStudentPicker(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Switch Student</Text>
+            <FlatList
+              data={students}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.studentItem}
+                  onPress={() => handleStudentSelect(item.id)}
+                >
+                  <View style={styles.studentInfo}>
+                    <View style={styles.studentAvatar}>
+                      <Text style={styles.studentInitial}>
+                        {item.name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={styles.studentName}>{item.name}</Text>
+                      <Text style={styles.studentEmail}>{item.email}</Text>
+                    </View>
+                  </View>
+                  {user?.id === item.id && (
+                    <Check size={20} color={colors.primary} />
+                  )}
+                </Pressable>
+              )}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+              style={styles.studentList}
+            />
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => setShowStudentPicker(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -227,5 +391,86 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     fontSize: 12,
     marginTop: 16,
+  },
+  studentSwitcher: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 20,
+    color: colors.text,
+  },
+  studentList: {
+    maxHeight: 400,
+  },
+  studentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  studentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  studentAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  studentInitial: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  studentName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  studentEmail: {
+    fontSize: 14,
+    color: colors.textLight,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: colors.grayLight,
+    marginHorizontal: 16,
+  },
+  cancelButton: {
+    marginTop: 16,
+    marginHorizontal: 16,
+    backgroundColor: colors.grayLight,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
   },
 });
