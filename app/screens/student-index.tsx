@@ -84,7 +84,58 @@ export default function StudentIndexScreen() {
       // Fetch yesterday's analysis for feedback
       const yesterdayAnalysisData = await ImageAnalysisService.getYesterdayAnalysis(user.id);
       setYesterdaysFeedback(yesterdayAnalysisData);
+
+      // Fetch today's tasks from lesson_task_templates
+      if (plantData) {
+        const plantingDate = new Date(plantData.planting_date);
+        const currentDayNumber = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        
+        const { data: taskTemplates, error: taskError } = await supabase
+          .from('lesson_task_templates')
+          .select('*')
+          .eq('lesson_id', plantData.lesson_id)
+          .lte('day_number', currentDayNumber)
+          .order('day_number', { ascending: false })
+          .order('created_at');
+
+        if (taskTemplates && !taskError) {
+          // Get all submitted tasks for this plant to check completion status
+          const { data: completedTasks } = await supabase
+            .from('student_daily_tasks')
+            .select('template_id, completed, day_number')
+            .eq('student_id', user.id)
+            .eq('plant_id', plantData.id);
+
+          const completedTaskMap = new Map(
+            completedTasks?.map(task => [`${task.template_id}-${task.day_number}`, task.completed]) || []
+          );
+
+          // Filter for today's tasks + incomplete past tasks
+          const allTasks = taskTemplates.map(template => ({
+            id: template.id,
+            name: template.task_name,
+            description: template.task_description,
+            instructions: template.instructions,
+            taskType: template.task_type,
+            isCompleted: completedTaskMap.get(`${template.id}-${template.day_number}`) || false,
+            points: template.points || 10,
+            isRequired: template.is_required,
+            dayNumber: template.day_number
+          }));
+
+          const todaysOrIncompleteTasks = allTasks.filter(task => 
+            task.dayNumber === currentDayNumber || (!task.isCompleted && task.isRequired)
+          );
+
+          setTodaysTasks(todaysOrIncompleteTasks);
+        }
+      }
       
+      // If no active plant/lesson, provide fallback content
+      if (!plantData) {
+        setTodaysTasks([]);
+        setPlantProgress(null);
+      }
     } catch (error) {
       console.error('Error fetching student data:', error);
     } finally {
@@ -92,19 +143,8 @@ export default function StudentIndexScreen() {
     }
   };
 
-  // Today's tasks
-  const todaysTasks = tasks
-    .filter(task => {
-      const today = new Date().toISOString().split('T')[0];
-      return task.dueDate === today;
-    })
-    .map(task => ({
-      id: task.id,
-      name: task.title,
-      description: task.description,
-      isCompleted: task.completed,
-      points: 10
-    }));
+  // Today's tasks from lesson_task_templates
+  const [todaysTasks, setTodaysTasks] = React.useState<any[]>([]);
 
   // Get tips from latest analysis, fallback to default tips if no analysis available
   const getAnalysisTips = () => {
@@ -156,11 +196,67 @@ export default function StudentIndexScreen() {
     }
   }, [isTeacherMode, user?.id]);
 
-  const handleTaskToggle = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      // Update task in store
-      console.log('Toggle task:', taskId);
+  const handleTaskToggle = async (taskId: string) => {
+    if (!user?.id || !activePlant) return;
+
+    const task = todaysTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    try {
+      const plantingDate = new Date(activePlant.plantedDate || Date.now());
+      const currentDayNumber = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      // Check if task record exists in student_daily_tasks
+      const { data: existingTask } = await supabase
+        .from('student_daily_tasks')
+        .select('*')
+        .eq('student_id', user.id)
+        .eq('plant_id', activePlant.id)
+        .eq('template_id', taskId)
+        .eq('day_number', currentDayNumber)
+        .single();
+
+      const newCompletedState = !task.isCompleted;
+
+      if (existingTask) {
+        // Update existing task
+        await supabase
+          .from('student_daily_tasks')
+          .update({ 
+            completed: newCompletedState,
+            completed_at: newCompletedState ? new Date().toISOString() : null
+          })
+          .eq('id', existingTask.id);
+      } else {
+        // Create new task record
+        await supabase
+          .from('student_daily_tasks')
+          .insert({
+            student_id: user.id,
+            plant_id: activePlant.id,
+            lesson_id: activePlant.lessonId,
+            template_id: taskId,
+            task_name: task.name,
+            task_type: task.taskType,
+            points: task.points,
+            day_number: currentDayNumber,
+            completed: newCompletedState,
+            completed_at: newCompletedState ? new Date().toISOString() : null,
+            task_date: new Date().toISOString().split('T')[0]
+          });
+      }
+
+      // Update local state
+      setTodaysTasks(prev => 
+        prev.map(t => 
+          t.id === taskId 
+            ? { ...t, isCompleted: newCompletedState }
+            : t
+        )
+      );
+
+    } catch (error) {
+      console.error('Error toggling task:', error);
     }
   };
 
@@ -306,14 +402,23 @@ export default function StudentIndexScreen() {
           <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Today's Tasks</Text>
-              <GSProgressIndicator progress={completedTasksPercentage / 100} size="small" />
+              {todaysTasks.length > 0 && <GSProgressIndicator progress={completedTasksPercentage / 100} size="small" />}
             </View>
             
             <View style={{ marginTop: 12 }}>
-              <GSTaskChecklist 
-                tasks={todaysTasks}
-                onTaskToggle={handleTaskToggle}
-              />
+              {todaysTasks.length > 0 ? (
+                <GSTaskChecklist 
+                  tasks={todaysTasks}
+                  onTaskToggle={handleTaskToggle}
+                />
+              ) : (
+                <GSCard variant="elevated" padding="large" style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '500', color: '#333' }}>No active lesson</Text>
+                  <Text style={{ textAlign: 'center', marginTop: 8, color: '#666' }}>
+                    It looks like you are not currently enrolled in an active lesson. Please contact your teacher to get started.
+                  </Text>
+                </GSCard>
+              )}
             </View>
           </View>
 
