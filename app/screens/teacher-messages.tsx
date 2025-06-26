@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Image, Pressable, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MessageService, Message } from '@/services/message-service';
+import { MessageService, MessageThread } from '@/services/message-service';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessageStore } from '@/store/message-store';
 import {
@@ -17,7 +17,7 @@ import {
 export default function TeacherMessagesScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { messages, isLoading: isLoadingMessages, fetchTeacherMessages, markAsRead } = useMessageStore();
+  const { messageThreads, isLoading: isLoadingMessages, fetchTeacherMessageThreads, markThreadAsRead } = useMessageStore();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'unread' | 'online'>('all');
@@ -32,33 +32,34 @@ export default function TeacherMessagesScreen() {
   const fetchMessages = async () => {
     if (!user) return;
     
-    await fetchTeacherMessages(user.id, {
+    await fetchTeacherMessageThreads(user.id, {
       search: searchQuery,
       filter: selectedFilter
     });
   };
 
   // Filter messages based on search and filter criteria
-  const filteredMessages = messages.filter(message => {
+  const filteredMessages = messageThreads.filter(thread => {
     const matchesSearch = !searchQuery || 
-      message.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      message.last_message.toLowerCase().includes(searchQuery.toLowerCase());
+      thread.student?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      thread.last_message?.content.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesFilter = selectedFilter === 'all' || 
-      (selectedFilter === 'unread' && message.unread_count > 0) ||
-      (selectedFilter === 'online' && message.is_online);
+      (selectedFilter === 'unread' && (thread.unread_count || 0) > 0);
     
     return matchesSearch && matchesFilter;
   });
 
-  const handleMessagePress = async (messageId: string) => {
-    // Mark message as read
-    await markAsRead(messageId);
+  const handleMessagePress = async (thread: MessageThread) => {
+    // Mark thread messages as read
+    if (user && thread.unread_count && thread.unread_count > 0) {
+      await markThreadAsRead(thread.id, user.id);
+    }
     
     // Navigate to individual message thread
     router.push({
       pathname: '/ai-chat',
-      params: { studentId: messageId }
+      params: { threadId: thread.id, studentId: thread.student_id }
     });
   };
 
@@ -119,37 +120,26 @@ export default function TeacherMessagesScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
           renderItem={({ item }) => (
-            <Pressable onPress={() => handleMessagePress(item.id)}>
+            <Pressable onPress={() => handleMessagePress(item)}>
               <GSCard variant="filled" padding="medium" margin="none" style={{ marginHorizontal: 16, marginBottom: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  {/* Student Avatar with Online Status */}
+                  {/* Student Avatar */}
                   <View style={{ position: 'relative' }}>
                     <Image 
-                      source={{ uri: item.student_avatar || 'https://picsum.photos/40/40?random=default' }}
+                      source={{ uri: item.student?.profile_image || 'https://picsum.photos/40/40?random=default' }}
                       style={{ width: 48, height: 48, borderRadius: 24 }}
                     />
-                    {item.is_online && (
-                      <View style={{ 
-                        position: 'absolute', 
-                        bottom: 0, 
-                        right: 0, 
-                        width: 14, 
-                        height: 14, 
-                        backgroundColor: '#10B981', 
-                        borderRadius: 7, 
-                        borderWidth: 2, 
-                        borderColor: 'white' 
-                      }} />
-                    )}
                   </View>
 
                   {/* Message Content */}
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontWeight: '600', fontSize: 16, color: '#000' }}>{item.student_name}</Text>
+                      <Text style={{ fontWeight: '600', fontSize: 16, color: '#000' }}>{item.student?.name || 'Unknown Student'}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: 12, color: '#666' }}>{MessageService.formatTimestamp(item.timestamp)}</Text>
-                        {item.unread_count > 0 && (
+                        <Text style={{ fontSize: 12, color: '#666' }}>
+                          {item.last_message ? MessageService.formatTimestamp(item.last_message.created_at) : 'No messages'}
+                        </Text>
+                        {item.unread_count && item.unread_count > 0 && (
                           <View style={{ 
                             backgroundColor: '#3B82F6', 
                             borderRadius: 10, 
@@ -168,19 +158,8 @@ export default function TeacherMessagesScreen() {
                     </View>
                     
                     <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }} numberOfLines={2}>
-                      {item.last_message}
+                      {item.last_message?.content || 'No messages yet'}
                     </Text>
-                    
-                    {/* Plant Info */}
-                    {item.plant_name && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Image 
-                          source={{ uri: item.plant_image || 'https://picsum.photos/24/24?random=plant' }}
-                          style={{ width: 24, height: 24, borderRadius: 4 }}
-                        />
-                        <Text style={{ fontSize: 12, color: '#666' }}>{item.plant_name}</Text>
-                      </View>
-                    )}
                   </View>
 
                   {/* Message Icon */}

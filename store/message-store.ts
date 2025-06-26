@@ -1,40 +1,55 @@
 import { create } from 'zustand';
-import { Message, MessageService, MessageFilters } from '@/services/message-service';
+import { Message, MessageThread, MessageService, MessageFilters } from '@/services/message-service';
 
 interface MessageState {
-  messages: Message[];
+  messageThreads: MessageThread[];
+  currentThreadMessages: Message[];
+  currentThreadId: string | null;
   isLoading: boolean;
   error: string | null;
   
   // Actions
-  fetchTeacherMessages: (teacherId: string, filters?: MessageFilters) => Promise<void>;
-  fetchStudentMessages: (studentId: string) => Promise<void>;
-  markAsRead: (messageId: string) => Promise<void>;
+  fetchTeacherMessageThreads: (teacherId: string, filters?: MessageFilters) => Promise<void>;
+  fetchThreadMessages: (threadId: string) => Promise<void>;
+  markThreadAsRead: (threadId: string, userId: string) => Promise<void>;
   sendMessage: (
-    studentId: string,
-    teacherId: string,
-    message: string,
-    studentName: string,
-    plantName?: string,
-    plantImage?: string
+    threadId: string,
+    senderId: string,
+    content: string
   ) => Promise<void>;
-  updateOnlineStatus: (userId: string, isOnline: boolean) => Promise<void>;
+  getOrCreateThread: (studentId: string, teacherId: string) => Promise<string>;
   clearMessages: () => void;
   setError: (error: string | null) => void;
 }
 
 export const useMessageStore = create<MessageState>((set, get) => ({
-  messages: [],
+  messageThreads: [],
+  currentThreadMessages: [],
+  currentThreadId: null,
   isLoading: false,
   error: null,
 
-  fetchTeacherMessages: async (teacherId: string, filters?: MessageFilters) => {
+  fetchTeacherMessageThreads: async (teacherId: string, filters?: MessageFilters) => {
     set({ isLoading: true, error: null });
     try {
-      const messages = await MessageService.getTeacherMessages(teacherId, filters);
-      set({ messages, isLoading: false });
+      const threads = await MessageService.getTeacherMessageThreads(teacherId, filters);
+      set({ messageThreads: threads, isLoading: false });
     } catch (error) {
-      console.error('Error fetching teacher messages:', error);
+      console.error('Error fetching teacher message threads:', error);
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to fetch message threads',
+        isLoading: false 
+      });
+    }
+  },
+
+  fetchThreadMessages: async (threadId: string) => {
+    set({ isLoading: true, error: null, currentThreadId: threadId });
+    try {
+      const messages = await MessageService.getThreadMessages(threadId);
+      set({ currentThreadMessages: messages, isLoading: false });
+    } catch (error) {
+      console.error('Error fetching thread messages:', error);
       set({ 
         error: error instanceof Error ? error.message : 'Failed to fetch messages',
         isLoading: false 
@@ -42,79 +57,69 @@ export const useMessageStore = create<MessageState>((set, get) => ({
     }
   },
 
-  fetchStudentMessages: async (studentId: string) => {
-    set({ isLoading: true, error: null });
+  markThreadAsRead: async (threadId: string, userId: string) => {
     try {
-      const messages = await MessageService.getStudentMessages(studentId);
-      set({ messages, isLoading: false });
-    } catch (error) {
-      console.error('Error fetching student messages:', error);
-      set({ 
-        error: error instanceof Error ? error.message : 'Failed to fetch messages',
-        isLoading: false 
-      });
-    }
-  },
-
-  markAsRead: async (messageId: string) => {
-    try {
-      await MessageService.markMessageAsRead(messageId);
+      await MessageService.markMessagesAsRead(threadId, userId);
       // Update local state
-      const { messages } = get();
-      const updatedMessages = messages.map(msg => 
-        msg.id === messageId ? { ...msg, unread_count: 0 } : msg
+      const { messageThreads } = get();
+      const updatedThreads = messageThreads.map(thread => 
+        thread.id === threadId ? { ...thread, unread_count: 0 } : thread
       );
-      set({ messages: updatedMessages });
+      set({ messageThreads: updatedThreads });
     } catch (error) {
-      console.error('Error marking message as read:', error);
-      set({ error: error instanceof Error ? error.message : 'Failed to mark message as read' });
+      console.error('Error marking thread as read:', error);
+      set({ error: error instanceof Error ? error.message : 'Failed to mark messages as read' });
     }
   },
 
   sendMessage: async (
-    studentId: string,
-    teacherId: string,
-    message: string,
-    studentName: string,
-    plantName?: string,
-    plantImage?: string
+    threadId: string,
+    senderId: string,
+    content: string
   ) => {
     try {
       const newMessage = await MessageService.sendMessage(
-        studentId,
-        teacherId,
-        message,
-        studentName,
-        plantName,
-        plantImage
+        threadId,
+        senderId,
+        content
       );
       
-      // Add to local state
-      const { messages } = get();
-      set({ messages: [newMessage, ...messages] });
+      // Add to current thread messages
+      const { currentThreadMessages, messageThreads } = get();
+      set({ 
+        currentThreadMessages: [...currentThreadMessages, newMessage],
+        // Update last message in thread list
+        messageThreads: messageThreads.map(thread => 
+          thread.id === threadId 
+            ? { ...thread, last_message: newMessage, updated_at: newMessage.created_at }
+            : thread
+        )
+      });
     } catch (error) {
       console.error('Error sending message:', error);
       set({ error: error instanceof Error ? error.message : 'Failed to send message' });
     }
   },
 
-  updateOnlineStatus: async (userId: string, isOnline: boolean) => {
+  getOrCreateThread: async (studentId: string, teacherId: string) => {
     try {
-      await MessageService.updateOnlineStatus(userId, isOnline);
-      // Update local state
-      const { messages } = get();
-      const updatedMessages = messages.map(msg => 
-        msg.student_id === userId ? { ...msg, is_online: isOnline } : msg
-      );
-      set({ messages: updatedMessages });
+      const thread = await MessageService.getOrCreateThread(studentId, teacherId);
+      // Add to threads if not already present
+      const { messageThreads } = get();
+      const threadExists = messageThreads.some(t => t.id === thread.id);
+      if (!threadExists) {
+        set({ messageThreads: [...messageThreads, thread] });
+      }
+      return thread.id;
     } catch (error) {
-      console.error('Error updating online status:', error);
-      set({ error: error instanceof Error ? error.message : 'Failed to update online status' });
+      console.error('Error getting/creating thread:', error);
+      set({ error: error instanceof Error ? error.message : 'Failed to get or create thread' });
+      throw error;
     }
   },
 
   clearMessages: () => {
-    set({ messages: [], error: null });
+    set({ messageThreads: [], currentThreadMessages: [], currentThreadId: null, error: null });
   },
 
   setError: (error: string | null) => {

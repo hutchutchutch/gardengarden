@@ -33,8 +33,7 @@ export default function StudentIndexScreen() {
   const { isTeacherMode } = useMode();
   const { user } = useAuth();
   
-  const activePlant = plants[0];
-
+  const [activePlant, setActivePlant] = React.useState<any>(null);
   const [plantProgress, setPlantProgress] = React.useState<any>(null);
   const [yesterdaysFeedback, setYesterdaysFeedback] = React.useState<ImageAnalysisRecord | null>(null);
   const [latestAnalysis, setLatestAnalysis] = React.useState<ImageAnalysisRecord | null>(null);
@@ -62,6 +61,16 @@ export default function StudentIndexScreen() {
         .single();
         
       if (plantData) {
+        // Store the plant data for task operations
+        setActivePlant({
+          id: plantData.id,
+          name: plantData.nickname || 'My Plant',
+          lessonId: plantData.lesson_id,
+          plantingDate: plantData.planting_date,
+          currentStage: plantData.current_stage,
+          currentHealthScore: plantData.current_health_score
+        });
+        
         // Calculate day number
         const plantingDate = new Date(plantData.planting_date);
         const dayNumber = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -140,6 +149,7 @@ export default function StudentIndexScreen() {
       
       // If no active plant/lesson, provide fallback content
       if (!plantData) {
+        setActivePlant(null);
         setTodaysTasks([]);
         setPlantProgress(null);
       }
@@ -219,7 +229,7 @@ export default function StudentIndexScreen() {
     if (!task) return;
 
     try {
-      const plantingDate = new Date(activePlant.plantedDate || Date.now());
+      const plantingDate = new Date(activePlant.plantingDate || Date.now());
       const currentDayNumber = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       
       // Check if task record exists in student_daily_tasks
@@ -236,16 +246,22 @@ export default function StudentIndexScreen() {
 
       if (existingTask) {
         // Update existing task
-        await supabase
+        const { error: updateError } = await supabase
           .from('student_daily_tasks')
           .update({ 
             completed: newCompletedState,
             completed_at: newCompletedState ? new Date().toISOString() : null
           })
           .eq('id', existingTask.id);
+        
+        if (updateError) {
+          console.error('Error updating task:', updateError);
+          return;
+        }
+        console.log('Task updated successfully:', taskId, newCompletedState);
       } else {
         // Create new task record
-        await supabase
+        const { error: insertError } = await supabase
           .from('student_daily_tasks')
           .insert({
             student_id: user.id,
@@ -260,6 +276,12 @@ export default function StudentIndexScreen() {
             completed_at: newCompletedState ? new Date().toISOString() : null,
             task_date: new Date().toISOString().split('T')[0]
           });
+        
+        if (insertError) {
+          console.error('Error creating task:', insertError);
+          return;
+        }
+        console.log('Task created successfully:', taskId, newCompletedState);
       }
 
       // Update local state

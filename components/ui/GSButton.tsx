@@ -62,8 +62,8 @@ export const GSButton: React.FC<GSButtonProps> = ({
         };
       case 'secondary':
         return {
-          backgroundColor: theme.colors.secondary,
-          textColor: theme.colors.onSecondary,
+          backgroundColor: '#64B5F6',
+          textColor: '#FFFFFF',
           rippleColor: 'rgba(255, 255, 255, 0.32)',
         };
       case 'danger':

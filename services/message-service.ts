@@ -1,17 +1,33 @@
 import { supabase } from '@/config/supabase';
 
-export interface Message {
+export interface MessageThread {
   id: string;
   student_id: string;
   teacher_id: string;
-  student_name: string;
-  student_avatar: string | null;
-  last_message: string;
-  timestamp: string;
-  unread_count: number;
-  plant_name: string | null;
-  plant_image: string | null;
-  is_online: boolean;
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  student?: {
+    id: string;
+    name: string;
+    profile_image: string | null;
+  };
+  last_message?: {
+    id: string;
+    content: string;
+    created_at: string;
+    sender_id: string;
+    is_read: boolean;
+  };
+  unread_count?: number;
+}
+
+export interface Message {
+  id: string;
+  thread_id: string;
+  sender_id: string;
+  content: string;
+  is_read: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -22,133 +38,249 @@ export interface MessageFilters {
 }
 
 export class MessageService {
-  static async getTeacherMessages(teacherId: string, filters?: MessageFilters): Promise<Message[]> {
+  static async getTeacherMessageThreads(teacherId: string, filters?: MessageFilters): Promise<MessageThread[]> {
     try {
+      // Get message threads with last message and student info
       let query = supabase
+        .from('message_threads')
+        .select(`
+          id,
+          student_id,
+          teacher_id,
+          created_at,
+          updated_at,
+          student:users!message_threads_student_id_fkey (
+            id,
+            name,
+            profile_image
+          )
+        `)
+        .eq('teacher_id', teacherId)
+        .order('updated_at', { ascending: false });
+
+      const { data: threads, error: threadsError } = await query;
+
+      if (threadsError) {
+        console.error('Error fetching message threads:', threadsError);
+        throw threadsError;
+      }
+
+      if (!threads || threads.length === 0) {
+        return [];
+      }
+
+      // Get last message and unread count for each thread
+      const threadIds = threads.map(t => t.id);
+      
+      // Get last messages
+      const { data: lastMessages, error: messagesError } = await supabase
         .from('messages')
         .select('*')
-        .eq('teacher_id', teacherId)
-        .order('timestamp', { ascending: false });
+        .in('thread_id', threadIds)
+        .order('created_at', { ascending: false });
+
+      if (messagesError) {
+        console.error('Error fetching messages:', messagesError);
+        throw messagesError;
+      }
+
+      // Get unread counts
+      const { data: unreadCounts, error: unreadError } = await supabase
+        .from('messages')
+        .select('thread_id')
+        .in('thread_id', threadIds)
+        .eq('is_read', false)
+        .neq('sender_id', teacherId);
+
+      if (unreadError) {
+        console.error('Error fetching unread counts:', unreadError);
+      }
+
+      // Map last messages and unread counts to threads
+      const lastMessageMap = new Map<string, Message>();
+      const unreadCountMap = new Map<string, number>();
+
+      if (lastMessages) {
+        // Group messages by thread and get the latest one
+        for (const msg of lastMessages) {
+          if (!lastMessageMap.has(msg.thread_id) || 
+              new Date(msg.created_at) > new Date(lastMessageMap.get(msg.thread_id)!.created_at)) {
+            lastMessageMap.set(msg.thread_id, msg);
+          }
+        }
+      }
+
+      if (unreadCounts) {
+        // Count unread messages per thread
+        for (const msg of unreadCounts) {
+          unreadCountMap.set(msg.thread_id, (unreadCountMap.get(msg.thread_id) || 0) + 1);
+        }
+      }
+
+      // Combine data
+      let messageThreads = threads.map(thread => ({
+        ...thread,
+        last_message: lastMessageMap.get(thread.id),
+        unread_count: unreadCountMap.get(thread.id) || 0
+      }));
 
       // Apply filters
       if (filters?.filter === 'unread') {
-        query = query.gt('unread_count', 0);
-      } else if (filters?.filter === 'online') {
-        query = query.eq('is_online', true);
+        messageThreads = messageThreads.filter(thread => thread.unread_count > 0);
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching messages:', error);
-        throw error;
-      }
-
-      let messages = data || [];
 
       // Apply search filter
       if (filters?.search) {
         const searchLower = filters.search.toLowerCase();
-        messages = messages.filter(message => 
-          message.student_name.toLowerCase().includes(searchLower) ||
-          message.last_message.toLowerCase().includes(searchLower)
+        messageThreads = messageThreads.filter(thread => 
+          thread.student?.name.toLowerCase().includes(searchLower) ||
+          thread.last_message?.content.toLowerCase().includes(searchLower)
         );
       }
 
-      return messages;
+      return messageThreads;
     } catch (error) {
-      console.error('Error in getTeacherMessages:', error);
+      console.error('Error in getTeacherMessageThreads:', error);
       throw error;
     }
   }
 
-  static async getStudentMessages(studentId: string): Promise<Message[]> {
+  static async getThreadMessages(threadId: string): Promise<Message[]> {
     try {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .eq('student_id', studentId)
-        .order('timestamp', { ascending: false });
+        .eq('thread_id', threadId)
+        .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('Error fetching student messages:', error);
+        console.error('Error fetching thread messages:', error);
         throw error;
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error in getStudentMessages:', error);
+      console.error('Error in getThreadMessages:', error);
       throw error;
     }
   }
 
-  static async markMessageAsRead(messageId: string): Promise<void> {
+  static async getOrCreateThread(studentId: string, teacherId: string): Promise<MessageThread> {
+    try {
+      // Check if thread already exists
+      const { data: existingThread, error: searchError } = await supabase
+        .from('message_threads')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('teacher_id', teacherId)
+        .single();
+
+      if (searchError && searchError.code !== 'PGRST116') { // PGRST116 is "no rows found"
+        console.error('Error searching for thread:', searchError);
+        throw searchError;
+      }
+
+      if (existingThread) {
+        return existingThread;
+      }
+
+      // Create new thread
+      const { data: newThread, error: createError } = await supabase
+        .from('message_threads')
+        .insert({
+          student_id: studentId,
+          teacher_id: teacherId
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating thread:', createError);
+        throw createError;
+      }
+
+      return newThread;
+    } catch (error) {
+      console.error('Error in getOrCreateThread:', error);
+      throw error;
+    }
+  }
+
+  static async markMessagesAsRead(threadId: string, userId: string): Promise<void> {
     try {
       const { error } = await supabase
         .from('messages')
-        .update({ unread_count: 0, updated_at: new Date().toISOString() })
-        .eq('id', messageId);
+        .update({ is_read: true, updated_at: new Date().toISOString() })
+        .eq('thread_id', threadId)
+        .neq('sender_id', userId)
+        .eq('is_read', false);
 
       if (error) {
-        console.error('Error marking message as read:', error);
+        console.error('Error marking messages as read:', error);
         throw error;
       }
     } catch (error) {
-      console.error('Error in markMessageAsRead:', error);
+      console.error('Error in markMessagesAsRead:', error);
       throw error;
     }
   }
 
   static async sendMessage(
-    studentId: string,
-    teacherId: string,
-    message: string,
-    studentName: string,
-    plantName?: string,
-    plantImage?: string
+    threadId: string,
+    senderId: string,
+    content: string
   ): Promise<Message> {
     try {
-      const { data, error } = await supabase
+      // Insert the message
+      const { data: message, error: messageError } = await supabase
         .from('messages')
         .insert({
-          student_id: studentId,
-          teacher_id: teacherId,
-          student_name: studentName,
-          last_message: message,
-          timestamp: new Date().toISOString(),
-          unread_count: 1,
-          plant_name: plantName,
-          plant_image: plantImage,
-          is_online: true
+          thread_id: threadId,
+          sender_id: senderId,
+          content: content,
+          is_read: false
         })
         .select()
         .single();
 
-      if (error) {
-        console.error('Error sending message:', error);
-        throw error;
+      if (messageError) {
+        console.error('Error sending message:', messageError);
+        throw messageError;
       }
 
-      return data;
+      // Update thread's updated_at timestamp
+      const { error: threadError } = await supabase
+        .from('message_threads')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', threadId);
+
+      if (threadError) {
+        console.error('Error updating thread timestamp:', threadError);
+      }
+
+      return message;
     } catch (error) {
       console.error('Error in sendMessage:', error);
       throw error;
     }
   }
 
-  static async updateOnlineStatus(userId: string, isOnline: boolean): Promise<void> {
+  static async getUnreadMessageCount(userId: string): Promise<number> {
     try {
-      const { error } = await supabase
+      const { count, error } = await supabase
         .from('messages')
-        .update({ is_online: isOnline, updated_at: new Date().toISOString() })
-        .eq('student_id', userId);
+        .select('*', { count: 'exact', head: true })
+        .eq('is_read', false)
+        .neq('sender_id', userId);
 
       if (error) {
-        console.error('Error updating online status:', error);
+        console.error('Error getting unread count:', error);
         throw error;
       }
+
+      return count || 0;
     } catch (error) {
-      console.error('Error in updateOnlineStatus:', error);
+      console.error('Error in getUnreadMessageCount:', error);
       throw error;
     }
   }

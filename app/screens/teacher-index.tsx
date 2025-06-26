@@ -26,6 +26,7 @@ import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { supabase } from '@/config/supabase';
 import { LessonService } from '@/services/lesson-service';
+import { MessageService } from '@/services/message-service';
 import {
   GSModeToggle,
   GSProgressIndicator,
@@ -60,6 +61,8 @@ interface ClassStats {
   averageHealthScore: number;
   plantsNeedingAttention: number;
   participationRate: number;
+  taskCompletionRate: number;
+  overdueTasksCount: number;
   weeklyHealthScores: number[];
   healthDistribution: {
     excellent: number;
@@ -83,6 +86,8 @@ export default function TeacherIndex() {
     averageHealthScore: 0,
     plantsNeedingAttention: 0,
     participationRate: 0,
+    taskCompletionRate: 0,
+    overdueTasksCount: 0,
     weeklyHealthScores: [],
     healthDistribution: {
       excellent: 0,
@@ -156,13 +161,18 @@ export default function TeacherIndex() {
       
       const enrolledStudents = students?.length || 0;
       
-      // Get today's submissions
+      // Get today's submissions and task data
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(today);
+      todayEnd.setHours(23, 59, 59, 999);
       
       let todaySubmissions: any[] = [];
+      let allStudentsTaskCompletion: any[] = [];
+      let overdueTasksCount = 0;
       
       if (activeLesson) {
+        // Get today's submissions
         const { data: submissions } = await supabase
           .from('daily_submissions')
           .select(`
@@ -173,13 +183,73 @@ export default function TeacherIndex() {
             )
           `)
           .gte('created_at', today.toISOString())
+          .lte('created_at', todayEnd.toISOString())
           .eq('plant.lesson_id', activeLesson.id);
         
         todaySubmissions = submissions || [];
+        
+        // Get all tasks for today for this lesson
+        const { data: todayTasks } = await supabase
+          .from('lesson_tasks')
+          .select('*')
+          .eq('lesson_id', activeLesson.id)
+          .eq('day_number', Math.max(1, Math.floor((Date.now() - new Date(activeLesson.start_date || activeLesson.created_at).getTime()) / (1000 * 60 * 60 * 24))));
+        
+        const totalTasksToday = todayTasks?.length || 0;
+        
+        // Calculate task completion for each student for today
+        if (totalTasksToday > 0) {
+          allStudentsTaskCompletion = await Promise.all(
+            students?.map(async (student) => {
+              const { data: completedTasks } = await supabase
+                .from('task_submissions')
+                .select('*')
+                .eq('student_id', student.id)
+                .eq('lesson_id', activeLesson.id)
+                .gte('created_at', today.toISOString())
+                .lte('created_at', todayEnd.toISOString());
+              
+              return {
+                studentId: student.id,
+                completedCount: completedTasks?.length || 0,
+                totalTasks: totalTasksToday,
+                completedAll: (completedTasks?.length || 0) === totalTasksToday
+              };
+            }) || []
+          );
+        }
+        
+        // Calculate overdue tasks (from previous days)
+        if (students && activeLesson.start_date) {
+          for (const student of students) {
+            // Get all tasks from lesson start until yesterday
+            const { data: allPreviousTasks } = await supabase
+              .from('lesson_tasks')
+              .select('*')
+              .eq('lesson_id', activeLesson.id)
+              .lt('day_number', Math.max(1, Math.floor((Date.now() - new Date(activeLesson.start_date || activeLesson.created_at).getTime()) / (1000 * 60 * 60 * 24))));
+            
+            // Get student's completed tasks for all previous days
+            const { data: studentCompletedTasks } = await supabase
+              .from('task_submissions')
+              .select('*')
+              .eq('student_id', student.id)
+              .eq('lesson_id', activeLesson.id)
+              .lt('created_at', today.toISOString());
+            
+            const totalPreviousTasks = allPreviousTasks?.length || 0;
+            const completedCount = studentCompletedTasks?.length || 0;
+            overdueTasksCount += Math.max(0, totalPreviousTasks - completedCount);
+          }
+        }
       }
       
       // Calculate stats
       const submissionsToday = todaySubmissions.length;
+      
+      // Calculate students who completed all tasks today
+      const studentsCompletedAllTasks = allStudentsTaskCompletion.filter(s => s.completedAll).length;
+      const taskCompletionRate = enrolledStudents > 0 ? Math.round((studentsCompletedAllTasks / enrolledStudents) * 100) : 0;
       
       // Calculate average health from all enrolled students' current health scores
       const avgHealth = enrolledStudents > 0 && students && students.length > 0
@@ -217,14 +287,9 @@ export default function TeacherIndex() {
         timeAgo: getTimeAgo(new Date(sub.created_at))
       } as StudentData)) || [];
       
-      // Count unread messages
-      const { count } = await supabase
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_read', false)
-        .not('sender_id', 'is', null);
-      
-      setUnreadMessages(count || 0);
+      // Count unread messages using MessageService
+      const unreadCount = await MessageService.getUnreadMessageCount(user.id);
+      setUnreadMessages(unreadCount);
       
       // Health distribution based on all enrolled students' current health
       const healthDist = students ? {
@@ -251,6 +316,8 @@ export default function TeacherIndex() {
         averageHealthScore: Math.round(avgHealth),
         plantsNeedingAttention: pendingStudentsList.filter(s => s.needsAttention).length,
         participationRate: enrolledStudents > 0 ? Math.round((submissionsToday / enrolledStudents) * 100) : 0,
+        taskCompletionRate,
+        overdueTasksCount,
         weeklyHealthScores: [78, 80, 79, 82, 85, 83, Math.round(avgHealth)], // TODO: Calculate actual weekly scores
         healthDistribution: healthDist
       });
@@ -311,7 +378,7 @@ export default function TeacherIndex() {
   }
 
   const submissionPercentage = Math.round((classStats.submissionsToday / classStats.totalStudents) * 100);
-  const yesterdayDate = format(new Date(Date.now() - 86400000), 'EEEE, MMMM d');
+  const todayDate = format(new Date(), 'EEEE, MMMM d');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
@@ -410,21 +477,21 @@ export default function TeacherIndex() {
           <View style={{ marginBottom: 24 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Task Completion</Text>
-              <Text style={{ fontSize: 14, color: '#666' }}>{yesterdayDate}</Text>
+              <Text style={{ fontSize: 14, color: '#666' }}>{todayDate}</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
               <View style={{ flex: 1 }}>
                 <GSStatCard
-                  value={`${classStats.participationRate}%`}
+                  value={`${classStats.taskCompletionRate || 0}%`}
                   label="Completed All Tasks"
                   icon="check-circle"
                 />
               </View>
               <View style={{ flex: 1 }}>
                 <GSStatCard
-                  value={pendingStudents.length.toString()}
-                  label="Students Pending"
-                  icon="alert-circle"
+                  value={classStats.overdueTasksCount?.toString() || "0"}
+                  label="Tasks Overdue"
+                  icon="alert-triangle"
                 />
               </View>
             </View>
