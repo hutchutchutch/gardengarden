@@ -308,8 +308,6 @@ export default function StudentIndexScreen() {
                   dayNumber={plantProgress.dayNumber || 1}
                   healthScore={plantProgress.healthScore || 0}
                   currentStage={plantProgress.currentStage}
-                  streak={plantProgress.streak}
-                  height={plantProgress.height}
                   positiveSigns={getCurrentAnalysisData()?.positive_signs || []}
                   areasForImprovement={getCurrentAnalysisData()?.areas_for_improvement || []}
                 />

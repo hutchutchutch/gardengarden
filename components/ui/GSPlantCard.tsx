@@ -14,8 +14,6 @@ interface GSPlantCardProps {
   dayNumber: number;
   healthScore: number;
   currentStage?: string;
-  streak?: number;
-  height?: string;
   positiveSigns?: string[];
   areasForImprovement?: string[];
   onExpand?: () => void;
@@ -33,8 +31,6 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
   dayNumber,
   healthScore,
   currentStage,
-  streak,
-  height,
   positiveSigns = [],
   areasForImprovement = [],
   onExpand,
@@ -59,20 +55,18 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
           <View style={styles.header}>
             <View style={styles.info}>
               <View style={styles.titleRow}>
-                <ShimmerPlaceholder width={100} height={18} borderRadius={4} />
+                <ShimmerPlaceholder width={120} height={18} borderRadius={4} />
                 <View style={styles.badgeContainer}>
                   <ShimmerPlaceholder width={50} height={20} borderRadius={10} />
                   <ShimmerPlaceholder width={40} height={20} borderRadius={10} />
                 </View>
               </View>
-              <ShimmerPlaceholder width={60} height={14} borderRadius={4} style={{ marginTop: 4 }} />
+              <View style={styles.stageRow}>
+                <ShimmerPlaceholder width={16} height={16} borderRadius={8} />
+                <ShimmerPlaceholder width={60} height={14} borderRadius={4} />
+              </View>
+                          </View>
             </View>
-          </View>
-          <View style={styles.statsRow}>
-            <ShimmerPlaceholder width={60} height={40} borderRadius={8} />
-            <ShimmerPlaceholder width={60} height={40} borderRadius={8} />
-            <ShimmerPlaceholder width={60} height={40} borderRadius={8} />
-          </View>
         </Card.Content>
       </Card>
     );
@@ -102,10 +96,10 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
             <View style={styles.titleRow}>
               <Text 
                 variant="titleMedium" 
-                style={[styles.studentName, { color: theme.colors.onSurface }]}
+                style={[styles.plantName, { color: theme.colors.onSurface }]}
                 numberOfLines={1}
               >
-                {studentName}
+                {plantName}
               </Text>
               <View style={styles.badgeContainer}>
                 <Surface style={[styles.dayBadgeCompact, { backgroundColor: theme.colors.primaryContainer }]}>
@@ -124,12 +118,17 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
                 />
               </View>
             </View>
-            <Text 
-              variant="bodySmall" 
-              style={[styles.plantName, { color: theme.colors.textLight }]}
-            >
-              {plantName}
-            </Text>
+            {currentStage && (
+              <View style={styles.stageRow}>
+                <GSIconButton icon="sprout" onPress={() => {}} size={16} color={theme.colors.primary} />
+                <Text 
+                  variant="bodySmall" 
+                  style={[styles.stageText, { color: theme.colors.onSurfaceVariant }]}
+                >
+                  {currentStage}
+                </Text>
+              </View>
+            )}
           </View>
 
           {(positiveSigns.length > 0 || areasForImprovement.length > 0) && (
@@ -142,30 +141,7 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
           )}
         </View>
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          {currentStage && (
-            <View style={styles.statItem}>
-              <GSIconButton icon="sprout" onPress={() => {}} size={16} color={theme.colors.primary} />
-              <Text variant="labelSmall" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Stage</Text>
-              <Text variant="labelMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>{currentStage}</Text>
-            </View>
-          )}
-          {streak && (
-            <View style={styles.statItem}>
-              <GSIconButton icon="flame" onPress={() => {}} size={16} color={theme.colors.primary} />
-              <Text variant="labelSmall" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Streak</Text>
-              <Text variant="labelMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>{streak} days</Text>
-            </View>
-          )}
-          {height && (
-            <View style={styles.statItem}>
-              <GSIconButton icon="ruler" onPress={() => {}} size={16} color={theme.colors.primary} />
-              <Text variant="labelSmall" style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Height</Text>
-              <Text variant="labelMedium" style={[styles.statValue, { color: theme.colors.onSurface }]}>{height}cm</Text>
-            </View>
-          )}
-        </View>
+
 
         {expanded && (positiveSigns.length > 0 || areasForImprovement.length > 0) && (
           <View style={styles.analysisContainer}>
@@ -240,6 +216,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   plantName: {
+    fontWeight: '600',
+    flex: 1,
+  },
+  stageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 6,
+  },
+  stageText: {
     lineHeight: 16,
   },
   analysisContainer: {
