@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Switch } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Send, ImageIcon } from 'lucide-react-native';
+import { SegmentedButtons } from 'react-native-paper';
 import colors from '@/constants/colors';
 import { useAIStore } from '@/store/ai-store';
 import { useColorScheme } from 'react-native';
@@ -23,6 +24,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const [message, setMessage] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(photoUri || null);
   const [mode, setMode] = useState<'ai' | 'teacher'>(initialMode);
+  const [isAIThinking, setIsAIThinking] = useState(false);
   const { messages, isLoading, sendMessage, fetchMessages, initializeThread, initializeDefaultThread } = useAIStore();
   const { user } = useAuth();
   const { plants } = usePlantStore();
@@ -61,15 +63,41 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
     if (scrollViewRef.current) {
       scrollViewRef.current.scrollToEnd({ animated: true });
     }
-  }, [messages]);
+    
+    // Hide AI loading state when a new AI message arrives
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && lastMessage.role === 'assistant' && isAIThinking) {
+      setIsAIThinking(false);
+    }
+  }, [messages, isAIThinking]);
+
+  // Reset AI loading state when mode changes to prevent shimmer on switch
+  useEffect(() => {
+    setIsAIThinking(false);
+  }, [mode]);
 
   const handleSend = async () => {
     if (message.trim() === '' && !imageUri) return;
     
-    // In teacher mode, send to teacher; in AI mode, send to AI with lesson context
+    // Only show loading shimmer for AI mode
+    if (mode === 'ai') {
+      setIsAIThinking(true);
+      
+      // Start a timer to hide loading after response
+      setTimeout(() => {
+        setIsAIThinking(false);
+      }, 3000); // Hide after 3 seconds max
+    }
+    
+    // Send the message
     await sendMessage(message, imageUri || undefined, mode, lessonId, plantId);
     setMessage('');
     setImageUri(null);
+    
+    // For teacher mode, hide loading immediately since no response expected
+    if (mode === 'teacher') {
+      setIsAIThinking(false);
+    }
   };
 
   const handlePickImage = async () => {
@@ -90,9 +118,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const toggleMode = () => {
-    setMode(mode === 'ai' ? 'teacher' : 'ai');
-  };
+
 
   // For now, show all messages in the current thread
   // In the future, we might want to filter by message type or have separate threads for AI vs teacher
@@ -144,10 +170,10 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
             );
           })
         )}
-        {isLoading && (
+        {isAIThinking && mode === 'ai' && (
           <GSChatBubble
-            type={mode === 'ai' ? 'ai' : 'teacher'}
-            message={mode === 'ai' ? 'Thinking...' : 'Teacher is typing...'}
+            type="ai"
+            message="Thinking..."
             timestamp={new Date().toISOString()}
             isLoading={true}
           />
@@ -173,18 +199,25 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
       {!isTeacher && (
         <View style={styles.modeToggleContainer}>
           <Text style={styles.chatWithLabel}>Chat with: </Text>
-          <Text style={[styles.modeLabel, mode === 'ai' && styles.modeLabelActive]}>
-            AI Assistant
-          </Text>
-          <Switch
-            value={mode === 'teacher'}
-            onValueChange={toggleMode}
-            trackColor={{ false: colors.secondary, true: colors.primaryDark }}
-            thumbColor={colors.white}
+          <SegmentedButtons
+            value={mode}
+            onValueChange={(value) => setMode(value as 'ai' | 'teacher')}
+            buttons={[
+              {
+                value: 'ai',
+                label: 'Chatbot',
+                style: mode === 'ai' ? styles.segmentedButtonActiveAI : styles.segmentedButtonInactive,
+                labelStyle: mode === 'ai' ? styles.segmentedButtonActiveLabelAI : styles.segmentedButtonInactiveLabel,
+              },
+              {
+                value: 'teacher',
+                label: 'Teacher',
+                style: mode === 'teacher' ? styles.segmentedButtonActiveTeacher : styles.segmentedButtonInactive,
+                labelStyle: mode === 'teacher' ? styles.segmentedButtonActiveLabelTeacher : styles.segmentedButtonInactiveLabel,
+              },
+            ]}
+            style={styles.segmentedButtons}
           />
-          <Text style={[styles.modeLabel, mode === 'teacher' && styles.modeLabelActive]}>
-            Teacher
-          </Text>
         </View>
       )}
 
@@ -229,16 +262,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     fontWeight: '500',
-    marginRight: 8,
+    marginRight: 12,
   },
-  modeLabel: {
-    fontSize: 16,
-    color: colors.textLight,
-    marginHorizontal: 12,
+  segmentedButtons: {
+    maxWidth: 200,
   },
-  modeLabelActive: {
-    color: colors.text,
+  segmentedButtonActiveAI: {
+    backgroundColor: '#4CAF50', // Green to match AI chat bubble
+  },
+  segmentedButtonActiveTeacher: {
+    backgroundColor: '#2196F3', // Blue to match teacher chat bubble
+  },
+  segmentedButtonInactive: {
+    backgroundColor: colors.backgroundLight,
+  },
+  segmentedButtonActiveLabelAI: {
+    color: 'white',
     fontWeight: '600',
+  },
+  segmentedButtonActiveLabelTeacher: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  segmentedButtonInactiveLabel: {
+    color: colors.textLight,
   },
   messagesContainer: {
     flex: 1,

@@ -9,6 +9,7 @@ interface AIState {
   messages: AIMessage[];
   currentThreadId: string | null;
   isLoading: boolean;
+  isAILoading: boolean; // Separate loading state for AI responses
   error: string | null;
   
   // Actions
@@ -25,6 +26,7 @@ export const useAIStore = create<AIState>()(
       messages: [],
       currentThreadId: null,
       isLoading: false,
+      isAILoading: false,
       error: null,
 
       initializeThread: async (studentId: string, teacherId: string) => {
