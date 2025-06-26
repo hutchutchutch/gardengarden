@@ -284,7 +284,7 @@ export default function StudentIndexScreen() {
           
 
           {/* Plant Stories Section */}
-          <View style={{ marginBottom: 24, marginTop: 24 }}>
+          <View style={{ marginBottom: 16, marginTop: 24 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 16 }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: '#000' }}>Class Gardens</Text>
             </View>
@@ -297,7 +297,7 @@ export default function StudentIndexScreen() {
 
           {/* My Plant Progress Section with GSPlantCard */}
           {activePlant && plantProgress && (
-            <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
+            <View style={{ marginBottom: 24, marginTop: 8, paddingHorizontal: 16 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>My Plant Progress</Text>
               
               <View style={{ marginTop: 12 }}>

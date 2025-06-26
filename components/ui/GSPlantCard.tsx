@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Text, Surface, IconButton } from 'react-native-paper';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, Pressable } from 'react-native';
 import { useAppTheme } from '../../config/theme';
 import { GSHealthBadge } from './GSHealthBadge';
 import { ShimmerPlaceholder } from './ShimmerPlaceholder';
@@ -61,9 +61,9 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
                   <ShimmerPlaceholder width={40} height={20} borderRadius={10} />
                 </View>
               </View>
-              <View style={styles.stageRow}>
+              <View style={styles.firstSignRow}>
                 <ShimmerPlaceholder width={16} height={16} borderRadius={8} />
-                <ShimmerPlaceholder width={60} height={14} borderRadius={4} />
+                <ShimmerPlaceholder width={100} height={14} borderRadius={4} />
               </View>
                           </View>
             </View>
@@ -118,40 +118,67 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
                 />
               </View>
             </View>
-            {currentStage && (
-              <View style={styles.stageRow}>
-                <GSIconButton icon="sprout" onPress={() => {}} size={16} color={theme.colors.primary} />
+            {/* First Positive Sign */}
+            {positiveSigns.length > 0 && (
+              <View style={styles.firstSignRow}>
+                <GSIconButton icon="check-circle" onPress={() => {}} size={16} color="#4CAF50" />
                 <Text 
                   variant="bodySmall" 
-                  style={[styles.stageText, { color: theme.colors.onSurfaceVariant }]}
+                  style={[styles.firstSignText, { color: theme.colors.onSurfaceVariant }]}
                 >
-                  {currentStage}
+                  {positiveSigns[0]}
                 </Text>
               </View>
             )}
           </View>
+        </View>
 
-          {(positiveSigns.length > 0 || areasForImprovement.length > 0) && (
-            <IconButton
-              icon={expanded ? 'chevron-up' : 'chevron-down'}
-              size={20}
-              onPress={handleExpand}
-              testID={`${testID}-expand`}
-            />
+        {/* Bottom Row with Stage and More Details */}
+        <View style={styles.bottomRow}>
+          {/* Stage on the left */}
+          {currentStage && (
+            <View style={styles.stageBottomRow}>
+              <GSIconButton icon="sprout" onPress={() => {}} size={16} color={theme.colors.primary} />
+              <Text 
+                variant="labelMedium" 
+                style={[styles.stageBottomText, { color: theme.colors.onSurfaceVariant }]}
+              >
+                {currentStage}
+              </Text>
+            </View>
+          )}
+          
+          {/* More Details on the right */}
+          {(positiveSigns.length > 1 || areasForImprovement.length > 0) && (
+            <Pressable onPress={handleExpand} style={styles.moreDetailsButton}>
+              <Text 
+                variant="labelMedium" 
+                style={[styles.moreDetailsText, { color: theme.colors.primary }]}
+              >
+                More details
+              </Text>
+              <IconButton
+                icon={expanded ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                onPress={handleExpand}
+                testID={`${testID}-expand`}
+                style={styles.moreDetailsIcon}
+              />
+            </Pressable>
           )}
         </View>
 
 
 
-        {expanded && (positiveSigns.length > 0 || areasForImprovement.length > 0) && (
+        {expanded && (positiveSigns.length > 1 || areasForImprovement.length > 0) && (
           <View style={styles.analysisContainer}>
-            {positiveSigns.length > 0 && (
+            {positiveSigns.length > 1 && (
               <View style={styles.signSection}>
                 <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                  Positive Signs
+                  Additional Positive Signs
                 </Text>
                 <View style={styles.chipContainer}>
-                  {positiveSigns.map((sign, index) => (
+                  {positiveSigns.slice(1).map((sign, index) => (
                     <GSChip key={index} label={sign} variant="success" />
                   ))}
                 </View>
@@ -159,7 +186,7 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
             )}
             
             {areasForImprovement.length > 0 && (
-              <View style={[styles.signSection, positiveSigns.length > 0 && { marginTop: 12 }]}>
+              <View style={[styles.signSection, positiveSigns.length > 1 && { marginTop: 12 }]}>
                 <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
                   Areas for Improvement
                 </Text>
@@ -219,38 +246,52 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
-  stageRow: {
+  firstSignRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 8,
     gap: 6,
   },
-  stageText: {
+  firstSignText: {
     lineHeight: 16,
+    flex: 1,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  stageBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  stageBottomText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  moreDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  moreDetailsText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  moreDetailsIcon: {
+    margin: 0,
+    marginLeft: -4,
   },
   analysisContainer: {
     marginTop: 12,
     paddingTop: 12,
+    paddingHorizontal: 16,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0, 0, 0, 0.08)',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statLabel: {
-    marginTop: 4,
-    fontSize: 10,
-  },
-  statValue: {
-    marginTop: 2,
-    fontWeight: '600',
   },
   signSection: {
     marginBottom: 8,
