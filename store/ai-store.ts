@@ -121,7 +121,7 @@ export const useAIStore = create<AIState>()(
 
           if (mode === 'teacher') {
             // Send user message to teacher via Supabase
-            const userMessage = await MessageService.sendMessage(currentThreadId, user.id, content);
+            const userMessage = await MessageService.sendMessage(currentThreadId, user.id, content, imageUri);
             
             // Update local state with the saved user message
             const savedUserMessage: AIMessage = {
@@ -132,38 +132,12 @@ export const useAIStore = create<AIState>()(
             };
             
             set(state => ({
-              messages: [...state.messages.slice(0, -1), savedUserMessage]
+              messages: [...state.messages.slice(0, -1), savedUserMessage],
+              isLoading: false
             }));
 
-            // Generate teacher response after a delay
-            setTimeout(async () => {
-              try {
-                const teacherResponse = "I've received your message! I'll review your plant's progress and get back to you soon. Keep up the great work with your daily care routine!";
-                
-                // Save teacher response to database
-                const teacherMessage = await MessageService.sendMessage(
-                  currentThreadId, 
-                  'ee242274-2c32-4432-bfad-69cbeb9d1228', // Hutch Herchenbach (teacher) ID
-                  teacherResponse
-                );
-
-                // Add teacher response to state
-                const teacherAIMessage: AIMessage = {
-                  id: teacherMessage.id,
-                  role: 'teacher',
-                  content: teacherResponse,
-                  timestamp: teacherMessage.created_at
-                };
-                
-                set(state => ({
-                  messages: [...state.messages, teacherAIMessage],
-                  isLoading: false
-                }));
-              } catch (error) {
-                console.error('Error sending teacher response:', error);
-                set({ isLoading: false });
-              }
-            }, 1000);
+            // Don't generate automatic teacher response - let the real teacher respond
+            console.log('Message sent to teacher via thread:', currentThreadId);
           } else {
             // AI mode - use the edge function
             try {

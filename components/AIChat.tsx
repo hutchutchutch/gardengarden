@@ -13,6 +13,7 @@ import { AIPlantAnalysis } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { GSChatBubble } from './ui/GSChatBubble';
 import { PhotoService } from '@/services/photo-service';
+import { supabase } from '@/config/supabase';
 
 interface AIChatProps {
   analysis?: AIPlantAnalysis | null;
@@ -39,9 +40,44 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   useEffect(() => {
     const initializeChat = async () => {
       if (user) {
-        // Use one shared thread that contains both AI and teacher messages
-        // For testing, use the default thread with Hutch users
-        await initializeDefaultThread();
+        // Get the teacher for this student's active lesson
+        if (user.role === 'student') {
+          try {
+            // Query to get the teacher for the student's active lesson
+            const { data: studentLessonData, error } = await supabase
+              .from('plants')
+              .select(`
+                lesson_id,
+                lessons!inner(
+                  id,
+                  name,
+                  class_id,
+                  classes!inner(
+                    teacher_id
+                  )
+                )
+              `)
+              .eq('student_id', user.id)
+              .eq('lessons.status', 'active')
+              .single();
+
+            if (studentLessonData && !error) {
+              const teacherId = (studentLessonData.lessons as any).classes.teacher_id;
+              // Initialize thread with the actual teacher
+              await initializeThread(user.id, teacherId);
+            } else {
+              // Fallback to default thread for testing
+              await initializeDefaultThread();
+            }
+          } catch (error) {
+            console.error('Error getting teacher for student lesson:', error);
+            // Fallback to default thread
+            await initializeDefaultThread();
+          }
+        } else {
+          // For teachers or other roles, use default thread
+          await initializeDefaultThread();
+        }
       }
     };
 

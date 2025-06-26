@@ -27,6 +27,7 @@ export interface Message {
   thread_id: string;
   sender_id: string;
   content: string;
+  image_url?: string;
   is_read: boolean;
   created_at: string;
   ai_sources?: any;
@@ -237,7 +238,8 @@ export class MessageService {
   static async sendMessage(
     threadId: string,
     senderId: string,
-    content: string
+    content: string,
+    imageUrl?: string
   ): Promise<Message> {
     try {
       // Insert the message
@@ -247,6 +249,7 @@ export class MessageService {
           thread_id: threadId,
           sender_id: senderId,
           content: content,
+          image_url: imageUrl || null,
           is_read: false
         })
         .select()
