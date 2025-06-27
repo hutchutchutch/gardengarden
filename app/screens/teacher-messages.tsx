@@ -177,7 +177,9 @@ export default function TeacherMessagesScreen() {
                     </View>
                     
                     <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }} numberOfLines={2}>
-                      {item.last_message?.content || 'No messages yet'}
+                      {item.last_message?.content?.startsWith('DOCUMENT_REF:') 
+                        ? 'Document shared' 
+                        : item.last_message?.content || 'No messages yet'}
                     </Text>
                   </View>
 

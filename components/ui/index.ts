@@ -39,6 +39,7 @@ export type { DocumentItemProps } from './GSDocumentItem';
 // Chat Components
 export { GSChatBubble } from './GSChatBubble';
 export { GSChatInput } from './GSChatInput';
+export { GSReferenceDocuments } from './GSReferenceDocuments';
 
 // UI Components
 export { GSModeToggle } from './GSModeToggle';

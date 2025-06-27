@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { Send, ImageIcon } from 'lucide-react-native';
 import { SegmentedButtons } from 'react-native-paper';
 import colors from '@/constants/colors';
@@ -12,6 +12,7 @@ import { Image } from 'expo-image';
 import { AIPlantAnalysis } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { GSChatBubble } from './ui/GSChatBubble';
+import { GSReferenceDocuments } from './ui/GSReferenceDocuments';
 import { PhotoService } from '@/services/photo-service';
 import { supabase } from '@/config/supabase';
 import { useMode } from '@/contexts/ModeContext';
@@ -30,6 +31,8 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const [imageUri, setImageUri] = useState<string | null>(photoUri || null);
   const [mode, setMode] = useState<'ai' | 'teacher'>(initialMode);
   const [isAIThinking, setIsAIThinking] = useState(false);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [documentsData, setDocumentsData] = useState<{[key: string]: {title: string, url: string}}>({});
   const { messages, isLoading, sendMessage, fetchMessages, initializeThread, initializeDefaultThread, initializeExistingThread } = useAIStore();
   const { user } = useAuth();
   const { plants } = usePlantStore();
@@ -123,14 +126,76 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
     setIsAIThinking(false);
   }, [mode]);
 
+  // Fetch documents data when documents are selected
+  useEffect(() => {
+    const fetchDocumentsData = async () => {
+      if (selectedDocuments.length > 0) {
+        try {
+          const { data, error } = await supabase
+            .from('lesson_documents')
+            .select('id, title, url')
+            .in('id', selectedDocuments);
+
+          if (data && !error) {
+            const docsMap = data.reduce((acc, doc) => {
+              acc[doc.id] = { title: doc.title, url: doc.url };
+              return acc;
+            }, {} as {[key: string]: {title: string, url: string}});
+            setDocumentsData(docsMap);
+          }
+        } catch (error) {
+          console.error('Error fetching documents data:', error);
+        }
+      }
+    };
+
+    fetchDocumentsData();
+  }, [selectedDocuments]);
+
+  const handleDocumentToggle = (documentId: string) => {
+    setSelectedDocuments(prev => 
+      prev.includes(documentId) 
+        ? prev.filter(id => id !== documentId)
+        : [...prev, documentId]
+    );
+  };
+
+  const handleDocumentPress = async (url: string) => {
+    // Open the document URL
+    if (url) {
+      try {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+        } else {
+          console.error('Cannot open URL:', url);
+        }
+      } catch (error) {
+        console.error('Error opening URL:', error);
+      }
+    }
+  };
+
   const handleSend = async () => {
     if (message.trim() === '' && !imageUri) return;
     
-    // If current user is a teacher, just send the message and exit
+    // If current user is a teacher, send the message and any selected documents
     if (user?.role === 'teacher') {
       await sendMessage(message, imageUri || undefined, 'teacher', lessonId, plantId);
+      
+      // Send document reference messages for each selected document
+      for (const docId of selectedDocuments) {
+        const docData = documentsData[docId];
+        if (docData) {
+          // Create a document message with URL embedded in content
+          const documentContent = `DOCUMENT_REF:${docData.url}:${docData.title}`;
+          await sendMessage(documentContent, undefined, 'teacher', lessonId, plantId);
+        }
+      }
+      
       setMessage('');
       setImageUri(null);
+      setSelectedDocuments([]); // Clear selected documents after sending
       return;
     }
     
@@ -249,6 +314,30 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
           </View>
         ) : (
           filteredMessages.map((msg) => {
+            // Check if this is a document reference message
+            const isDocumentRef = msg.content?.startsWith('DOCUMENT_REF:');
+            
+            if (isDocumentRef) {
+              // Parse document reference: DOCUMENT_REF:url:title
+              const parts = msg.content.split(':');
+              const documentUrl = parts[1];
+              const documentTitle = parts.slice(2).join(':');
+              
+              return (
+                <GSChatBubble
+                  key={msg.id}
+                  type="document"
+                  message={documentTitle}
+                  timestamp={msg.timestamp}
+                  currentUserRole={user?.role || 'student'}
+                  isRead={true}
+                  isLoading={false}
+                  documentUrl={documentUrl}
+                  onDocumentPress={() => handleDocumentPress(documentUrl)}
+                />
+              );
+            }
+            
             // Determine bubble type based on actual message role/sender
             let bubbleType: 'student' | 'ai' | 'teacher' = 'student';
             if (msg.role === 'user') {
@@ -303,8 +392,8 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
         </View>
       )}
 
-      {/* Mode Toggle - Only show for students - Above input */}
-      {!isTeacher && (
+      {/* Mode Toggle for students, Reference Documents for teachers */}
+      {!isTeacher ? (
         <View style={styles.modeToggleContainer}>
           <Text style={styles.chatWithLabel}>Chat with: </Text>
           <SegmentedButtons
@@ -327,6 +416,12 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
             style={styles.segmentedButtons}
           />
         </View>
+      ) : (
+        <GSReferenceDocuments
+          lessonId={lessonId}
+          selectedDocuments={selectedDocuments}
+          onDocumentToggle={handleDocumentToggle}
+        />
       )}
 
       <View style={styles.inputContainer}>

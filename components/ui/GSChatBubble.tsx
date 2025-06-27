@@ -6,7 +6,7 @@ import { useAppTheme } from '../../config/theme';
 import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 import { Source } from '@/types';
 
-type ChatBubbleType = 'ai' | 'teacher' | 'student';
+type ChatBubbleType = 'ai' | 'teacher' | 'student' | 'document';
 type UserRole = 'student' | 'teacher';
 
 interface GSChatBubbleProps {
@@ -19,6 +19,8 @@ interface GSChatBubbleProps {
   isRead?: boolean;
   isLoading?: boolean;
   testID?: string;
+  documentUrl?: string; // For document type bubbles
+  onDocumentPress?: () => void; // For document type bubbles
 }
 
 export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
@@ -31,11 +33,16 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   isRead = false,
   isLoading = false,
   testID = 'gs-chat-bubble',
+  documentUrl,
+  onDocumentPress,
 }) => {
   const theme = useAppTheme();
   const [showExpandedSources, setShowExpandedSources] = useState(false);
 
   const getAlignment = (): 'flex-start' | 'flex-end' => {
+    // Document bubbles always appear on the left (from teacher)
+    if (type === 'document') return 'flex-start';
+    
     // When viewing as a student:
     if (currentUserRole === 'student') {
       if (type === 'student') return 'flex-end'; // Student messages on right
@@ -56,6 +63,7 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
 
   const getBubbleColor = () => {
     if (type === 'ai') return '#4CAF50'; // Green for AI/chatbot
+    if (type === 'document') return '#F59E0B'; // Orange for document references
     
     const alignment = getAlignment();
     if (alignment === 'flex-end') return '#E5E7EB'; // Gray for messages on right
@@ -66,6 +74,7 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
     const alignment = getAlignment();
     
     if (type === 'ai') return '#FFFFFF'; // White text on green
+    if (type === 'document') return '#FFFFFF'; // White text on orange
     if (alignment === 'flex-end') return '#374151'; // Dark text on gray (current user)
     return '#FFFFFF'; // White text on blue (other user)
   };
@@ -127,92 +136,123 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
       ]}
       testID={testID}
     >
-      <Surface
-        style={getBubbleStyle()}
-        elevation={type === 'student' ? 1 : 2}
-      >
-        <Text 
-          variant="bodyMedium" 
-          style={[
-            styles.message,
-            { color: getTextColor() },
-          ]}
-        >
-          {message}
-        </Text>
-
-        {showSources && sources.length > 0 && type === 'ai' && (
-          <Pressable
-            style={[styles.sourcesToggle, { borderTopColor: 'rgba(255, 255, 255, 0.2)' }]}
-            onPress={() => setShowExpandedSources(!showExpandedSources)}
+      {type === 'document' && onDocumentPress ? (
+        <Pressable onPress={onDocumentPress}>
+          <Surface
+            style={getBubbleStyle()}
+            elevation={2}
           >
-            <Text style={[styles.sourcesToggleText, { color: getTextColor(), opacity: 0.9 }]}>
-              See sources ({sources.length})
+            <Text 
+              variant="bodyMedium" 
+              style={[
+                styles.message,
+                { color: getTextColor() },
+                styles.documentTitle,
+              ]}
+            >
+              📄 {message}
             </Text>
-            {showExpandedSources ? (
-              <ChevronUp size={16} color={getTextColor()} style={{ opacity: 0.9 }} />
-            ) : (
-              <ChevronDown size={16} color={getTextColor()} style={{ opacity: 0.9 }} />
-            )}
-          </Pressable>
-        )}
-
-        {showExpandedSources && sources && (
-          <View style={styles.sourcesContainer}>
-            {sources.map((source, index) => (
-              <Pressable
-                key={index}
+            <View style={styles.footer}>
+              <Text 
+                variant="labelSmall" 
                 style={[
-                  styles.sourceItem,
-                  {
-                    backgroundColor: theme.colors.surface,
-                    shadowColor: theme.colors.shadow,
-                  },
+                  styles.timestamp,
+                  { color: getTextColor(), opacity: 0.7 },
                 ]}
-                onPress={() => handleOpenURL(source.url)}
               >
-                <View style={styles.sourceContent}>
-                  <Text style={[styles.sourceTitle, { color: theme.colors.onSurface }]}>
-                    {source.title}
-                  </Text>
-                  <Text 
-                    style={[styles.sourceSnippet, { color: theme.colors.onSurfaceVariant }]}
-                    numberOfLines={2}
-                  >
-                    {source.snippet}
-                  </Text>
-                  {source.similarity && (
-                    <Text style={[styles.sourceSimilarity, { color: theme.colors.primary }]}>
-                      {Math.round(source.similarity * 100)}% relevant
-                    </Text>
-                  )}
-                </View>
-                <ExternalLink size={16} color={theme.colors.primary} />
-              </Pressable>
-            ))}
-          </View>
-        )}
-
-        <View style={styles.footer}>
+                {formatTime(timestamp)}
+              </Text>
+            </View>
+          </Surface>
+        </Pressable>
+      ) : (
+        <Surface
+          style={getBubbleStyle()}
+          elevation={type === 'student' ? 1 : 2}
+        >
           <Text 
-            variant="labelSmall" 
+            variant="bodyMedium" 
             style={[
-              styles.timestamp,
-              { color: getTextColor(), opacity: 0.7 },
+              styles.message,
+              { color: getTextColor() },
             ]}
           >
-            {formatTime(timestamp)}
+            {message}
           </Text>
-          
-          {type === 'student' && (
-            <Icon
-              source={isRead ? 'check-all' : 'check'}
-              size={16}
-              color={isRead ? theme.colors.primary : theme.colors.textHint}
-            />
+
+          {showSources && sources.length > 0 && type === 'ai' && (
+            <Pressable
+              style={[styles.sourcesToggle, { borderTopColor: 'rgba(255, 255, 255, 0.2)' }]}
+              onPress={() => setShowExpandedSources(!showExpandedSources)}
+            >
+              <Text style={[styles.sourcesToggleText, { color: getTextColor(), opacity: 0.9 }]}>
+                See sources ({sources.length})
+              </Text>
+              {showExpandedSources ? (
+                <ChevronUp size={16} color={getTextColor()} style={{ opacity: 0.9 }} />
+              ) : (
+                <ChevronDown size={16} color={getTextColor()} style={{ opacity: 0.9 }} />
+              )}
+            </Pressable>
           )}
-        </View>
-      </Surface>
+
+          {showExpandedSources && sources && (
+            <View style={styles.sourcesContainer}>
+              {sources.map((source, index) => (
+                <Pressable
+                  key={index}
+                  style={[
+                    styles.sourceItem,
+                    {
+                      backgroundColor: theme.colors.surface,
+                      shadowColor: theme.colors.shadow,
+                    },
+                  ]}
+                  onPress={() => handleOpenURL(source.url)}
+                >
+                  <View style={styles.sourceContent}>
+                    <Text style={[styles.sourceTitle, { color: theme.colors.onSurface }]}>
+                      {source.title}
+                    </Text>
+                    <Text 
+                      style={[styles.sourceSnippet, { color: theme.colors.onSurfaceVariant }]}
+                      numberOfLines={2}
+                    >
+                      {source.snippet}
+                    </Text>
+                    {source.similarity && (
+                      <Text style={[styles.sourceSimilarity, { color: theme.colors.primary }]}>
+                        {Math.round(source.similarity * 100)}% relevant
+                      </Text>
+                    )}
+                  </View>
+                  <ExternalLink size={16} color={theme.colors.primary} />
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          <View style={styles.footer}>
+            <Text 
+              variant="labelSmall" 
+              style={[
+                styles.timestamp,
+                { color: getTextColor(), opacity: 0.7 },
+              ]}
+            >
+              {formatTime(timestamp)}
+            </Text>
+            
+            {type === 'student' && (
+              <Icon
+                source={isRead ? 'check-all' : 'check'}
+                size={16}
+                color={isRead ? theme.colors.primary : theme.colors.textHint}
+              />
+            )}
+          </View>
+        </Surface>
+      )}
     </View>
   );
 };
@@ -236,6 +276,9 @@ const styles = StyleSheet.create({
   },
   message: {
     lineHeight: 20,
+  },
+  documentTitle: {
+    fontWeight: '600',
   },
   sourcesToggle: {
     flexDirection: 'row',
