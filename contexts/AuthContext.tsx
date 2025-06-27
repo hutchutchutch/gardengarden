@@ -32,18 +32,30 @@ const MASTER_TEACHER_PASSWORD = 'MasterSplinter';
 const DEFAULT_STUDENT_EMAIL = 'hutchenbach@gmail.com';
 const DEFAULT_STUDENT_PASSWORD = 'Donatello'; // In production, use proper password management
 
+// Track if we've already cleared the session to prevent multiple clears
+let hasCleared = false;
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showFAB, setShowFAB] = useState(true);
 
   useEffect(() => {
-    // Always clear session on app load to force fresh sign-in
+    // Only clear session once on app load to force fresh sign-in
     const initializeAuth = async () => {
       try {
-        console.log('🔄 App load - clearing session to force fresh sign-in');
-        await supabase.auth.signOut();
-        setUser(null);
+        if (!hasCleared) {
+          console.log('🔄 App load - clearing session to force fresh sign-in');
+          await supabase.auth.signOut();
+          setUser(null);
+          hasCleared = true;
+        } else {
+          console.log('🔄 Session already cleared, checking existing session');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            await loadUserFromSession(session);
+          }
+        }
         setIsLoading(false);
       } catch (error) {
         console.error('Error in auth initialization:', error);
@@ -56,6 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email);
+      
       if (session?.user) {
         await loadUserFromSession(session);
       } else {
@@ -109,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,

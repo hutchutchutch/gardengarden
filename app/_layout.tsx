@@ -81,6 +81,13 @@ export default function RootLayout() {
                   <Stack.Screen name="auth/signin" options={{ headerShown: false }} />
                   <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
                   <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                  <Stack.Screen name="screens/teacher-index" options={{ headerShown: false }} />
+                  <Stack.Screen name="screens/student-index" options={{ headerShown: false }} />
+                  <Stack.Screen name="screens/teacher-lessons" options={{ headerShown: false }} />
+                  <Stack.Screen name="screens/student-lessons" options={{ headerShown: false }} />
+                  <Stack.Screen name="screens/teacher-progress" options={{ headerShown: false }} />
+                  <Stack.Screen name="screens/student-progress" options={{ headerShown: false }} />
+                  <Stack.Screen name="screens/teacher-messages" options={{ headerShown: false }} />
                   <Stack.Screen name="ai-chat" options={{ title: 'AI Assistant' }} />
                   <Stack.Screen name="plant/[id]" options={{ title: 'Plant Details' }} />
                 </Stack>

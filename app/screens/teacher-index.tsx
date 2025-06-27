@@ -41,6 +41,7 @@ import {
   GSLoadingSpinner,
   GSCard
 } from '@/components/ui';
+import { ShimmerPlaceholder } from '@/components/ui/ShimmerPlaceholder';
 
 interface StudentData {
   id: string;
@@ -376,13 +377,119 @@ export default function TeacherIndex() {
     </View>
   );
 
-  if (isLoading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <GSLoadingSpinner size="large" />
+  // Create skeleton components
+  const CurrentLessonSkeleton = () => (
+    <GSCard variant="elevated" padding="large">
+      <View style={{ marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <ShimmerPlaceholder width="70%" height={20} borderRadius={4} />
+          <ShimmerPlaceholder width={60} height={16} borderRadius={12} />
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 }}>
+          <ShimmerPlaceholder width={80} height={24} borderRadius={12} />
+          <ShimmerPlaceholder width={100} height={24} borderRadius={12} />
+        </View>
       </View>
-    );
-  }
+      
+      <ShimmerPlaceholder width="100%" height={8} borderRadius={4} style={{ marginBottom: 12 }} />
+      <ShimmerPlaceholder width="40%" height={14} borderRadius={4} style={{ marginBottom: 16 }} />
+      
+      <GSCard variant="filled" padding="medium" margin="none">
+        <View style={{ marginBottom: 12 }}>
+          <ShimmerPlaceholder width="50%" height={14} borderRadius={4} style={{ marginBottom: 8 }} />
+          <ShimmerPlaceholder width="30%" height={24} borderRadius={4} style={{ marginBottom: 4 }} />
+          <ShimmerPlaceholder width="60%" height={14} borderRadius={4} />
+        </View>
+        
+        <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 12, gap: 8 }}>
+          {[1, 2, 3, 4].map((i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <ShimmerPlaceholder width={12} height={12} borderRadius={6} style={{ marginRight: 8 }} />
+                <ShimmerPlaceholder width={80} height={14} borderRadius={4} />
+              </View>
+              <ShimmerPlaceholder width={20} height={14} borderRadius={4} />
+            </View>
+          ))}
+        </View>
+      </GSCard>
+      
+      <View style={{ marginTop: 16 }}>
+        <ShimmerPlaceholder width="100%" height={40} borderRadius={8} />
+      </View>
+    </GSCard>
+  );
+
+  const TaskCompletionSkeleton = () => (
+    <View>
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+        <View style={{ flex: 1 }}>
+          <GSCard variant="elevated" padding="medium">
+            <ShimmerPlaceholder width={40} height={24} borderRadius={4} style={{ marginBottom: 8 }} />
+            <ShimmerPlaceholder width="70%" height={12} borderRadius={4} />
+          </GSCard>
+        </View>
+        <View style={{ flex: 1 }}>
+          <GSCard variant="elevated" padding="medium">
+            <ShimmerPlaceholder width={20} height={24} borderRadius={4} style={{ marginBottom: 8 }} />
+            <ShimmerPlaceholder width="60%" height={12} borderRadius={4} />
+          </GSCard>
+        </View>
+      </View>
+      
+      <View style={{ gap: 8 }}>
+        {[1, 2, 3].map((i) => (
+          <GSCard key={i} variant="elevated" padding="medium">
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1 }}>
+                <ShimmerPlaceholder width="60%" height={16} borderRadius={4} style={{ marginBottom: 4 }} />
+                <ShimmerPlaceholder width="40%" height={12} borderRadius={4} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <ShimmerPlaceholder width={24} height={16} borderRadius={8} />
+                <ShimmerPlaceholder width={32} height={32} borderRadius={16} />
+              </View>
+            </View>
+          </GSCard>
+        ))}
+      </View>
+    </View>
+  );
+
+  const PhotoSubmissionsSkeleton = () => (
+    <View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+        <View style={{ marginRight: 16 }}>
+          <ShimmerPlaceholder width={80} height={80} borderRadius={40} />
+        </View>
+        <ShimmerPlaceholder width="50%" height={16} borderRadius={4} />
+      </View>
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <View key={i} style={{ width: '33.33%', paddingHorizontal: 4, marginBottom: 8 }}>
+            <GSCard variant="elevated" padding="none">
+              <ShimmerPlaceholder width="100%" height={120} borderRadius={8} style={{ marginBottom: 8 }} />
+              <View style={{ padding: 8 }}>
+                <ShimmerPlaceholder width="70%" height={12} borderRadius={4} style={{ marginBottom: 4 }} />
+                <ShimmerPlaceholder width="50%" height={10} borderRadius={4} />
+              </View>
+            </GSCard>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  const QuickActionsSkeleton = () => (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
+      {[1, 2, 3, 4].map((i) => (
+        <View key={i} style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
+          <ShimmerPlaceholder width="100%" height={40} borderRadius={8} />
+        </View>
+      ))}
+    </View>
+  );
 
   const submissionPercentage = Math.round((classStats.submissionsToday / classStats.totalStudents) * 100);
   const todayDate = format(new Date(), 'EEEE, MMMM d');
@@ -405,11 +512,13 @@ export default function TeacherIndex() {
           contentContainerStyle={{ paddingBottom: 80 }}
         >
 
-        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+        <View style={{ paddingHorizontal: 16 }}>
           {/* Current Lesson Progress Section */}
           <View style={{ marginBottom: 24 }}>
             <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Current Lesson Progress</Text>
-            {currentLesson ? (
+            {isLoading ? (
+              <CurrentLessonSkeleton />
+            ) : currentLesson ? (
               <GSCard variant="elevated" padding="large">
                 <View style={{ marginBottom: 12 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -486,52 +595,58 @@ export default function TeacherIndex() {
               <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Task Completion</Text>
               <Text style={{ fontSize: 14, color: '#666' }}>{todayDate}</Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-              <View style={{ flex: 1 }}>
-                <GSStatCard
-                  value={`${classStats.taskCompletionRate || 0}%`}
-                  label="Completed All Tasks"
-                  icon="check-circle"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <GSStatCard
-                  value={classStats.overdueTasksCount?.toString() || "0"}
-                  label="Tasks Overdue"
-                  icon="alert"
-                />
-              </View>
-            </View>
-
-            {/* Pending Students List */}
-            {pendingStudents.length > 0 && (
-              <View>
-                <Text style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>
-                  Students who need encouragement
-                </Text>
-                <View style={{ gap: 8 }}>
-                  {pendingStudents.slice(0, 5).map((student) => (
-                    <GSStudentCard
-                      key={student.id}
-                      name={student.name}
-                      plantName={`Missed ${student.missedTasks} tasks`}
-                      healthScore={student.healthScore}
-                      onPress={() => router.push('/profile')}
-                      onMessage={() => handleOpenChat(student.id)}
+            {isLoading ? (
+              <TaskCompletionSkeleton />
+            ) : (
+              <>
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                  <View style={{ flex: 1 }}>
+                    <GSStatCard
+                      value={`${classStats.taskCompletionRate || 0}%`}
+                      label="Completed All Tasks"
+                      icon="check-circle"
                     />
-                  ))}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <GSStatCard
+                      value={classStats.overdueTasksCount?.toString() || "0"}
+                      label="Tasks Overdue"
+                      icon="alert"
+                    />
+                  </View>
                 </View>
-                {pendingStudents.length > 5 && (
-                  <View style={{ marginTop: 8 }}>
-                    <GSButton
-                      variant="secondary"
-                      onPress={() => router.push('/profile')}
-                    >
-                      See all {pendingStudents.length} students →
-                    </GSButton>
+
+                {/* Pending Students List */}
+                {pendingStudents.length > 0 && (
+                  <View>
+                    <Text style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>
+                      Students who need encouragement
+                    </Text>
+                    <View style={{ gap: 8 }}>
+                      {pendingStudents.slice(0, 5).map((student) => (
+                        <GSStudentCard
+                          key={student.id}
+                          name={student.name}
+                          plantName={`Missed ${student.missedTasks} tasks`}
+                          healthScore={student.healthScore}
+                          onPress={() => router.push('/profile')}
+                          onMessage={() => handleOpenChat(student.id)}
+                        />
+                      ))}
+                    </View>
+                    {pendingStudents.length > 5 && (
+                      <View style={{ marginTop: 8 }}>
+                        <GSButton
+                          variant="secondary"
+                          onPress={() => router.push('/profile')}
+                        >
+                          See all {pendingStudents.length} students →
+                        </GSButton>
+                      </View>
+                    )}
                   </View>
                 )}
-              </View>
+              </>
             )}
           </View>
 
@@ -546,112 +661,122 @@ export default function TeacherIndex() {
               />
             </View>
 
-            {/* Submission Stats */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-              <View style={{ marginRight: 16 }}>
-                <GSProgressIndicator
-                  type="circular"
-                  progress={submissionPercentage / 100}
-                  size="large"
-                  showPercentage
-                />
-              </View>
-              <Text style={{ fontSize: 16, color: '#666' }}>
-                {classStats.submissionsToday} of {classStats.totalStudents} submitted
-              </Text>
-            </View>
-
-            {/* Photo Grid */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
-              {recentSubmissions.slice(0, 6).map((submission, index) => (
-                <View key={submission.id} style={{ width: '33.33%', paddingHorizontal: 4, marginBottom: 8 }}>
-                  <GSPlantCard
-                    imageUrl={submission.lastPhotoUrl || 'https://via.placeholder.com/150'}
-                    studentName={submission.name}
-                    plantName="Tomato"
-                    dayNumber={23}
-                    healthScore={submission.healthScore}
-                    onExpand={() => router.push('/modal')}
-                  />
+            {isLoading ? (
+              <PhotoSubmissionsSkeleton />
+            ) : (
+              <>
+                {/* Submission Stats */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                  <View style={{ marginRight: 16 }}>
+                    <GSProgressIndicator
+                      type="circular"
+                      progress={submissionPercentage / 100}
+                      size="large"
+                      showPercentage
+                    />
+                  </View>
+                  <Text style={{ fontSize: 16, color: '#666' }}>
+                    {classStats.submissionsToday} of {classStats.totalStudents} submitted
+                  </Text>
                 </View>
-              ))}
-            </View>
-            <View style={{ marginTop: 8 }}>
-              <GSButton
-                variant="secondary"
-                onPress={() => router.push('/(tabs)/camera')}
-              >
-                View all photos →
-              </GSButton>
-            </View>
+
+                {/* Photo Grid */}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
+                  {recentSubmissions.slice(0, 6).map((submission, index) => (
+                    <View key={submission.id} style={{ width: '33.33%', paddingHorizontal: 4, marginBottom: 8 }}>
+                      <GSPlantCard
+                        imageUrl={submission.lastPhotoUrl || 'https://via.placeholder.com/150'}
+                        studentName={submission.name}
+                        plantName="Tomato"
+                        dayNumber={23}
+                        healthScore={submission.healthScore}
+                        onExpand={() => router.push('/modal')}
+                      />
+                    </View>
+                  ))}
+                </View>
+                <View style={{ marginTop: 8 }}>
+                  <GSButton
+                    variant="secondary"
+                    onPress={() => router.push('/(tabs)/camera')}
+                  >
+                    View all photos →
+                  </GSButton>
+                </View>
+              </>
+            )}
           </View>
 
           {/* Quick Actions Section */}
           <View style={{ marginBottom: 24 }}>
             <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Quick Actions</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
-              <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
-                <View style={{ position: 'relative' }}>
+            {isLoading ? (
+              <QuickActionsSkeleton />
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
+                <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
+                  <View style={{ position: 'relative' }}>
+                    <GSButton
+                      variant="primary"
+                      onPress={() => router.push('/ai-chat')}
+                      size="medium"
+                      fullWidth
+                      icon="message-text-outline"
+                    >
+                      Messages
+                    </GSButton>
+                    {unreadMessages > 0 && (
+                      <View style={{ 
+                        position: 'absolute', 
+                        top: -8, 
+                        right: -8, 
+                        backgroundColor: '#ef4444', 
+                        borderRadius: 12, 
+                        width: 24, 
+                        height: 24, 
+                        alignItems: 'center', 
+                        justifyContent: 'center' 
+                      }}>
+                        <Text style={{ fontSize: 12, color: 'white', fontWeight: '600' }}>{unreadMessages}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
                   <GSButton
-                    variant="primary"
-                    onPress={() => router.push('/ai-chat')}
+                    variant="secondary"
+                    onPress={() => router.push('/(tabs)/profile')}
                     size="medium"
                     fullWidth
-                    icon="message-text-outline"
+                    icon="account-multiple"
                   >
-                    Messages
+                    Students
                   </GSButton>
-                  {unreadMessages > 0 && (
-                    <View style={{ 
-                      position: 'absolute', 
-                      top: -8, 
-                      right: -8, 
-                      backgroundColor: '#ef4444', 
-                      borderRadius: 12, 
-                      width: 24, 
-                      height: 24, 
-                      alignItems: 'center', 
-                      justifyContent: 'center' 
-                    }}>
-                      <Text style={{ fontSize: 12, color: 'white', fontWeight: '600' }}>{unreadMessages}</Text>
-                    </View>
-                  )}
+                </View>
+                <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
+                  <GSButton
+                    variant="secondary"
+                    onPress={() => router.push('/(tabs)/progress')}
+                    size="medium"
+                    fullWidth
+                    icon="chart-bar"
+                  >
+                    Analytics
+                  </GSButton>
+                </View>
+                <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
+                  <GSButton
+                    variant="secondary"
+                    onPress={() => router.push('/(tabs)/lessons')}
+                    size="medium"
+                    fullWidth
+                    icon="book-open"
+                  >
+                    Lessons
+                  </GSButton>
                 </View>
               </View>
-              <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
-                <GSButton
-                  variant="secondary"
-                  onPress={() => router.push('/(tabs)/profile')}
-                  size="medium"
-                  fullWidth
-                  icon="account-multiple"
-                >
-                  Students
-                </GSButton>
-              </View>
-              <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
-                <GSButton
-                  variant="secondary"
-                  onPress={() => router.push('/(tabs)/progress')}
-                  size="medium"
-                  fullWidth
-                  icon="chart-bar"
-                >
-                  Analytics
-                </GSButton>
-              </View>
-              <View style={{ width: '50%', paddingHorizontal: 6, marginBottom: 12 }}>
-                <GSButton
-                  variant="secondary"
-                  onPress={() => router.push('/(tabs)/lessons')}
-                  size="medium"
-                  fullWidth
-                  icon="book-open"
-                >
-                  Lessons
-                </GSButton>
-              </View>
-            </View>
+            )}
           </View>
         </View>
         </ScrollView>

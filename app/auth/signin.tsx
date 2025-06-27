@@ -76,11 +76,10 @@ export default function SignInScreen() {
       <View style={styles.form}>
         {/* Account Status Info */}
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>How it works:</Text>
+          <Text style={styles.infoTitle}>Teacher Benefits:</Text>
           <Text style={styles.infoText}>
-            • Sign in with your email to access your student portal{'\n'}
-            • Use the mode toggle in Profile to switch between Student/Teacher views{'\n'}
-            • All passwords are "password123" for testing
+            • Create a personalized knowledge base for your students{'\n'}
+            • Custom Chatbots for each lesson so your students can ask questions and get answers{'\n'}
           </Text>
         </View>
 
