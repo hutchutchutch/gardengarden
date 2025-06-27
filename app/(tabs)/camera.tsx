@@ -163,9 +163,6 @@ export default function CameraScreen() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
-  // Filter messages based on search and filter
-
-
   // Show teacher messages if in teacher mode
   if (isTeacherMode) {
     return <TeacherMessagesScreen />;
