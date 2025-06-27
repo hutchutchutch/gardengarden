@@ -22,4 +22,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Export individual services for convenience
 export const supabaseAuth = supabase.auth;
 export const supabaseStorage = supabase.storage;
-export const supabaseDb = supabase.from; 
+export const supabaseDb = supabase.from;
+
+// Export URL and anon key for direct API calls
+export { supabaseUrl, supabaseAnonKey }; 

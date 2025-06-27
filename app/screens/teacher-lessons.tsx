@@ -27,7 +27,7 @@ import {
   MenuItem
 } from '@/components/ui';
 import { LessonService, Lesson, LessonDocument } from '@/services/lesson-service';
-import { supabase } from '@/config/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/config/supabase';
 import { format } from 'date-fns';
 
 export default function TeacherLessons() {
@@ -208,19 +208,44 @@ export default function TeacherLessons() {
       // Show processing notification
       showSnackbar('Processing URL...', 'info');
       
-      // Use the existing scrape-lesson-url edge function
-      const { data, error: functionError } = await supabase.functions.invoke('scrape-lesson-url', {
-        body: {
-          url: newResourceUrl.trim(),
-          lesson_id: currentLesson.id
+      // Make direct fetch call to edge function for better error handling
+      let data = null;
+      const functionUrl = `${supabaseUrl}/functions/v1/scrape-lesson-url`;
+      
+      try {
+        const response = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'apikey': supabaseAnonKey
+          },
+          body: JSON.stringify({
+            url: newResourceUrl.trim(),
+            lesson_id: currentLesson.id
+          })
+        });
+
+        const processingTime = Date.now() - startTime;
+        console.log(`⏱️ [STEP 2] Edge function call completed in ${processingTime}ms`);
+        console.log('📡 [STEP 2] Response status:', response.status);
+
+        // Always parse the response body regardless of status
+        data = await response.json();
+        console.log('📦 [STEP 2] Response data:', data);
+
+        // Check if it was an error response
+        if (!response.ok || !data?.success) {
+          console.error('❌ [STEP 2 FAILED] Edge function returned error:', {
+            status: response.status,
+            data: data
+          });
+          // Continue to error handling below with the parsed error data
         }
-      });
-
-      const processingTime = Date.now() - startTime;
-      console.log(`⏱️ [STEP 2] Edge function call completed in ${processingTime}ms`);
-
-      if (functionError) {
-        console.error('❌ [STEP 2 FAILED] Edge function error:', functionError);
+      } catch (error) {
+        const processingTime = Date.now() - startTime;
+        console.log(`⏱️ [STEP 2] Edge function call failed after ${processingTime}ms`);
+        console.error('💥 [STEP 2 ERROR] Network or parsing error:', error);
         showSnackbar('Network error occurred. Please check your connection and try again.', 'error');
         return;
       }
