@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
 import colors from '@/constants/colors';
 import { User } from '@/types';
-import { supabase } from '@/utils/supabase';
+import { supabase } from '@/config/supabase';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();

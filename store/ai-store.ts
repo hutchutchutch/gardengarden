@@ -60,10 +60,41 @@ export const useAIStore = create<AIState>()(
       },
 
       initializeDefaultThread: async () => {
-        // Helper function to initialize with Hutch users for testing
-        const studentId = '9bc5a262-f6ce-4da5-bdfc-28a9383cabb2'; // Hutch Herky
-        const teacherId = 'ee242274-2c32-4432-bfad-69cbeb9d1228'; // Hutch Herchenbach
-        await get().initializeThread(studentId, teacherId);
+        // Helper function to initialize a default thread for testing
+        // This should use the current authenticated user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.error('No authenticated user for default thread');
+          set({ error: 'No authenticated user', isLoading: false });
+          return;
+        }
+
+        // Get the user's details
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id, role')
+          .eq('id', user.id)
+          .single();
+
+        if (!userData) {
+          console.error('User data not found');
+          set({ error: 'User data not found', isLoading: false });
+          return;
+        }
+
+        // For testing, use predefined IDs based on role
+        if (userData.role === 'student') {
+          // Student user - use test teacher
+          const teacherId = 'ee242274-2c32-4432-bfad-69cbeb9d1228'; // Hutch Herchenbach (teacher)
+          await get().initializeThread(user.id, teacherId);
+        } else if (userData.role === 'teacher') {
+          // Teacher user - use test student
+          const studentId = '9bc5a262-f6ce-4da5-bdfc-28a9383cabb2'; // Hutch Herky (student)
+          await get().initializeThread(studentId, user.id);
+        } else {
+          console.error('Unknown user role:', userData.role);
+          set({ error: 'Unknown user role', isLoading: false });
+        }
       },
 
       fetchMessages: async (threadId?: string) => {
@@ -211,9 +242,10 @@ export const useAIStore = create<AIState>()(
                 }));
 
               // Call the edge function
-              const { data, error } = await supabase.functions.invoke('ai-chat-with-sources', {
+              const { data, error } = await supabase.functions.invoke('ai-chat-with-storage', {
                 body: {
                   message: content,
+                  thread_id: currentThreadId,
                   lesson_id: lessonId,
                   plant_id: plantId,
                   conversation_history: history,
@@ -224,24 +256,26 @@ export const useAIStore = create<AIState>()(
               if (error) throw error;
 
               if (data.success) {
-                // Save AI response to database as well
-                const aiResponseMessage = await MessageService.sendMessage(
-                  currentThreadId, 
-                  '00000000-0000-0000-0000-000000000000', // AI Assistant user ID
-                  data.message
-                );
+                // ai-chat-with-storage already saves both messages to database
+                // Update the user message with the actual saved ID
+                const savedUserMessage: AIMessage = {
+                  id: data.student_message_id,
+                  role: 'user',
+                  content,
+                  timestamp: new Date().toISOString()
+                };
 
-                // Add AI response with sources
+                // Add AI response (already saved to database)
                 const aiResponse: AIMessage = {
-                  id: aiResponseMessage.id,
+                  id: data.ai_message_id,
                   role: 'assistant',
                   content: data.message || '',
-                  timestamp: aiResponseMessage.created_at,
-                  sources: data.sources
+                  timestamp: new Date().toISOString(),
+                  sources: data.relevant_chunks ? data.relevant_chunks.map((chunkId: string) => ({ chunk_id: chunkId })) : undefined
                 };
                 
                 set(state => ({
-                  messages: [...state.messages, aiResponse],
+                  messages: [...state.messages.slice(0, -1), savedUserMessage, aiResponse],
                   isLoading: false
                 }));
               } else {

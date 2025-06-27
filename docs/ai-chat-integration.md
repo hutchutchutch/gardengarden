@@ -1,26 +1,28 @@
-# AI Chat with Sources Integration
+# AI Chat with Storage Integration
 
-This document describes the AI chat functionality that integrates OpenAI for responses and includes relevant sources from lesson content.
+This document describes the AI chat functionality that integrates OpenAI for responses, includes relevant sources from lesson content, and provides persistent conversation storage.
 
 ## Overview
 
 The AI chat system provides students with an intelligent assistant that:
 - Answers questions about plant care using OpenAI
 - Retrieves relevant content from lesson materials
-- Displays sources with expandable UI for transparency
+- Stores conversation history in the database
+- Tracks chunk usage and message relationships
 - Maintains conversation context across messages
 
 ## Architecture
 
-### Edge Function: ai-chat-with-sources
-**Endpoint**: `/functions/v1/ai-chat-with-sources`
+### Edge Function: ai-chat-with-storage
+**Endpoint**: `/functions/v1/ai-chat-with-storage`
 
-Processes chat messages using OpenAI and retrieves relevant lesson content.
+Processes chat messages using OpenAI, retrieves relevant lesson content, and persists both student and AI messages to the database.
 
 **Request:**
 ```json
 {
   "message": "How often should I water my tomato plant?",
+  "thread_id": "uuid",
   "lesson_id": "uuid",
   "plant_id": "uuid",
   "conversation_history": [
@@ -36,14 +38,9 @@ Processes chat messages using OpenAI and retrieves relevant lesson content.
 {
   "success": true,
   "message": "Tomato plants typically need watering every 2-3 days...",
-  "sources": [
-    {
-      "url": "https://example.com/tomato-care",
-      "title": "Complete Guide to Tomato Care",
-      "snippet": "Watering frequency depends on...",
-      "similarity": 0.89
-    }
-  ],
+  "relevant_chunks": ["chunk_uuid_1", "chunk_uuid_2"],
+  "student_message_id": "message_uuid_1",
+  "ai_message_id": "message_uuid_2",
   "usage": {
     "prompt_tokens": 250,
     "completion_tokens": 150,
@@ -82,20 +79,21 @@ The chat bubble component now supports:
 ## Integration Flow
 
 1. **User sends message** → AIChat component
-2. **Message sent to store** → Includes lesson_id and plant_id
-3. **Edge function called** → ai-chat-with-sources
-4. **Content retrieval** → Calls retrieve-lesson-content internally
-5. **OpenAI processing** → GPT-4 with context from sources
-6. **Response returned** → Message with sources array
-7. **UI updates** → GSChatBubble displays with expandable sources
+2. **Message sent to store** → Includes thread_id, lesson_id and plant_id
+3. **Edge function called** → ai-chat-with-storage
+4. **Content retrieval** → Direct vector search using embeddings
+5. **OpenAI processing** → GPT-4 with context from relevant chunks
+6. **Message persistence** → Both student and AI messages saved to database
+7. **Response returned** → Message with chunk IDs and message IDs
+8. **UI updates** → GSChatBubble displays message
 
-## Source Display
+## Data Storage
 
-Sources are displayed with:
-- **Title** - The document/URL title
-- **Snippet** - First 200 characters of relevant content
-- **Similarity** - Percentage relevance (0-100%)
-- **External link icon** - Click to open source URL
+The function automatically stores:
+- **Student message** - Saved with relevant chunk IDs for context
+- **AI response** - Saved with same chunk references
+- **Thread updates** - last_message_at timestamp updated
+- **Usage tracking** - API usage logged with user attribution
 
 ## Context Enhancement
 
@@ -115,7 +113,7 @@ The AI receives:
 ## Usage Example
 
 ```typescript
-// In AIChat component
+// In AIChat component - store handles thread_id internally
 const handleSend = async () => {
   await sendMessage(
     message,           // User's question
@@ -129,16 +127,18 @@ const handleSend = async () => {
 
 ## Performance
 
-- Vector search limited to top 5 results
-- Similarity threshold of 0.7
+- Vector search limited to top 3 relevant chunks
+- Direct embedding generation (no external API calls for retrieval)
 - Response limited to 500 tokens
 - Conversation history limited to last 5 messages
+- Automatic message persistence with chunk tracking
 
 ## Error Handling
 
 - Falls back to generic response on API failure
-- Continues without sources if retrieval fails
+- Continues without context if vector search fails
 - User-friendly error messages
+- Failed messages still saved to database for teacher review
 - Automatic retry not implemented (to avoid cost overruns)
 
 ## Future Enhancements
@@ -146,5 +146,5 @@ const handleSend = async () => {
 1. **Streaming responses** - Show AI response as it's generated
 2. **Image analysis** - Process plant photos with GPT-4V
 3. **Voice input** - Speech-to-text for questions
-4. **Cached responses** - Store common Q&A pairs
+4. **Enhanced context** - Use conversation history for better chunk retrieval
 5. **Multi-language** - Support for different languages 

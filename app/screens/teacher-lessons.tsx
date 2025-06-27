@@ -26,6 +26,7 @@ import {
   Text,
   MenuItem
 } from '@/components/ui';
+import { ShimmerPlaceholder } from '@/components/ui/ShimmerPlaceholder';
 import { LessonService, Lesson, LessonDocument } from '@/services/lesson-service';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/config/supabase';
 import { format } from 'date-fns';
@@ -45,6 +46,13 @@ export default function TeacherLessons() {
   const [upcomingLessons, setUpcomingLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [newResourceUrl, setNewResourceUrl] = useState('');
+  
+  // State for resource loading
+  const [loadingResources, setLoadingResources] = useState<Array<{
+    id: string;
+    url: string;
+    tempTitle: string;
+  }>>([]);
   
   // Snackbar state for error notifications
   const [snackbar, setSnackbar] = useState<{
@@ -201,12 +209,26 @@ export default function TeacherLessons() {
       lessonName: currentLesson.name
     });
 
+    // Generate temporary ID for loading state
+    const tempId = `temp-${Date.now()}`;
+    const urlToProcess = newResourceUrl.trim();
+    
+    // Add loading resource to state and expand documents
+    setLoadingResources(prev => [...prev, {
+      id: tempId,
+      url: urlToProcess,
+      tempTitle: 'Processing...'
+    }]);
+    
+    // Expand documents list to show loading state
+    setDocumentsExpanded(true);
+    
+    // Clear input immediately to show responsiveness
+    setNewResourceUrl('');
+
     try {
       console.log('📡 [STEP 2] Calling scrape-lesson-url edge function...');
       const startTime = Date.now();
-      
-      // Show processing notification
-      showSnackbar('Processing URL...', 'info');
       
       // Make direct fetch call to edge function for better error handling
       let data = null;
@@ -221,7 +243,7 @@ export default function TeacherLessons() {
             'apikey': supabaseAnonKey
           },
           body: JSON.stringify({
-            url: newResourceUrl.trim(),
+            url: urlToProcess,
             lesson_id: currentLesson.id
           })
         });
@@ -246,6 +268,9 @@ export default function TeacherLessons() {
         const processingTime = Date.now() - startTime;
         console.log(`⏱️ [STEP 2] Edge function call failed after ${processingTime}ms`);
         console.error('💥 [STEP 2 ERROR] Network or parsing error:', error);
+        
+        // Remove loading resource and show error in snackbar
+        setLoadingResources(prev => prev.filter(item => item.id !== tempId));
         showSnackbar('Network error occurred. Please check your connection and try again.', 'error');
         return;
       }
@@ -259,6 +284,9 @@ export default function TeacherLessons() {
         fullResponse: data
       });
 
+      // Remove loading resource from state
+      setLoadingResources(prev => prev.filter(item => item.id !== tempId));
+
       if (data?.success) {
         console.log('✅ [STEP 3 SUCCESS] Resource processing successful:', {
           lessonUrlId: data.lesson_url_id,
@@ -267,16 +295,11 @@ export default function TeacherLessons() {
           sections: data.sections
         });
 
-        console.log('🧹 [STEP 4] Clearing input and refreshing data...');
-        
-        // Clear the input
-        setNewResourceUrl('');
-        console.log('✅ [STEP 4.1] Input cleared');
+        console.log('🔄 [STEP 4] Reloading lesson data...');
         
         // Reload lesson data to show the new resource
-        console.log('🔄 [STEP 4.2] Reloading lesson data...');
         await loadLessonData();
-        console.log('✅ [STEP 4.2 SUCCESS] Lesson data reloaded');
+        console.log('✅ [STEP 4 SUCCESS] Lesson data reloaded');
         
         // Show success message
         showSnackbar(`Successfully added "${data.title || 'Resource'}" to lesson`, 'success');
@@ -321,7 +344,10 @@ export default function TeacherLessons() {
               'warning',
               {
                 label: 'Retry',
-                onPress: () => handleAddResource()
+                onPress: () => {
+                  setNewResourceUrl(urlToProcess);
+                  handleAddResource();
+                }
               }
             );
             break;
@@ -350,16 +376,22 @@ export default function TeacherLessons() {
       console.error('💥 [WORKFLOW ERROR] Unexpected error in handleAddResource:', {
         errorMessage: error instanceof Error ? error.message : String(error),
         errorStack: error instanceof Error ? error.stack : undefined,
-        url: newResourceUrl.trim(),
+        url: urlToProcess,
         lessonId: currentLesson?.id
       });
 
+      // Remove loading resource and show error
+      setLoadingResources(prev => prev.filter(item => item.id !== tempId));
+      
       showSnackbar(
         'An unexpected error occurred. Please try again.',
         'error',
         {
           label: 'Retry',
-          onPress: () => handleAddResource()
+          onPress: () => {
+            setNewResourceUrl(urlToProcess);
+            handleAddResource();
+          }
         }
       );
     }
@@ -536,10 +568,36 @@ export default function TeacherLessons() {
               </View>
 
               <GSCollapsible
-                label={`Documents (${currentLesson.lesson_urls?.length || 0})`}
+                label={`Documents (${(currentLesson.lesson_urls?.length || 0) + loadingResources.length})`}
                 defaultOpen={documentsExpanded}
               >
                 <View style={styles.documentsList}>
+                  {/* Render loading resources first */}
+                  {loadingResources.map((loadingResource) => (
+                    <View key={loadingResource.id} style={styles.loadingDocumentItem}>
+                      <View style={styles.shimmerContent}>
+                        <ShimmerPlaceholder
+                          width={24}
+                          height={24}
+                          borderRadius={4}
+                          style={styles.shimmerIcon}
+                        />
+                        <View style={styles.shimmerText}>
+                          <ShimmerPlaceholder
+                            width="60%"
+                            height={16}
+                            borderRadius={4}
+                            style={styles.shimmerTitle}
+                          />
+                          <Text style={[styles.shimmerUrl, { color: theme.colors.onSurfaceVariant }]} numberOfLines={1}>
+                            {loadingResource.url}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                  
+                  {/* Render actual documents */}
                   <FlatList
                     data={currentLesson.lesson_urls || []}
                     keyExtractor={(item) => item.id}
@@ -1050,5 +1108,30 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: 'flex-end',
     marginTop: 8,
+  },
+  loadingDocumentItem: {
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  shimmerContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  shimmerIcon: {
+    marginTop: 2,
+  },
+  shimmerText: {
+    flex: 1,
+    gap: 8,
+  },
+  shimmerTitle: {
+    // No additional styles needed, ShimmerPlaceholder handles it
+  },
+  shimmerUrl: {
+    fontSize: 12,
+    marginTop: 4,
   },
 });

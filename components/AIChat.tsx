@@ -82,9 +82,14 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
 
   useEffect(() => {
     const initializeChat = async () => {
+      console.log('=== AIChat initializeChat START ===');
+      console.log('User object:', user);
+      console.log('Props:', { threadId, studentId, mode, initialMode });
+      
       if (user) {
         // If threadId is provided (from teacher interface), use existing thread
         if (threadId) {
+          console.log('Using existing thread:', threadId);
           await initializeExistingThread(threadId);
           return;
         }
@@ -92,7 +97,8 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
         // Otherwise, get the teacher for this student's active lesson
         if (user.role === 'student') {
           try {
-            // Query to get the teacher for the student's active lesson
+            console.log('Student user - looking for teacher...');
+            // First try to get teacher from active lesson
             const { data: studentLessonData, error } = await supabase
               .from('plants')
               .select(`
@@ -110,24 +116,58 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
               .eq('lessons.status', 'active')
               .single();
 
+            console.log('Student lesson query result:', { data: studentLessonData, error });
+
             if (studentLessonData && !error) {
               const teacherId = (studentLessonData.lessons as any).classes.teacher_id;
+              console.log('Found teacher from lesson:', teacherId);
               // Initialize thread with the actual teacher
               await initializeThread(user.id, teacherId);
             } else {
-              // Fallback to default thread for testing
-              await initializeDefaultThread();
+              console.log('No active lesson found, checking class directly...');
+              // If no active lesson, try to get the student's class teacher directly
+              const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select(`
+                  class_id,
+                  classes!inner(
+                    teacher_id
+                  )
+                `)
+                .eq('id', user.id)
+                .single();
+
+              console.log('User class query result:', { data: userData, error: userError });
+
+              if (userData?.class_id && userData.classes && !userError) {
+                const teacherId = (userData.classes as any).teacher_id;
+                console.log('Found teacher from class:', teacherId);
+                await initializeThread(user.id, teacherId);
+              } else {
+                // No teacher found - show appropriate message
+                console.log('No teacher assigned to student, using default thread');
+                // For now, use default thread for testing
+                await initializeDefaultThread();
+              }
             }
           } catch (error) {
-            console.error('Error getting teacher for student lesson:', error);
+            console.error('Error getting teacher for student:', error);
             // Fallback to default thread
             await initializeDefaultThread();
           }
+        } else if (user.role === 'teacher' && studentId) {
+          console.log('Teacher viewing student chat:', { teacherId: user.id, studentId });
+          // Teacher viewing a specific student's chat
+          await initializeThread(studentId, user.id);
         } else {
-          // For teachers or other roles, use default thread
+          console.log('Other case - using default thread');
+          // For other cases, use default thread
           await initializeDefaultThread();
         }
+      } else {
+        console.log('No user object available');
       }
+      console.log('=== AIChat initializeChat END ===');
     };
 
     initializeChat();

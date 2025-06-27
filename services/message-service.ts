@@ -156,18 +156,90 @@ export class MessageService {
 
   static async getThreadMessages(threadId: string): Promise<Message[]> {
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('thread_id', threadId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching thread messages:', error);
-        throw error;
+      // Get current user info
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('No authenticated user');
+        return [];
       }
 
-      return data || [];
+      // Get user's role
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+        throw userError;
+      }
+
+      const currentUserRole = userData?.role;
+
+      let query = supabase
+        .from('messages')
+        .select('*')
+        .eq('thread_id', threadId);
+
+      // If the current user is a student, only show their own messages and responses
+      if (currentUserRole === 'student') {
+        // Get all messages first to identify teacher and AI senders
+        const { data: allMessages, error: allError } = await query.order('created_at', { ascending: true });
+        
+        if (allError) {
+          console.error('Error fetching messages:', allError);
+          throw allError;
+        }
+
+        if (!allMessages) return [];
+
+        // Get unique sender IDs to check their roles
+        const senderIds = [...new Set(allMessages.map(m => m.sender_id))];
+        
+        // Get roles for all senders
+        const { data: senders, error: sendersError } = await supabase
+          .from('users')
+          .select('id, role')
+          .in('id', senderIds);
+
+        if (sendersError) {
+          console.error('Error fetching sender roles:', sendersError);
+        }
+
+        const senderRoles = new Map(senders?.map(s => [s.id, s.role]) || []);
+
+        // Filter messages: only show student's own messages, AI messages, and teacher messages
+        const filteredMessages = allMessages.filter(msg => {
+          // Always show AI messages
+          if (msg.sender_id === '00000000-0000-0000-0000-000000000000') {
+            return true;
+          }
+          // Show the student's own messages
+          if (msg.sender_id === user.id) {
+            return true;
+          }
+          // Show teacher messages
+          const senderRole = senderRoles.get(msg.sender_id);
+          if (senderRole === 'teacher') {
+            return true;
+          }
+          // Hide other students' messages
+          return false;
+        });
+
+        return filteredMessages;
+      } else {
+        // Teachers and other roles can see all messages
+        const { data, error } = await query.order('created_at', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching thread messages:', error);
+          throw error;
+        }
+
+        return data || [];
+      }
     } catch (error) {
       console.error('Error in getThreadMessages:', error);
       throw error;
@@ -176,6 +248,65 @@ export class MessageService {
 
   static async getOrCreateThread(studentId: string, teacherId: string): Promise<MessageThread> {
     try {
+      console.log('=== getOrCreateThread DEBUG START ===');
+      console.log('Input params:', { studentId, teacherId });
+      
+      // Get current authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('Auth error:', authError);
+        throw authError;
+      }
+      
+      console.log('Current auth user:', {
+        id: user?.id,
+        email: user?.email,
+        role: user?.role,
+        aud: user?.aud,
+        user_metadata: user?.user_metadata
+      });
+
+      // Get detailed user info from database
+      if (user) {
+        const { data: dbUser, error: dbError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (dbError) {
+          console.error('Error fetching DB user:', dbError);
+        } else {
+          console.log('Database user info:', dbUser);
+        }
+      }
+
+      // Verify student and teacher exist and have correct roles
+      const { data: studentData, error: studentError } = await supabase
+        .from('users')
+        .select('id, name, role, email')
+        .eq('id', studentId)
+        .single();
+
+      const { data: teacherData, error: teacherError } = await supabase
+        .from('users')
+        .select('id, name, role, email')
+        .eq('id', teacherId)
+        .single();
+
+      console.log('Student lookup:', { 
+        studentId, 
+        found: !!studentData, 
+        error: studentError,
+        data: studentData 
+      });
+      console.log('Teacher lookup:', { 
+        teacherId, 
+        found: !!teacherData, 
+        error: teacherError,
+        data: teacherData 
+      });
+
       // Check if thread already exists
       const { data: existingThread, error: searchError } = await supabase
         .from('message_threads')
@@ -190,10 +321,44 @@ export class MessageService {
       }
 
       if (existingThread) {
+        console.log('Found existing thread:', existingThread.id);
+        console.log('=== getOrCreateThread DEBUG END (existing) ===');
         return existingThread;
       }
 
+      // Verify the authenticated user is either the student or teacher
+      const isParticipant = user?.id === studentId || user?.id === teacherId;
+      console.log('Is authenticated user a participant?', {
+        isParticipant,
+        userId: user?.id,
+        studentId,
+        teacherId,
+        userIsStudent: user?.id === studentId,
+        userIsTeacher: user?.id === teacherId
+      });
+
+      if (!isParticipant) {
+        console.error('User is not a participant in this thread');
+        throw new Error('User is not authorized to create this thread');
+      }
+
+      // Verify roles match
+      if (studentData?.role !== 'student') {
+        console.error('Student ID does not have student role:', studentData);
+        throw new Error('Invalid student role');
+      }
+      if (teacherData?.role !== 'teacher') {
+        console.error('Teacher ID does not have teacher role:', teacherData);
+        throw new Error('Invalid teacher role');
+      }
+
       // Create new thread
+      console.log('Attempting to create new thread with params:', {
+        student_id: studentId,
+        teacher_id: teacherId,
+        thread_type: 'teacher_chat'
+      });
+
       const { data: newThread, error: createError } = await supabase
         .from('message_threads')
         .insert({
@@ -205,13 +370,23 @@ export class MessageService {
         .single();
 
       if (createError) {
-        console.error('Error creating thread:', createError);
+        console.error('Error creating thread - Full details:', {
+          error: createError,
+          code: createError.code,
+          message: createError.message,
+          details: createError.details,
+          hint: createError.hint
+        });
         throw createError;
       }
 
+      console.log('Successfully created new thread:', newThread.id);
+      console.log('=== getOrCreateThread DEBUG END (created) ===');
       return newThread;
     } catch (error) {
-      console.error('Error in getOrCreateThread:', error);
+      console.error('=== getOrCreateThread ERROR ===');
+      console.error('Full error object:', error);
+      console.error('=== getOrCreateThread DEBUG END (error) ===');
       throw error;
     }
   }

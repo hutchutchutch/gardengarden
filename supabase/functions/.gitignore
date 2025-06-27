@@ -1,0 +1,19 @@
+# Deno cache
+.deno
+deno.lock
+
+# Build artifacts
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/ 

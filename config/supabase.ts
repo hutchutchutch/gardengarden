@@ -17,7 +17,22 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: Platform.OS === 'web',
   },
+  global: {
+    headers: {
+      'x-client-info': 'garden-guru-app'
+    }
+  },
+  db: {
+    schema: 'public'
+  }
 });
+
+// Add auth state change listener for debugging
+if (__DEV__) {
+  supabase.auth.onAuthStateChange((event, session) => {
+    console.log('🔐 Auth state changed:', event, session?.user?.email);
+  });
+}
 
 // Export individual services for convenience
 export const supabaseAuth = supabase.auth;
