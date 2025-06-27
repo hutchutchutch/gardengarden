@@ -64,6 +64,7 @@ export { Badge } from './badge';
 export { Button } from './button';
 export { Card } from './card';
 export { Text } from './text';
+export { SafeText, useSafeText } from './SafeText';
 export { Progress } from './progress';
 export { FAB } from './fab';
 export { BottomNavigation } from './bottom-navigation';

@@ -3,6 +3,7 @@ import { View, Pressable, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MessageService, MessageThread } from '@/services/message-service';
+import { safeMessagePreview } from '@/utils/textUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessageStore } from '@/store/message-store';
 import {
@@ -180,9 +181,7 @@ export default function TeacherMessagesScreen() {
                     </View>
                     
                     <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }} numberOfLines={2}>
-                      {item.last_message?.content?.startsWith('DOCUMENT_REF:') 
-                        ? 'Document shared' 
-                        : (item.last_message?.content || 'No messages yet')}
+                      {safeMessagePreview(item.last_message?.content)}
                     </Text>
                   </View>
 

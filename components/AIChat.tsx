@@ -16,6 +16,7 @@ import { GSReferenceDocuments } from './ui/GSReferenceDocuments';
 import { PhotoService } from '@/services/photo-service';
 import { supabase } from '@/config/supabase';
 import { useMode } from '@/contexts/ModeContext';
+import { safeMessageContent } from '@/utils/textUtils';
 
 interface AIChatProps {
   analysis?: AIPlantAnalysis | null;
@@ -360,12 +361,12 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
             }
             
             // Check if this is a document reference message and format it properly
-            let messageContent = msg.content || '';
+            let messageContent = safeMessageContent(msg.content);
             let documentUrl: string | undefined;
             
-            if (messageContent.startsWith('DOCUMENT_REF:')) {
+            if (msg.content?.startsWith('DOCUMENT_REF:')) {
               // Parse document reference: DOCUMENT_REF:url:title
-              const parts = messageContent.split(':');
+              const parts = msg.content.split(':');
               documentUrl = parts[1];
               const documentTitle = parts.slice(2).join(':');
               messageContent = `📄 Reference Document: ${documentTitle}`;
