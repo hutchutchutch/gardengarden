@@ -36,25 +36,30 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   const [showExpandedSources, setShowExpandedSources] = useState(false);
 
   const getAlignment = (): 'flex-start' | 'flex-end' => {
-    // Current user's messages always go on the right
-    if (type === 'student' && currentUserRole === 'student') return 'flex-end';
-    if (type === 'teacher' && currentUserRole === 'teacher') return 'flex-end';
-    
-    // AI messages positioning depends on who's viewing
-    if (type === 'ai') {
-      return currentUserRole === 'student' ? 'flex-start' : 'flex-end';
+    // When viewing as a student:
+    if (currentUserRole === 'student') {
+      if (type === 'student') return 'flex-end'; // Student messages on right
+      if (type === 'ai') return 'flex-start'; // Chatbot messages on left
+      if (type === 'teacher') return 'flex-start'; // Teacher messages on left
     }
     
-    // Other user's messages go on the left
+    // When viewing as a teacher:
+    if (currentUserRole === 'teacher') {
+      if (type === 'teacher') return 'flex-end'; // Teacher messages on right
+      if (type === 'ai') return 'flex-end'; // Chatbot messages on right
+      if (type === 'student') return 'flex-start'; // Student messages on left
+    }
+    
+    // Fallback
     return 'flex-start';
   };
 
   const getBubbleColor = () => {
-    const alignment = getAlignment();
+    if (type === 'ai') return '#4CAF50'; // Green for AI/chatbot
     
-    if (type === 'ai') return '#4CAF50'; // Green for AI
-    if (alignment === 'flex-end') return '#E5E7EB'; // Gray for current user (right side)
-    return '#2196F3'; // Blue for other user (left side)
+    const alignment = getAlignment();
+    if (alignment === 'flex-end') return '#E5E7EB'; // Gray for messages on right
+    return '#2196F3'; // Blue for messages on left
   };
 
   const getTextColor = () => {
