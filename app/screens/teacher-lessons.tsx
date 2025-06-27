@@ -89,9 +89,7 @@ export default function TeacherLessons() {
     });
   };
 
-  const handleAIChat = () => {
-    router.push('/ai-chat');
-  };
+
 
   const handleEditLesson = () => {
     setBottomSheetVisible(false);
@@ -557,12 +555,7 @@ export default function TeacherLessons() {
 
       {renderContent()}
 
-      <GSFAB
-        icon="robot"
-        onPress={handleAIChat}
-        variant="secondary"
-        label="AI Assistant"
-      />
+
 
       <GSBottomSheet
         visible={bottomSheetVisible}
