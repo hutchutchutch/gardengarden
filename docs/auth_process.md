@@ -3,6 +3,100 @@
 ## Overview
 GardenSnap implements a dual-mode authentication system where users can switch between Student and Teacher modes without requiring separate login credentials. This creates a seamless experience for educators who need to demonstrate both perspectives of the application.
 
+## Critical Issue: isLoading Race Condition (Fixed)
+
+### Problem Analysis
+When rebundling the iOS app with `npx expo start --clear`, users experienced hanging on the loading screen despite successful authentication. The logs showed:
+
+```
+LOG  ProtectedRoute: isLoading = true user = undefined isSwitchingMode = false
+LOG  🔄 App load - clearing session to force fresh sign-in
+LOG  Auth state changed: SIGNED_IN herchenbach.hutch@gmail.com
+```
+
+**Root Cause**: Race condition in `AuthContext.tsx` where:
+1. `signIn()` method sets `isLoading = false` immediately after Supabase auth
+2. `onAuthStateChange` handler also sets `isLoading = false` 
+3. `loadUserFromSession()` runs asynchronously AFTER both loading states are cleared
+4. If profile loading fails, user remains `undefined` while `isLoading = false`
+5. `ProtectedRoute` gets stuck because it only shows loading screen when `isLoading = true`
+
+### Solution Implementation
+**Fixed in AuthContext.tsx**:
+
+```typescript
+const signIn = async (email: string, password: string) => {
+  try {
+    setIsLoading(true);
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+
+    // REMOVED: setIsLoading(false) - let onAuthStateChange handle this
+    console.log('✅ Signed in successfully:', email);
+  } catch (error) {
+    console.error('Sign in error:', error);
+    setIsLoading(false); // Only set false on error
+    throw error;
+  }
+  // No finally block - loading state managed by auth state changes
+};
+
+const loadUserFromSession = async (session: Session) => {
+  try {
+    setIsLoading(true); // Ensure loading state during profile fetch
+    
+    const { data: profile, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', session.user.email)
+      .single();
+
+    if (profile && !error) {
+      const userData: User = {
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        role: profile.role,
+        classId: profile.class_id,
+        createdAt: profile.created_at,
+        lastActiveAt: profile.updated_at,
+        streak: profile.streak || 0
+      };
+      
+      setUser(userData);
+      console.log('✅ Loaded user from session:', userData.email, userData.role);
+    } else {
+      console.error('❌ Failed to load user profile:', error);
+      await supabase.auth.signOut();
+      setUser(null);
+    }
+  } catch (error) {
+    console.error('Error loading user from session:', error);
+    await supabase.auth.signOut();
+    setUser(null);
+  } finally {
+    setIsLoading(false); // Always clear loading state
+  }
+};
+```
+
+**Key Changes**:
+1. **Removed premature `setIsLoading(false)`** from `signIn` success path
+2. **Added `setIsLoading(true)`** at start of `loadUserFromSession` 
+3. **Added `finally` block** to ensure `isLoading` is always cleared
+4. **Centralized loading state management** through auth state changes only
+
+### Prevention Measures
+- **Single source of truth**: Only `onAuthStateChange` and `loadUserFromSession` manage loading state
+- **Explicit loading during profile fetch**: Ensures loading screen shows during database queries
+- **Guaranteed cleanup**: `finally` block prevents stuck loading states
+- **Error isolation**: Sign-in errors don't affect profile loading states
+
 ## Architecture Components
 
 ### 1. Authentication Context (`contexts/AuthContext.tsx`)
@@ -249,12 +343,60 @@ useEffect(() => {
 2. **Navigation loops**: Verify auth protection bypass
 3. **Missing skeletons**: Ensure screen-specific components exist
 4. **Profile loading failures**: Check database user records
+5. **isLoading hang (FIXED)**: Was caused by race condition in loading state management
 
 ### Debug Logs
 Key console logs to monitor:
 - `ProtectedRoute: isLoading = ... isSwitchingMode = ...`
 - `✅ Loaded user from session: ...`
 - `Auth state changed: ...`
+- `❌ Failed to load user profile:` (indicates database issues)
+- `🔄 App load - clearing session to force fresh sign-in`
+
+### Testing the Fix
+After applying the AuthContext fix, test rebundling scenarios:
+1. Run `npx expo start --clear`
+2. Log should show successful progression:
+   ```
+   LOG  🔄 App load - clearing session to force fresh sign-in
+   LOG  Auth state changed: SIGNED_IN user@email.com
+   LOG  ✅ Loaded user from session: user@email.com student/teacher
+   LOG  ProtectedRoute: isLoading = false user = user@email.com
+   ```
+3. App should navigate properly without hanging on loading screen
+
+## Critical Issue: Teacher Sign-in Content Flash (Fixed)
+
+### Problem Analysis
+Teachers experienced jarring content flash during sign-in:
+1. Sign-in → navigate to `/(tabs)` → `TeacherIndex` briefly shows
+2. TeacherIndex mode switching logic → shows skeleton 
+3. Navigation to `/screens/teacher-index` → new TeacherIndex mounts
+4. Data loading → final content shows
+
+**Root Cause**: Double mounting of TeacherIndex component due to navigation flow and unnecessary mode switching.
+
+### Solution Implementation
+**Fixed in signin.tsx**:
+```typescript
+// Check if this is the master teacher email
+if (lowerEmail === 'herchenbach.hutch@gmail.com') {
+  setIsTeacherMode(true);
+  // Navigate directly to teacher screen to avoid flash
+  router.replace('/screens/teacher-index');
+} else {
+  setIsTeacherMode(false);
+  // Navigate to main app for students
+  router.replace('/(tabs)');
+}
+```
+
+**Fixed in teacher-index.tsx**:
+1. **Removed skeleton delay logic** from mode switching
+2. **Combined loading states** - show skeleton for both mode switching AND data loading
+3. **Immediate navigation** if somehow in wrong mode
+
+**Result**: Seamless flow: Sign-in → Skeleton → Teacher Dashboard
 
 ### Testing Scenarios
 1. Mode switching while offline

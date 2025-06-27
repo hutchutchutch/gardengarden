@@ -84,6 +84,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadUserFromSession = async (session: Session) => {
     try {
+      setIsLoading(true); // Ensure loading state during profile fetch
+      
       // Get user profile from database by email (since auth IDs may not match users table IDs)
       const { data: profile, error } = await supabase
         .from('users')
@@ -116,6 +118,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If there's an error, sign them out to force fresh sign-in
       await supabase.auth.signOut();
       setUser(null);
+    } finally {
+      setIsLoading(false); // Always clear loading state
     }
   };
 
@@ -130,14 +134,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
 
-      // User will be loaded via onAuthStateChange
+      // REMOVED: setIsLoading(false) - let onAuthStateChange handle this
       console.log('✅ Signed in successfully:', email);
     } catch (error) {
       console.error('Sign in error:', error);
+      setIsLoading(false); // Only set false on error
       throw error;
-    } finally {
-      setIsLoading(false);
     }
+    // No finally block - loading state managed by auth state changes
   };
 
   const signOut = async () => {

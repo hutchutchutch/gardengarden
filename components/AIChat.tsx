@@ -33,6 +33,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [documentsData, setDocumentsData] = useState<{[key: string]: {title: string, url: string}}>({});
+  const [teacherLessonId, setTeacherLessonId] = useState<string | null>(null);
   const { messages, isLoading, sendMessage, fetchMessages, initializeThread, initializeDefaultThread, initializeExistingThread } = useAIStore();
   const { user } = useAuth();
   const { plants } = usePlantStore();
@@ -40,9 +41,43 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const isTeacher = user?.role === 'teacher';
   const { isTeacherMode } = useMode();
 
-  // Get the current lesson ID from the plant
+  // Get the current lesson ID from the plant for students, or fetch it for teachers
   const currentPlant = plants.find(p => p.id === plantId);
-  const lessonId = currentPlant?.lessonId;
+  const lessonId = currentPlant?.lessonId || teacherLessonId || undefined;
+
+  // Fetch the teacher's active lesson ID
+  useEffect(() => {
+    const fetchTeacherActiveLesson = async () => {
+      if (user?.role === 'teacher' && !teacherLessonId) {
+        try {
+          // Get the teacher's class
+          const { data: teacherClass, error: classError } = await supabase
+            .from('classes')
+            .select('id')
+            .eq('teacher_id', user.id)
+            .single();
+
+          if (teacherClass && !classError) {
+            // Get the active lesson for this class
+            const { data: activeLesson, error: lessonError } = await supabase
+              .from('lessons')
+              .select('id')
+              .eq('class_id', teacherClass.id)
+              .eq('status', 'active')
+              .single();
+
+            if (activeLesson && !lessonError) {
+              setTeacherLessonId(activeLesson.id);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching teacher active lesson:', error);
+        }
+      }
+    };
+
+    fetchTeacherActiveLesson();
+  }, [user?.role, user?.id, teacherLessonId]);
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -132,7 +167,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
       if (selectedDocuments.length > 0) {
         try {
           const { data, error } = await supabase
-            .from('lesson_documents')
+            .from('lesson_urls')
             .select('id, title, url')
             .in('id', selectedDocuments);
 
@@ -314,30 +349,6 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
           </View>
         ) : (
           filteredMessages.map((msg) => {
-            // Check if this is a document reference message
-            const isDocumentRef = msg.content?.startsWith('DOCUMENT_REF:');
-            
-            if (isDocumentRef) {
-              // Parse document reference: DOCUMENT_REF:url:title
-              const parts = msg.content.split(':');
-              const documentUrl = parts[1];
-              const documentTitle = parts.slice(2).join(':');
-              
-              return (
-                <GSChatBubble
-                  key={msg.id}
-                  type="document"
-                  message={documentTitle}
-                  timestamp={msg.timestamp}
-                  currentUserRole={user?.role || 'student'}
-                  isRead={true}
-                  isLoading={false}
-                  documentUrl={documentUrl}
-                  onDocumentPress={() => handleDocumentPress(documentUrl)}
-                />
-              );
-            }
-            
             // Determine bubble type based on actual message role/sender
             let bubbleType: 'student' | 'ai' | 'teacher' = 'student';
             if (msg.role === 'user') {
@@ -348,8 +359,19 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
               bubbleType = 'teacher';
             }
             
-            // Ensure message content is never null/undefined
-            const messageContent = msg.content || '';
+            // Check if this is a document reference message and format it properly
+            let messageContent = msg.content || '';
+            let documentUrl: string | undefined;
+            
+            if (messageContent.startsWith('DOCUMENT_REF:')) {
+              // Parse document reference: DOCUMENT_REF:url:title
+              const parts = messageContent.split(':');
+              documentUrl = parts[1];
+              const documentTitle = parts.slice(2).join(':');
+              messageContent = `📄 Reference Document: ${documentTitle}`;
+              // Document references should always be treated as teacher messages
+              bubbleType = 'teacher';
+            }
             
             return (
               <GSChatBubble
@@ -362,6 +384,8 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
                 sources={msg.sources}
                 isRead={true}
                 isLoading={false}
+                documentUrl={documentUrl}
+                onDocumentPress={documentUrl ? () => handleDocumentPress(documentUrl) : undefined}
               />
             );
           })

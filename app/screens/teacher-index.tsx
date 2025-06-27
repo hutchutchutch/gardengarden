@@ -113,17 +113,12 @@ export default function TeacherIndex() {
 
   useEffect(() => {
     if (!isTeacherMode) {
-      // Show loading state instead of immediate navigation
-      setIsSwitchingMode(true);
-      const timer = setTimeout(() => {
-        router.replace('/screens/student-index');
-        // Reset switching mode after navigation
-        setTimeout(() => setIsSwitchingMode(false), 100);
-      }, 500); // Brief delay to show skeleton
-      return () => clearTimeout(timer);
-    } else {
-      setIsSwitchingMode(false);
+      // If somehow not in teacher mode, navigate to student view immediately
+      router.replace('/screens/student-index');
+      return;
     }
+    // Ensure switching mode is false when properly in teacher mode
+    setIsSwitchingMode(false);
   }, [isTeacherMode]);
 
   const loadDashboardData = async () => {
@@ -522,11 +517,11 @@ export default function TeacherIndex() {
         >
 
         <View style={{ paddingHorizontal: 16 }}>
-          {isSwitchingMode ? (
+          {isSwitchingMode || isLoading ? (
             <>
               {/* Show skeleton loading while switching modes */}
               <View style={{ marginBottom: 24 }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Current Lesson Progress</Text>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Current Lesson</Text>
                 <CurrentLessonSkeleton />
               </View>
 

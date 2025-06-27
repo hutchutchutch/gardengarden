@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Pressable, ActivityIndicator, FlatList, Text } from 'react-native';
+import { View, Pressable, ActivityIndicator, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MessageService, MessageThread } from '@/services/message-service';
@@ -10,7 +10,8 @@ import {
   GSCard,
   GSIconButton,
   GSSearchBar,
-  GSChip
+  GSChip,
+  Text
 } from '@/components/ui';
 
 export default function TeacherMessagesScreen() {
@@ -153,7 +154,9 @@ export default function TeacherMessagesScreen() {
                   {/* Message Content */}
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontWeight: '600', fontSize: 16, color: '#000' }}>{item.student?.name || 'Unknown Student'}</Text>
+                      <Text style={{ fontWeight: '600', fontSize: 16, color: '#000' }}>
+                        {item.student?.name || 'Unknown Student'}
+                      </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={{ fontSize: 12, color: '#666' }}>
                           {item.last_message ? MessageService.formatTimestamp(item.last_message.created_at) : 'No messages'}
@@ -179,7 +182,7 @@ export default function TeacherMessagesScreen() {
                     <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }} numberOfLines={2}>
                       {item.last_message?.content?.startsWith('DOCUMENT_REF:') 
                         ? 'Document shared' 
-                        : item.last_message?.content || 'No messages yet'}
+                        : (item.last_message?.content || 'No messages yet')}
                     </Text>
                   </View>
 

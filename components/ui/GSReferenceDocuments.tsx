@@ -8,7 +8,7 @@ interface LessonDocument {
   id: string;
   title: string;
   url: string;
-  status: string;
+  processing_status: string;
 }
 
 interface GSReferenceDocumentsProps {
@@ -47,10 +47,10 @@ export const GSReferenceDocuments: React.FC<GSReferenceDocumentsProps> = ({
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('lesson_documents')
-        .select('id, title, url, status')
+        .from('lesson_urls')
+        .select('id, title, url, processing_status')
         .eq('lesson_id', lessonId)
-        .eq('status', 'processed'); // Only show processed documents
+        .eq('processing_status', 'completed'); // Only show completed documents
 
       if (error) {
         console.error('Error fetching lesson documents:', error);
