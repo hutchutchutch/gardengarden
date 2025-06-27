@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { ModeProvider } from '@/contexts/ModeContext';
+import { ModeProvider, useMode } from '@/contexts/ModeContext';
 import { View, Text } from 'react-native';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { lightTheme, darkTheme } from '@/config/theme';
@@ -27,12 +27,15 @@ SplashScreen.preventAutoHideAsync();
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const { isSwitchingMode } = useMode();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    console.log('ProtectedRoute: isLoading =', isLoading, 'user =', user?.email);
-    if (!isLoading) {
+    console.log('ProtectedRoute: isLoading =', isLoading, 'user =', user?.email, 'isSwitchingMode =', isSwitchingMode);
+    
+    // Don't apply auth protection during mode switching
+    if (!isLoading && !isSwitchingMode) {
       // Check if we're in the auth group
       const inAuthGroup = segments[0] === 'auth';
       
@@ -44,7 +47,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         router.replace('/(tabs)');
       }
     }
-  }, [user, isLoading, segments]);
+  }, [user, isLoading, segments, isSwitchingMode]);
 
   if (isLoading) {
     console.log('ProtectedRoute: Still loading, showing loading screen');

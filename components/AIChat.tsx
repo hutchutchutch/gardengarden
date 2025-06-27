@@ -268,7 +268,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
                 type={bubbleType}
                 message={messageContent}
                 timestamp={msg.timestamp}
-                currentUserRole={isTeacherMode ? 'teacher' : 'student'}
+                currentUserRole={user?.role || 'student'}
                 showSources={bubbleType === 'ai' && msg.sources && msg.sources.length > 0}
                 sources={msg.sources}
                 isRead={true}
@@ -282,7 +282,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
             type="ai"
             message="Thinking..."
             timestamp={new Date().toISOString()}
-            currentUserRole={isTeacherMode ? 'teacher' : 'student'}
+            currentUserRole={user?.role || 'student'}
             isLoading={true}
           />
         )}

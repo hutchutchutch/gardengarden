@@ -10,7 +10,7 @@ interface ModeToggleProps {
 
 export default function ModeToggle({ style }: ModeToggleProps) {
   const { isTeacherMode, setIsTeacherMode } = useMode();
-  const { user, switchToTeacher, switchToStudent, getAllStudents } = useAuth();
+  const { user, switchToTeacher, switchToStudent, getAllStudents, signOut } = useAuth();
   const router = useRouter();
 
   // Set initial mode based on user role (only on first load, not during switches)
@@ -48,15 +48,12 @@ export default function ModeToggle({ style }: ModeToggleProps) {
         await switchToTeacher();
         router.replace('/screens/teacher-index');
       } else {
-        // Switch to default student authentication
-        console.log('🔄 Switching to default student...');
+        // Switch to student mode (user needs to sign in manually)
+        console.log('🔄 Switching to student mode...');
         setIsTeacherMode(false); // Set mode immediately to prevent UI flicker
-        // Get the first student and switch to them
-        const students = await getAllStudents();
-        if (students.length > 0) {
-          await switchToStudent(students[0].id);
-        }
-        router.replace('/screens/student-index');
+        // Sign out current user so they can sign in as a student
+        await signOut();
+        router.replace('/');
       }
     } catch (error) {
       console.error('Error switching mode:', error);

@@ -75,7 +75,7 @@ interface ClassStats {
 
 export default function TeacherIndex() {
   const { user, setShowFAB } = useAuth();
-  const { isTeacherMode, setIsTeacherMode } = useMode();
+  const { isTeacherMode, setIsTeacherMode, isSwitchingMode, setIsSwitchingMode } = useMode();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -113,7 +113,16 @@ export default function TeacherIndex() {
 
   useEffect(() => {
     if (!isTeacherMode) {
-      router.replace('/screens/student-index');
+      // Show loading state instead of immediate navigation
+      setIsSwitchingMode(true);
+      const timer = setTimeout(() => {
+        router.replace('/screens/student-index');
+        // Reset switching mode after navigation
+        setTimeout(() => setIsSwitchingMode(false), 100);
+      }, 500); // Brief delay to show skeleton
+      return () => clearTimeout(timer);
+    } else {
+      setIsSwitchingMode(false);
     }
   }, [isTeacherMode]);
 
@@ -513,12 +522,37 @@ export default function TeacherIndex() {
         >
 
         <View style={{ paddingHorizontal: 16 }}>
-          {/* Current Lesson Progress Section */}
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Current Lesson Progress</Text>
-            {isLoading ? (
-              <CurrentLessonSkeleton />
-            ) : currentLesson ? (
+          {isSwitchingMode ? (
+            <>
+              {/* Show skeleton loading while switching modes */}
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Current Lesson Progress</Text>
+                <CurrentLessonSkeleton />
+              </View>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Task Completion</Text>
+                <TaskCompletionSkeleton />
+              </View>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Today's Gardens</Text>
+                <PhotoSubmissionsSkeleton />
+              </View>
+
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Quick Actions</Text>
+                <QuickActionsSkeleton />
+              </View>
+            </>
+          ) : (
+            <>
+              {/* Current Lesson Progress Section */}
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Current Lesson Progress</Text>
+                {isLoading ? (
+                  <CurrentLessonSkeleton />
+                ) : currentLesson ? (
               <GSCard variant="elevated" padding="large">
                 <View style={{ marginBottom: 12 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -778,6 +812,8 @@ export default function TeacherIndex() {
               </View>
             )}
           </View>
+            </>
+          )}
         </View>
         </ScrollView>
       </View>

@@ -108,7 +108,7 @@ export const useAIStore = create<AIState>()(
             return {
               id: msg.id,
               role,
-              content: msg.content,
+              content: msg.content || '',
               timestamp: msg.created_at,
               sources: msg.ai_sources || undefined
             };
@@ -154,7 +154,7 @@ export const useAIStore = create<AIState>()(
             const savedTeacherMessage: AIMessage = {
               id: teacherMessage.id,
               role: 'teacher',
-              content: teacherMessage.content,
+              content: teacherMessage.content || '',
               timestamp: teacherMessage.created_at
             };
             
@@ -188,7 +188,7 @@ export const useAIStore = create<AIState>()(
             const savedUserMessage: AIMessage = {
               id: studentMessage.id,
               role: 'user',
-              content: studentMessage.content,
+              content: studentMessage.content || '',
               timestamp: studentMessage.created_at
             };
             
@@ -235,7 +235,7 @@ export const useAIStore = create<AIState>()(
                 const aiResponse: AIMessage = {
                   id: aiResponseMessage.id,
                   role: 'assistant',
-                  content: data.message,
+                  content: data.message || '',
                   timestamp: aiResponseMessage.created_at,
                   sources: data.sources
                 };

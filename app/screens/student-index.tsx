@@ -26,12 +26,13 @@ import {
   GSFAB,
   Text
 } from '@/components/ui';
+import { ShimmerPlaceholder } from '@/components/ui/ShimmerPlaceholder';
 
 export default function StudentIndexScreen() {
   const router = useRouter();
   const { plants } = usePlantStore();
   const { tasks } = useTaskStore();
-  const { isTeacherMode } = useMode();
+  const { isTeacherMode, isSwitchingMode, setIsSwitchingMode } = useMode();
   const { user } = useAuth();
   
   const [activePlant, setActivePlant] = React.useState<any>(null);
@@ -45,6 +46,97 @@ export default function StudentIndexScreen() {
   const [pendingPhotoTaskId, setPendingPhotoTaskId] = React.useState<string | null>(null);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = React.useState(false);
   const [analysisError, setAnalysisError] = React.useState(false);
+
+  // Create skeleton components for student view
+  const ClassGardensSkeleton = () => (
+    <View style={{ paddingHorizontal: 16 }}>
+      <ShimmerPlaceholder width="30%" height={16} borderRadius={4} style={{ marginBottom: 12 }} />
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View style={{ alignItems: 'center' }}>
+          <ShimmerPlaceholder width={80} height={80} borderRadius={40} style={{ marginBottom: 8 }} />
+          <ShimmerPlaceholder width={60} height={12} borderRadius={4} />
+        </View>
+        {[1, 2, 3].map((i) => (
+          <View key={i} style={{ alignItems: 'center' }}>
+            <ShimmerPlaceholder width={80} height={80} borderRadius={40} style={{ marginBottom: 8 }} />
+            <ShimmerPlaceholder width={50} height={12} borderRadius={4} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  const PlantProgressSkeleton = () => (
+    <View style={{ paddingHorizontal: 16 }}>
+      <ShimmerPlaceholder width="50%" height={20} borderRadius={4} style={{ marginBottom: 12 }} />
+      <GSCard variant="elevated" padding="large">
+        <ShimmerPlaceholder width="100%" height={200} borderRadius={8} style={{ marginBottom: 16 }} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <View style={{ flex: 1 }}>
+            <ShimmerPlaceholder width="70%" height={18} borderRadius={4} style={{ marginBottom: 8 }} />
+            <ShimmerPlaceholder width="40%" height={14} borderRadius={4} />
+          </View>
+          <ShimmerPlaceholder width={60} height={24} borderRadius={12} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+          <ShimmerPlaceholder width={80} height={24} borderRadius={12} />
+          <ShimmerPlaceholder width={100} height={24} borderRadius={12} />
+        </View>
+      </GSCard>
+      <View style={{ marginTop: 16 }}>
+        <ShimmerPlaceholder width="100%" height={40} borderRadius={8} />
+      </View>
+    </View>
+  );
+
+  const TasksSkeleton = () => (
+    <View style={{ paddingHorizontal: 16 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <ShimmerPlaceholder width="40%" height={20} borderRadius={4} />
+        <ShimmerPlaceholder width={60} height={16} borderRadius={8} />
+      </View>
+      <GSCard variant="elevated" padding="none">
+        {[1, 2, 3].map((i) => (
+          <View key={i} style={{ 
+            flexDirection: 'row', 
+            alignItems: 'center', 
+            paddingHorizontal: 16, 
+            paddingVertical: 12,
+            borderBottomWidth: i < 3 ? 1 : 0,
+            borderBottomColor: '#f0f0f0'
+          }}>
+            <ShimmerPlaceholder width={24} height={24} borderRadius={3} style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <ShimmerPlaceholder width="80%" height={16} borderRadius={4} />
+            </View>
+            <ShimmerPlaceholder width={40} height={20} borderRadius={10} />
+          </View>
+        ))}
+      </GSCard>
+    </View>
+  );
+
+  const TipsSkeleton = () => (
+    <View style={{ paddingHorizontal: 16 }}>
+      <ShimmerPlaceholder width="50%" height={20} borderRadius={4} style={{ marginBottom: 12 }} />
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        {[1, 2, 3].map((i) => (
+          <GSCard key={i} variant="elevated" padding="medium" style={{ width: 320 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
+              <ShimmerPlaceholder width={22} height={22} borderRadius={11} />
+              <View style={{ flex: 1 }}>
+                <ShimmerPlaceholder width="90%" height={16} borderRadius={4} style={{ marginBottom: 8 }} />
+                <ShimmerPlaceholder width="70%" height={14} borderRadius={4} />
+              </View>
+            </View>
+            <ShimmerPlaceholder width="100%" height={14} borderRadius={4} style={{ marginBottom: 4 }} />
+            <ShimmerPlaceholder width="100%" height={14} borderRadius={4} style={{ marginBottom: 4 }} />
+            <ShimmerPlaceholder width="80%" height={14} borderRadius={4} />
+          </GSCard>
+        ))}
+      </View>
+    </View>
+  );
 
   // Fetch plant and submission data from Supabase
   const fetchStudentData = async () => {
@@ -355,8 +447,16 @@ export default function StudentIndexScreen() {
 
   useEffect(() => {
     if (isTeacherMode) {
-      router.replace('/screens/teacher-index');
+      // Show loading state instead of immediate navigation
+      setIsSwitchingMode(true);
+      const timer = setTimeout(() => {
+        router.replace('/screens/teacher-index');
+        // Reset switching mode after navigation
+        setTimeout(() => setIsSwitchingMode(false), 100);
+      }, 500); // Brief delay to show skeleton
+      return () => clearTimeout(timer);
     } else if (user?.id) {
+      setIsSwitchingMode(false);
       fetchStudentData();
     }
   }, [isTeacherMode, user?.id]);
@@ -490,71 +590,96 @@ export default function StudentIndexScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: 80 }}
         >
-          
+          {isSwitchingMode ? (
+            <>
+              {/* Skeleton loading while switching modes */}
+              <View style={{ marginBottom: 16, marginTop: 24 }}>
+                <ClassGardensSkeleton />
+              </View>
 
-          {/* Plant Stories Section */}
-          <View style={{ marginBottom: 16, marginTop: 24 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 16 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#000' }}>Class Gardens</Text>
-            </View>
-            
-            <PlantStories 
-              onAddPhoto={() => {
-                setAnalysisError(false);
-                router.push('/(tabs)/camera');
-              }}
-              onStoryPress={(story) => console.log('View story:', story.id)}
-              isAnalyzing={isAnalyzingPhoto}
-              analysisError={analysisError}
-            />
-          </View>
-
-          {/* My Plant Progress Section with GSPlantCard */}
-          {activePlant && plantProgress && (
-            <View style={{ marginBottom: 24, marginTop: 8, paddingHorizontal: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>My Plant Progress</Text>
-              
-              <View style={{ marginTop: 12 }}>
-                <GSPlantCard
-                  imageUrl={plantProgress.imageUrl || null}
-                  studentName="My Plant"
-                  plantName={activePlant.name}
-                  dayNumber={plantProgress.dayNumber || 1}
-                  healthScore={plantProgress.healthScore || 0}
-                  currentStage={plantProgress.currentStage}
-                  positiveSigns={getCurrentAnalysisData()?.positive_signs || []}
-                  areasForImprovement={getCurrentAnalysisData()?.areas_for_improvement || []}
+              <View style={{ marginBottom: 24, marginTop: 8 }}>
+                <PlantProgressSkeleton />
+              </View>
+            </>
+          ) : (
+            <>
+              {/* Plant Stories Section */}
+              <View style={{ marginBottom: 16, marginTop: 24 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 16 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#000' }}>Class Gardens</Text>
+                </View>
+                
+                <PlantStories 
+                  onAddPhoto={() => {
+                    setAnalysisError(false);
+                    router.push('/(tabs)/camera');
+                  }}
+                  onStoryPress={(story) => console.log('View story:', story.id)}
+                  isAnalyzing={isAnalyzingPhoto}
+                  analysisError={analysisError}
                 />
               </View>
 
-              {/* Today's Photo CTA */}
-              <View style={{ marginTop: 16 }}>
-                <GSButton 
-                  variant="secondary" 
-                  icon="camera" 
-                  fullWidth
-                  onPress={() => router.push('/(tabs)/camera')}
-                >
-                  Today's Photo
-                </GSButton>
-              </View>
-            </View>
+              {/* My Plant Progress Section with GSPlantCard */}
+              {activePlant && plantProgress && (
+                <View style={{ marginBottom: 24, marginTop: 8, paddingHorizontal: 16 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>My Plant Progress</Text>
+                  
+                  <View style={{ marginTop: 12 }}>
+                    <GSPlantCard
+                      imageUrl={plantProgress.imageUrl || null}
+                      studentName="My Plant"
+                      plantName={activePlant.name}
+                      dayNumber={plantProgress.dayNumber || 1}
+                      healthScore={plantProgress.healthScore || 0}
+                      currentStage={plantProgress.currentStage}
+                      positiveSigns={getCurrentAnalysisData()?.positive_signs || []}
+                      areasForImprovement={getCurrentAnalysisData()?.areas_for_improvement || []}
+                    />
+                  </View>
+
+                  {/* Today's Photo CTA */}
+                  <View style={{ marginTop: 16 }}>
+                    <GSButton 
+                      variant="secondary" 
+                      icon="camera" 
+                      fullWidth
+                      onPress={() => router.push('/(tabs)/camera')}
+                    >
+                      Today's Photo
+                    </GSButton>
+                  </View>
+                </View>
+              )}
+            </>
           )}
 
-          {/* Yesterday's Feedback Section - Show Welcome on Day 1 */}
-          {(plantProgress?.dayNumber === 1 && lessonData) ? (
-            <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Welcome to Your Garden Journey</Text>
-              
-              <View style={{ marginTop: 12 }}>
-                <GSGuidanceCard
-                  emoji="🌱"
-                  title={`Welcome to ${lessonData.name || 'Your Lesson'}`}
-                  content={lessonData.description || 'Start your exciting journey of growing and learning with plants!'}
-                />
+          {isSwitchingMode ? (
+            <>
+              <View style={{ marginBottom: 24, marginTop: 24 }}>
+                <TasksSkeleton />
               </View>
-            </View>
-          ) : yesterdaysFeedback && (
+
+              <View style={{ marginBottom: 24, marginTop: 24 }}>
+                <TipsSkeleton />
+              </View>
+            </>
+          ) : (
+            <>
+              {/* Yesterday's Feedback Section - Show Welcome on Day 1 */}
+              {(plantProgress?.dayNumber === 1 && lessonData) ? (
+                <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Welcome to Your Garden Journey</Text>
+                  
+                  <View style={{ marginTop: 12 }}>
+                    <GSGuidanceCard
+                      emoji="🌱"
+                      title={`Welcome to ${lessonData.name || 'Your Lesson'}`}
+                      content={lessonData.description || 'Start your exciting journey of growing and learning with plants!'}
+                    />
+                  </View>
+                </View>
+              ) : yesterdaysFeedback && (
             <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Yesterday's Feedback</Text>
               
@@ -736,55 +861,57 @@ export default function StudentIndexScreen() {
             </View>
           </View>
 
-          {/* Tips & Reminders Section */}
-          <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Tips & Reminders</Text>
-            
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-              <View style={{ flexDirection: 'row', gap: 12, paddingRight: 16 }}>
-                {tips.map((tip, index) => {
-                  const isExpanded = expandedTipIndex === index;
-                  return (
-                    <Pressable
-                      key={index}
-                      onPress={() => setExpandedTipIndex(isExpanded ? null : index)}
-                      style={{ width: 320 }}
-                    >
-                      <GSCard 
-                        variant="elevated" 
-                        padding="medium" 
-                        style={{ 
-                          minHeight: isExpanded ? undefined : 220,
-                          height: isExpanded ? 'auto' : undefined
-                        }}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
-                          <GSIconButton icon={tip.icon} onPress={() => {}} size={22} color="#4CAF50" />
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontWeight: '500', fontSize: 15, color: '#000', lineHeight: 20, flexWrap: 'wrap' }}>{tip.title}</Text>
-                          </View>
-                          <View style={{ marginLeft: 4 }}>
-                            <GSIconButton 
-                              icon={isExpanded ? "chevron-up" : "chevron-down"} 
-                              onPress={() => setExpandedTipIndex(isExpanded ? null : index)} 
-                              size={18} 
-                              color="#666" 
-                            />
-                          </View>
-                        </View>
-                        <Text 
-                          style={{ fontSize: 13, color: '#666', lineHeight: 18 }} 
-                          numberOfLines={isExpanded ? undefined : 7}
+              {/* Tips & Reminders Section */}
+              <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Tips & Reminders</Text>
+                
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+                  <View style={{ flexDirection: 'row', gap: 12, paddingRight: 16 }}>
+                    {tips.map((tip, index) => {
+                      const isExpanded = expandedTipIndex === index;
+                      return (
+                        <Pressable
+                          key={index}
+                          onPress={() => setExpandedTipIndex(isExpanded ? null : index)}
+                          style={{ width: 320 }}
                         >
-                          {tip.description}
-                        </Text>
-                      </GSCard>
-                    </Pressable>
-                  );
-                })}
+                          <GSCard 
+                            variant="elevated" 
+                            padding="medium" 
+                            style={{ 
+                              minHeight: isExpanded ? undefined : 220,
+                              height: isExpanded ? 'auto' : undefined
+                            }}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
+                              <GSIconButton icon={tip.icon} onPress={() => {}} size={22} color="#4CAF50" />
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ fontWeight: '500', fontSize: 15, color: '#000', lineHeight: 20, flexWrap: 'wrap' }}>{tip.title}</Text>
+                              </View>
+                              <View style={{ marginLeft: 4 }}>
+                                <GSIconButton 
+                                  icon={isExpanded ? "chevron-up" : "chevron-down"} 
+                                  onPress={() => setExpandedTipIndex(isExpanded ? null : index)} 
+                                  size={18} 
+                                  color="#666" 
+                                />
+                              </View>
+                            </View>
+                            <Text 
+                              style={{ fontSize: 13, color: '#666', lineHeight: 18 }} 
+                              numberOfLines={isExpanded ? undefined : 7}
+                            >
+                              {tip.description}
+                            </Text>
+                          </GSCard>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
               </View>
-            </ScrollView>
-          </View>
+            </>
+          )}
         </ScrollView>
 
         {/* AI Chat FAB - Always visible in Student Mode */}
