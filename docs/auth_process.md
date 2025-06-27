@@ -3,10 +3,10 @@
 ## Overview
 GardenSnap implements a dual-mode authentication system where users can switch between Student and Teacher modes without requiring separate login credentials. This creates a seamless experience for educators who need to demonstrate both perspectives of the application.
 
-## Critical Issue: isLoading Race Condition (Fixed)
+## Critical Issue: Database Query Timeout Causing isLoading Hang (Fixed)
 
 ### Problem Analysis
-When rebundling the iOS app with `npx expo start --clear`, users experienced hanging on the loading screen despite successful authentication. The logs showed:
+When rebundling the iOS app with `npx expo start --clear`, users experienced hanging on the loading screen despite successful authentication. The logs initially showed:
 
 ```
 LOG  ProtectedRoute: isLoading = true user = undefined isSwitchingMode = false
@@ -14,49 +14,98 @@ LOG  🔄 App load - clearing session to force fresh sign-in
 LOG  Auth state changed: SIGNED_IN herchenbach.hutch@gmail.com
 ```
 
-**Root Cause**: Race condition in `AuthContext.tsx` where:
-1. `signIn()` method sets `isLoading = false` immediately after Supabase auth
-2. `onAuthStateChange` handler also sets `isLoading = false` 
-3. `loadUserFromSession()` runs asynchronously AFTER both loading states are cleared
-4. If profile loading fails, user remains `undefined` while `isLoading = false`
-5. `ProtectedRoute` gets stuck because it only shows loading screen when `isLoading = true`
+**Initial Hypothesis**: Race condition in `AuthContext.tsx` where `setIsLoading(false)` was called before user profile loading completed.
+
+**Actual Root Cause**: Database query timeout in `loadUserFromSession()` function was causing the function to hang without reaching the `finally` block that sets `isLoading = false`.
+
+### Debugging Process
+1. **Step 1**: Added logging to track auth state changes and function calls
+2. **Step 2**: Identified that `loadUserFromSession` was being called but not completing
+3. **Step 3**: Added comprehensive logging around the database query
+4. **Step 4**: Discovered the Supabase query was hanging indefinitely
+5. **Step 5**: Added timeout handling and discovered 10-second timeouts
+6. **Step 6**: Found that `supabase.auth.signOut()` calls during timeout errors were causing hanging states
+
+**Final Logs Showing the Issue**:
+```
+LOG  Auth state changed: SIGNED_IN herchenbach.hutch@gmail.com
+LOG  🔄 Session exists, calling loadUserFromSession...
+LOG  🔄 loadUserFromSession called for: herchenbach.hutch@gmail.com
+LOG  🔄 Set isLoading = true, querying database for user profile...
+LOG  🔄 About to query users table for email: herchenbach.hutch@gmail.com
+LOG  🔄 Supabase URL configured: true
+LOG  🔄 Supabase Anon Key configured: true
+ERROR  🚨 Database query timed out: [Error: Database query timeout after 10 seconds]
+LOG  🔄 Database query completed. Profile: null Error: [Error: Database query timeout after 10 seconds]
+ERROR  ❌ Failed to load user profile: [Error: Database query timeout after 10 seconds]
+```
+
+**Root Cause**: The function was hanging after the timeout error because:
+1. Database query times out after 10 seconds
+2. Error handling calls `await supabase.auth.signOut()` 
+3. The `signOut()` call itself hangs or creates a loop
+4. The `finally` block never executes, so `isLoading` stays `true`
 
 ### Solution Implementation
 **Fixed in AuthContext.tsx**:
 
 ```typescript
-const signIn = async (email: string, password: string) => {
-  try {
-    setIsLoading(true);
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw error;
-
-    // REMOVED: setIsLoading(false) - let onAuthStateChange handle this
-    console.log('✅ Signed in successfully:', email);
-  } catch (error) {
-    console.error('Sign in error:', error);
-    setIsLoading(false); // Only set false on error
-    throw error;
+// 1. Fixed onAuthStateChange to not set isLoading prematurely
+const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log('Auth state changed:', event, session?.user?.email);
+  
+  if (session?.user) {
+    console.log('🔄 Session exists, calling loadUserFromSession...');
+    await loadUserFromSession(session);
+  } else {
+    console.log('🔄 No session, setting user to null and isLoading to false');
+    setUser(null);
+    setIsLoading(false); // Only set loading false when no session
   }
-  // No finally block - loading state managed by auth state changes
-};
+  // REMOVED: setIsLoading(false) that was causing race condition
+});
 
+// 2. Enhanced loadUserFromSession with timeout handling and better error handling
 const loadUserFromSession = async (session: Session) => {
+  console.log('🔄 loadUserFromSession called for:', session.user.email);
   try {
     setIsLoading(true); // Ensure loading state during profile fetch
+    console.log('🔄 Set isLoading = true, querying database for user profile...');
     
-    const { data: profile, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', session.user.email)
-      .single();
+    // Check Supabase configuration
+    console.log('🔄 Supabase URL configured:', !!process.env.EXPO_PUBLIC_SUPABASE_URL);
+    console.log('🔄 Supabase Anon Key configured:', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+    
+    // Add timeout to prevent hanging queries
+    let profile: any = null;
+    let error: any = null;
+    
+    try {
+      const queryPromise = supabase
+        .from('users')
+        .select('*')
+        .eq('email', session.user.email)
+        .single();
+      
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database query timeout after 10 seconds')), 10000)
+      );
+      
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      if (result && typeof result === 'object' && 'data' in result) {
+        profile = (result as any).data;
+        error = (result as any).error;
+      }
+    } catch (timeoutError) {
+      console.error('🚨 Database query timed out:', timeoutError);
+      error = timeoutError;
+    }
 
+    console.log('🔄 Database query completed. Profile:', profile, 'Error:', error);
+    console.log('🔄 Processing query result...');
+    
     if (profile && !error) {
+      console.log('🔄 Profile found, creating user data...');
       const userData: User = {
         id: profile.id,
         email: profile.email,
@@ -72,30 +121,51 @@ const loadUserFromSession = async (session: Session) => {
       console.log('✅ Loaded user from session:', userData.email, userData.role);
     } else {
       console.error('❌ Failed to load user profile:', error);
-      await supabase.auth.signOut();
+      console.log('🔄 Setting user to null and signing out...');
       setUser(null);
+      // CRITICAL FIX: Skip sign out for timeout errors to prevent infinite loops
+      if (error && !error.message?.includes('timeout')) {
+        await supabase.auth.signOut();
+      }
     }
   } catch (error) {
     console.error('Error loading user from session:', error);
-    await supabase.auth.signOut();
     setUser(null);
+    // Skip sign out for errors that might cause loops
+    if (error && !error.message?.includes('timeout')) {
+      await supabase.auth.signOut();
+    }
   } finally {
+    console.log('🔄 loadUserFromSession finally block - setting isLoading = false');
     setIsLoading(false); // Always clear loading state
   }
 };
 ```
 
 **Key Changes**:
-1. **Removed premature `setIsLoading(false)`** from `signIn` success path
-2. **Added `setIsLoading(true)`** at start of `loadUserFromSession` 
-3. **Added `finally` block** to ensure `isLoading` is always cleared
-4. **Centralized loading state management** through auth state changes only
+1. **Fixed race condition**: Removed `setIsLoading(false)` from `onAuthStateChange` handler
+2. **Added database query timeout**: 10-second timeout prevents indefinite hanging
+3. **Enhanced error handling**: Skip `signOut()` calls for timeout errors to prevent loops
+4. **Comprehensive logging**: Track every step of the auth flow for debugging
+5. **Configuration validation**: Log whether Supabase environment variables are configured
+6. **Guaranteed cleanup**: `finally` block ensures `isLoading` is always cleared
 
 ### Prevention Measures
 - **Single source of truth**: Only `onAuthStateChange` and `loadUserFromSession` manage loading state
-- **Explicit loading during profile fetch**: Ensures loading screen shows during database queries
-- **Guaranteed cleanup**: `finally` block prevents stuck loading states
-- **Error isolation**: Sign-in errors don't affect profile loading states
+- **Database query timeouts**: 10-second timeout prevents indefinite hanging on network issues
+- **Smart error handling**: Skip `signOut()` calls for timeout errors to prevent infinite loops
+- **Comprehensive logging**: Track auth flow progression for easier debugging
+- **Guaranteed cleanup**: `finally` block ensures `isLoading` is always cleared
+- **Configuration validation**: Verify Supabase environment variables are loaded
+- **Error isolation**: Network errors don't affect navigation flow
+
+### Debugging Methodology for Future Issues
+1. **Add step-by-step logging** throughout the auth flow
+2. **Check network connectivity** and Supabase configuration first
+3. **Add timeouts** to any database queries that could hang
+4. **Avoid recursive `signOut()` calls** in error handlers
+5. **Always use `finally` blocks** for cleanup in async functions
+6. **Test with network timeouts** and poor connectivity scenarios
 
 ## Architecture Components
 
@@ -343,7 +413,9 @@ useEffect(() => {
 2. **Navigation loops**: Verify auth protection bypass
 3. **Missing skeletons**: Ensure screen-specific components exist
 4. **Profile loading failures**: Check database user records
-5. **isLoading hang (FIXED)**: Was caused by race condition in loading state management
+5. **isLoading hang due to race condition (FIXED)**: Was caused by premature `setIsLoading(false)` calls
+6. **isLoading hang due to database timeout (FIXED)**: Database queries hanging without timeout handling
+7. **Infinite auth loops**: `signOut()` calls in error handlers causing recursive loops
 
 ### Debug Logs
 Key console logs to monitor:
@@ -352,18 +424,54 @@ Key console logs to monitor:
 - `Auth state changed: ...`
 - `❌ Failed to load user profile:` (indicates database issues)
 - `🔄 App load - clearing session to force fresh sign-in`
+- `🔄 Session exists, calling loadUserFromSession...` (confirms auth state handler works)
+- `🔄 loadUserFromSession called for: ...` (confirms function is called)
+- `🔄 Set isLoading = true, querying database for user profile...` (confirms loading state set)
+- `🔄 Supabase URL configured: true/false` (validates environment variables)
+- `🚨 Database query timed out:` (indicates network/database issues)
+- `🔄 loadUserFromSession finally block - setting isLoading = false` (confirms cleanup)
 
 ### Testing the Fix
-After applying the AuthContext fix, test rebundling scenarios:
+After applying the AuthContext timeout and error handling fix, test various scenarios:
+
+**Normal Operation (Good Network)**:
 1. Run `npx expo start --clear`
 2. Log should show successful progression:
    ```
    LOG  🔄 App load - clearing session to force fresh sign-in
    LOG  Auth state changed: SIGNED_IN user@email.com
+   LOG  🔄 Session exists, calling loadUserFromSession...
+   LOG  🔄 loadUserFromSession called for: user@email.com
+   LOG  🔄 Set isLoading = true, querying database for user profile...
+   LOG  🔄 About to query users table for email: user@email.com
+   LOG  🔄 Supabase URL configured: true
+   LOG  🔄 Supabase Anon Key configured: true
+   LOG  🔄 Database query completed. Profile: {...} Error: null
+   LOG  🔄 Processing query result...
+   LOG  🔄 Profile found, creating user data...
    LOG  ✅ Loaded user from session: user@email.com student/teacher
+   LOG  🔄 loadUserFromSession finally block - setting isLoading = false
    LOG  ProtectedRoute: isLoading = false user = user@email.com
    ```
-3. App should navigate properly without hanging on loading screen
+
+**Timeout Scenario (Poor Network)**:
+1. Simulate poor network or database issues
+2. Log should show timeout handling:
+   ```
+   LOG  🔄 Set isLoading = true, querying database for user profile...
+   ERROR  🚨 Database query timed out: [Error: Database query timeout after 10 seconds]
+   LOG  🔄 Database query completed. Profile: null Error: [Error: Database query timeout after 10 seconds]
+   ERROR  ❌ Failed to load user profile: [Error: Database query timeout after 10 seconds]
+   LOG  🔄 Setting user to null and signing out...
+   LOG  🔄 loadUserFromSession finally block - setting isLoading = false
+   ```
+3. App should navigate to sign-in screen without hanging
+
+**Key Success Criteria**:
+- ✅ `finally` block always executes (shows "setting isLoading = false")
+- ✅ No infinite hanging on loading screen
+- ✅ Proper error handling for network timeouts
+- ✅ Graceful fallback to sign-in screen on errors
 
 ## Critical Issue: Teacher Sign-in Content Flash (Fixed)
 

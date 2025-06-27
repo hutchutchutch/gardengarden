@@ -48,14 +48,13 @@ export default function SignInScreen() {
       if (lowerEmail === 'herchenbach.hutch@gmail.com') {
         // Set teacher mode for master teacher
         setIsTeacherMode(true);
-        // Navigate directly to teacher screen to avoid flash
-        router.replace('/screens/teacher-index');
       } else {
         // Ensure student mode for all other users
         setIsTeacherMode(false);
-        // Navigate to main app for students
-        router.replace('/(tabs)');
       }
+      // Navigate to main app for both teachers and students
+      // The /(tabs)/index.tsx will conditionally render the correct screen
+      router.replace('/(tabs)');
     } catch (error: any) {
       Alert.alert('Sign In Failed', error.message || 'Please check your credentials');
     } finally {

@@ -450,7 +450,7 @@ export default function StudentIndexScreen() {
       // Show loading state instead of immediate navigation
       setIsSwitchingMode(true);
       const timer = setTimeout(() => {
-        router.replace('/screens/teacher-index');
+        router.replace('/(tabs)');
         // Reset switching mode after navigation
         setTimeout(() => setIsSwitchingMode(false), 100);
       }, 500); // Brief delay to show skeleton

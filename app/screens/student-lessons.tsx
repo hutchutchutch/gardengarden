@@ -102,7 +102,7 @@ export default function StudentLessons() {
   
   useEffect(() => {
     if (isTeacherMode) {
-      router.replace('/screens/teacher-lessons');
+              router.replace('/(tabs)/lessons');
     } else if (user?.id) {
       fetchLessons();
     }

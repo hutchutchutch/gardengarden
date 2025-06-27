@@ -46,7 +46,7 @@ export default function ModeToggle({ style }: ModeToggleProps) {
         console.log('🔄 Switching to teacher...');
         setIsTeacherMode(true); // Set mode immediately to prevent UI flicker
         await switchToTeacher();
-        router.replace('/screens/teacher-index');
+        router.replace('/(tabs)');
       } else {
         // Switch to student mode (user needs to sign in manually)
         console.log('🔄 Switching to student mode...');

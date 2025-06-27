@@ -21,10 +21,12 @@ import {
   GSCard,
   GSDocumentItem,
   GSStatCard,
+  GSURLInput,
   Text,
   MenuItem
 } from '@/components/ui';
 import { LessonService, Lesson, LessonDocument } from '@/services/lesson-service';
+import { supabase } from '@/config/supabase';
 import { format } from 'date-fns';
 
 export default function TeacherLessons() {
@@ -41,52 +43,193 @@ export default function TeacherLessons() {
   const [completedLessons, setCompletedLessons] = useState<Lesson[]>([]);
   const [upcomingLessons, setUpcomingLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newResourceUrl, setNewResourceUrl] = useState('');
 
   // Load lesson data
   const loadLessonData = async () => {
+    console.log('🔄 [LOAD DATA START] Loading lesson data...');
+    
     try {
       setLoading(true);
+      console.log('⏳ [LOAD DATA] Loading state set to true');
       
       if (!user?.id) {
-        console.error('No user ID available for loading lessons');
+        console.error('❌ [LOAD DATA FAILED] No user ID available for loading lessons');
         return;
       }
 
+      console.log('👤 [LOAD DATA] User info:', {
+        userId: user.id,
+        userRole: user.role,
+        userName: user.name
+      });
+
       // Only load teacher data if user is actually a teacher
       if (user.role !== 'teacher') {
-        console.log('User is not a teacher, skipping teacher lesson data load');
+        console.log('⚠️ [LOAD DATA SKIP] User is not a teacher, skipping teacher lesson data load');
         setLoading(false);
         return;
       }
+
+      console.log('📚 [LOAD DATA] Fetching lesson data from service...');
+      const startTime = Date.now();
 
       const [current, completed, upcoming] = await Promise.all([
         LessonService.getCurrentLesson(user.id),
         LessonService.getCompletedLessons(user.id),
         LessonService.getUpcomingLessons(user.id)
       ]);
+
+      const loadTime = Date.now() - startTime;
+      console.log(`⏱️ [LOAD DATA] Lesson data fetched in ${loadTime}ms`);
+
+      console.log('📊 [LOAD DATA] Lesson data results:', {
+        currentLesson: current ? { id: current.id, name: current.name, urlCount: current.lesson_urls?.length || 0 } : null,
+        completedCount: completed.length,
+        upcomingCount: upcoming.length
+      });
+
       setCurrentLesson(current);
       setCompletedLessons(completed);
       setUpcomingLessons(upcoming);
+      
+      console.log('✅ [LOAD DATA SUCCESS] All lesson data loaded and state updated');
     } catch (error) {
-      console.error('Error loading lesson data:', error);
+      console.error('💥 [LOAD DATA ERROR] Error loading lesson data:', {
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        userId: user?.id
+      });
     } finally {
       setLoading(false);
+      console.log('🏁 [LOAD DATA END] Loading state set to false');
     }
   };
 
   useEffect(() => {
+    console.log('🔄 [COMPONENT] useEffect triggered with:', {
+      isTeacherMode,
+      userId: user?.id,
+      userRole: user?.role
+    });
+
     if (!isTeacherMode) {
+      console.log('🔀 [NAVIGATION] Not in teacher mode, redirecting to student lessons');
       router.replace('/screens/student-lessons');
     } else if (user?.id) {
+      console.log('✅ [COMPONENT] Teacher mode confirmed, loading lesson data');
       loadLessonData();
+    } else {
+      console.log('⚠️ [COMPONENT] Teacher mode but no user ID yet');
     }
   }, [isTeacherMode, user?.id]);
+
+  // Track currentLesson changes for debugging
+  useEffect(() => {
+    console.log('📚 [CURRENT LESSON] Current lesson changed:', {
+      hasLesson: !!currentLesson,
+      lessonId: currentLesson?.id,
+      lessonName: currentLesson?.name,
+      urlCount: currentLesson?.lesson_urls?.length || 0,
+      urls: currentLesson?.lesson_urls?.map(url => ({
+        id: url.id,
+        url: url.url,
+        title: url.title || 'No title',
+        status: url.status,
+        progress: url.processing_progress
+      }))
+    });
+  }, [currentLesson]);
 
   const handleCreateLesson = () => {
     router.push({
       pathname: '/modal',
       params: { type: 'create-lesson' }
     });
+  };
+
+  const handleAddResource = async () => {
+    console.log('🚀 [WORKFLOW START] handleAddResource triggered');
+    console.log('📝 [STEP 1] Validating inputs...');
+    
+    if (!newResourceUrl.trim() || !currentLesson?.id) {
+      console.error('❌ [STEP 1 FAILED] Missing required data:', {
+        hasUrl: !!newResourceUrl.trim(),
+        hasLessonId: !!currentLesson?.id,
+        url: newResourceUrl.trim(),
+        lessonId: currentLesson?.id
+      });
+      return;
+    }
+
+    console.log('✅ [STEP 1 SUCCESS] Validation passed:', {
+      url: newResourceUrl.trim(),
+      lessonId: currentLesson.id,
+      lessonName: currentLesson.name
+    });
+
+    try {
+      console.log('📡 [STEP 2] Calling scrape-lesson-url edge function...');
+      const startTime = Date.now();
+      
+      // Use the existing scrape-lesson-url edge function
+      const { data, error: functionError } = await supabase.functions.invoke('scrape-lesson-url', {
+        body: {
+          url: newResourceUrl.trim(),
+          lesson_id: currentLesson.id
+        }
+      });
+
+      const processingTime = Date.now() - startTime;
+      console.log(`⏱️ [STEP 2] Edge function call completed in ${processingTime}ms`);
+
+      if (functionError) {
+        console.error('❌ [STEP 2 FAILED] Edge function error:', functionError);
+        return;
+      }
+
+      console.log('📦 [STEP 3] Processing edge function response...', {
+        hasData: !!data,
+        success: data?.success,
+        error: data?.error,
+        fullResponse: data
+      });
+
+      if (data?.success) {
+        console.log('✅ [STEP 3 SUCCESS] Resource processing successful:', {
+          lessonUrlId: data.lesson_url_id,
+          chunksCreated: data.chunks_created,
+          title: data.title,
+          sections: data.sections
+        });
+
+        console.log('🧹 [STEP 4] Clearing input and refreshing data...');
+        
+        // Clear the input
+        setNewResourceUrl('');
+        console.log('✅ [STEP 4.1] Input cleared');
+        
+        // Reload lesson data to show the new resource
+        console.log('🔄 [STEP 4.2] Reloading lesson data...');
+        await loadLessonData();
+        console.log('✅ [STEP 4.2 SUCCESS] Lesson data reloaded');
+        
+        console.log('🎉 [WORKFLOW SUCCESS] Resource added and processed successfully!');
+      } else {
+        console.error('❌ [STEP 3 FAILED] Resource processing failed:', {
+          error: data?.error,
+          details: data?.details,
+          fullResponse: data
+        });
+      }
+    } catch (error) {
+      console.error('💥 [WORKFLOW ERROR] Unexpected error in handleAddResource:', {
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        url: newResourceUrl.trim(),
+        lessonId: currentLesson?.id
+      });
+    }
   };
 
 
@@ -219,9 +362,11 @@ export default function TeacherLessons() {
 
             <GSCard variant="filled" padding="medium" margin="none" style={styles.documentsCard}>
               <View style={styles.documentsHeader}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                  Lesson Resources
-                </Text>
+                <View style={styles.documentsHeaderLeft}>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                    Lesson Resources
+                  </Text>
+                </View>
                 <View style={styles.chipContainer}>
                   {completed > 0 && (
                     <GSChip
@@ -247,14 +392,21 @@ export default function TeacherLessons() {
                 </View>
               </View>
 
+              <View style={styles.urlInputContainer}>
+                <GSURLInput
+                  label="Add Resource URL"
+                  value={newResourceUrl}
+                  onChangeText={setNewResourceUrl}
+                  onAdd={handleAddResource}
+                  placeholder="https://example.com/lesson-resource"
+                />
+              </View>
+
               <GSCollapsible
                 label={`Documents (${currentLesson.lesson_urls?.length || 0})`}
                 defaultOpen={documentsExpanded}
               >
                 <View style={styles.documentsList}>
-                  <Text style={[styles.totalReferences, { color: theme.colors.onSurfaceVariant }]}>
-                    Total References: {currentLesson.lesson_urls?.reduce((sum: number, doc: LessonDocument) => sum + doc.rag_references, 0) || 0}
-                  </Text>
                   <FlatList
                     data={currentLesson.lesson_urls || []}
                     keyExtractor={(item) => item.id}
@@ -646,6 +798,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,
+  },
+  urlInputContainer: {
+    marginBottom: 16,
+  },
+  documentsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 18,

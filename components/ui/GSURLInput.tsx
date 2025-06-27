@@ -59,7 +59,10 @@ export const GSURLInput: React.FC<GSURLInputProps> = ({
   }
 
   const validateURL = useCallback((url: string) => {
+    console.log('🔍 [GSURLInput] Validating URL:', url);
+    
     if (!url) {
+      console.log('✅ [GSURLInput] Empty URL - validation passed');
       setError(false);
       setErrorMessage('');
       return true;
@@ -70,6 +73,7 @@ export const GSURLInput: React.FC<GSURLInputProps> = ({
       const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*(\?[;&a-z\d%_.~+=-]*)?(\#[-a-z\d_]*)?$/i;
       
       if (!urlPattern.test(url)) {
+        console.log('❌ [GSURLInput] URL pattern validation failed:', url);
         setError(true);
         setErrorMessage('Please enter a valid URL');
         return false;
@@ -77,15 +81,18 @@ export const GSURLInput: React.FC<GSURLInputProps> = ({
 
       // Additional validation for common URL mistakes
       if (url.includes(' ')) {
+        console.log('❌ [GSURLInput] URL contains spaces:', url);
         setError(true);
         setErrorMessage('URLs cannot contain spaces');
         return false;
       }
 
+      console.log('✅ [GSURLInput] URL validation passed:', url);
       setError(false);
       setErrorMessage('');
       return true;
     } catch (e) {
+      console.log('💥 [GSURLInput] URL validation error:', e);
       setError(true);
       setErrorMessage('Invalid URL format');
       return false;
@@ -103,8 +110,21 @@ export const GSURLInput: React.FC<GSURLInputProps> = ({
   };
 
   const handleAdd = () => {
+    console.log('🔗 [GSURLInput] Add button clicked', {
+      value,
+      hasOnAdd: !!onAdd,
+      isValid: validateURL(value)
+    });
+    
     if (validateURL(value) && onAdd) {
+      console.log('✅ [GSURLInput] Calling onAdd callback with valid URL:', value);
       onAdd();
+    } else {
+      console.log('❌ [GSURLInput] Cannot add URL:', {
+        isValid: validateURL(value),
+        hasCallback: !!onAdd,
+        value
+      });
     }
   };
 

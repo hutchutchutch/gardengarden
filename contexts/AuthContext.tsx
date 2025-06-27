@@ -70,11 +70,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Auth state changed:', event, session?.user?.email);
       
       if (session?.user) {
+        console.log('🔄 Session exists, calling loadUserFromSession...');
         await loadUserFromSession(session);
       } else {
+        console.log('🔄 No session, setting user to null and isLoading to false');
         setUser(null);
+        setIsLoading(false); // Only set loading false when no session
       }
-      setIsLoading(false);
     });
 
     return () => {
@@ -83,17 +85,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loadUserFromSession = async (session: Session) => {
+    console.log('🔄 loadUserFromSession called for:', session.user.email);
     try {
       setIsLoading(true); // Ensure loading state during profile fetch
+      console.log('🔄 Set isLoading = true, querying database for user profile...');
       
       // Get user profile from database by email (since auth IDs may not match users table IDs)
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', session.user.email)
-        .single();
+      console.log('🔄 About to query users table for email:', session.user.email);
+      
+      // Check Supabase configuration
+      console.log('🔄 Supabase URL configured:', !!process.env.EXPO_PUBLIC_SUPABASE_URL);
+      console.log('🔄 Supabase Anon Key configured:', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+      
+      // Add timeout to prevent hanging
+      let profile: any = null;
+      let error: any = null;
+      
+      try {
+        const queryPromise = supabase
+          .from('users')
+          .select('*')
+          .eq('email', session.user.email)
+          .single();
+        
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Database query timeout after 10 seconds')), 10000)
+        );
+        
+        const result = await Promise.race([queryPromise, timeoutPromise]);
+        if (result && typeof result === 'object' && 'data' in result) {
+          profile = (result as any).data;
+          error = (result as any).error;
+        }
+      } catch (timeoutError) {
+        console.error('🚨 Database query timed out:', timeoutError);
+        error = timeoutError;
+      }
 
+      console.log('🔄 Database query completed. Profile:', profile, 'Error:', error);
+
+      console.log('🔄 Processing query result...');
+      
       if (profile && !error) {
+        console.log('🔄 Profile found, creating user data...');
         const userData: User = {
           id: profile.id,
           email: profile.email,
@@ -109,9 +143,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('✅ Loaded user from session:', userData.email, userData.role);
       } else {
         console.error('❌ Failed to load user profile:', error);
-        // If we can't load the user profile, sign them out to force fresh sign-in
-        await supabase.auth.signOut();
+        console.log('🔄 Setting user to null and signing out...');
         setUser(null);
+        // Skip sign out for timeout errors to prevent infinite loops
+        if (error && !error.message?.includes('timeout')) {
+          await supabase.auth.signOut();
+        }
       }
     } catch (error) {
       console.error('Error loading user from session:', error);
@@ -119,6 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.auth.signOut();
       setUser(null);
     } finally {
+      console.log('🔄 loadUserFromSession finally block - setting isLoading = false');
       setIsLoading(false); // Always clear loading state
     }
   };

@@ -79,7 +79,7 @@ export default function StudentProgressScreen() {
 
   useEffect(() => {
     if (isTeacherMode) {
-      router.replace('/screens/teacher-progress');
+              router.replace('/(tabs)/progress');
     }
   }, [isTeacherMode]);
 
