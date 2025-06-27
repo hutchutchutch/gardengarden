@@ -25,6 +25,8 @@ export { GSHealthBadge } from './GSHealthBadge';
 export { GSProgressIndicator } from './GSProgressIndicator';
 export { GSEmptyState } from './GSEmptyState';
 export { GSLoadingSpinner } from './GSLoadingSpinner';
+export { GSSnackbar } from './GSSnackbar';
+export type { GSSnackbarProps } from './GSSnackbar';
 
 // Card Components
 export { GSCard } from './GSCard';

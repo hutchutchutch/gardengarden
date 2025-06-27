@@ -22,6 +22,7 @@ import {
   GSDocumentItem,
   GSStatCard,
   GSURLInput,
+  GSSnackbar,
   Text,
   MenuItem
 } from '@/components/ui';
@@ -44,6 +45,32 @@ export default function TeacherLessons() {
   const [upcomingLessons, setUpcomingLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [newResourceUrl, setNewResourceUrl] = useState('');
+  
+  // Snackbar state for error notifications
+  const [snackbar, setSnackbar] = useState<{
+    visible: boolean;
+    message: string;
+    variant: 'info' | 'success' | 'warning' | 'error';
+    action?: { label: string; onPress: () => void };
+  }>({
+    visible: false,
+    message: '',
+    variant: 'info'
+  });
+
+  // Helper function to show snackbar notifications
+  const showSnackbar = (message: string, variant: 'info' | 'success' | 'warning' | 'error' = 'info', action?: { label: string; onPress: () => void }) => {
+    setSnackbar({
+      visible: true,
+      message,
+      variant,
+      action
+    });
+  };
+
+  const hideSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, visible: false }));
+  };
 
   // Load lesson data
   const loadLessonData = async () => {
@@ -159,6 +186,12 @@ export default function TeacherLessons() {
         url: newResourceUrl.trim(),
         lessonId: currentLesson?.id
       });
+      
+      if (!newResourceUrl.trim()) {
+        showSnackbar('Please enter a URL to add as a resource', 'warning');
+      } else {
+        showSnackbar('No active lesson found. Please create a lesson first.', 'error');
+      }
       return;
     }
 
@@ -171,6 +204,9 @@ export default function TeacherLessons() {
     try {
       console.log('📡 [STEP 2] Calling scrape-lesson-url edge function...');
       const startTime = Date.now();
+      
+      // Show processing notification
+      showSnackbar('Processing URL...', 'info');
       
       // Use the existing scrape-lesson-url edge function
       const { data, error: functionError } = await supabase.functions.invoke('scrape-lesson-url', {
@@ -185,6 +221,7 @@ export default function TeacherLessons() {
 
       if (functionError) {
         console.error('❌ [STEP 2 FAILED] Edge function error:', functionError);
+        showSnackbar('Network error occurred. Please check your connection and try again.', 'error');
         return;
       }
 
@@ -192,6 +229,8 @@ export default function TeacherLessons() {
         hasData: !!data,
         success: data?.success,
         error: data?.error,
+        error_type: data?.error_type,
+        user_message: data?.user_message,
         fullResponse: data
       });
 
@@ -214,13 +253,73 @@ export default function TeacherLessons() {
         await loadLessonData();
         console.log('✅ [STEP 4.2 SUCCESS] Lesson data reloaded');
         
+        // Show success message
+        showSnackbar(`Successfully added "${data.title || 'Resource'}" to lesson`, 'success');
+        
         console.log('🎉 [WORKFLOW SUCCESS] Resource added and processed successfully!');
       } else {
         console.error('❌ [STEP 3 FAILED] Resource processing failed:', {
           error: data?.error,
-          details: data?.details,
+          error_type: data?.error_type,
+          user_message: data?.user_message,
           fullResponse: data
         });
+
+        // Handle different types of errors with appropriate UI feedback
+        const errorType = data?.error_type || 'unknown';
+        const userMessage = data?.user_message || 'An error occurred while processing the URL';
+
+        console.log('🔍 [ERROR HANDLING] Categorizing error type:', errorType);
+
+        switch (errorType) {
+          case 'scrape_protected':
+            console.log('🛡️ [ERROR] Scrape protection detected');
+            showSnackbar(
+              userMessage,
+              'error',
+              {
+                label: 'Learn More',
+                onPress: () => {
+                  showSnackbar(
+                    'Try using a direct link to content instead of the main website page, or contact the website owner for API access.',
+                    'info'
+                  );
+                }
+              }
+            );
+            break;
+
+          case 'timeout':
+            console.log('⏱️ [ERROR] Timeout error detected');
+            showSnackbar(
+              userMessage,
+              'warning',
+              {
+                label: 'Retry',
+                onPress: () => handleAddResource()
+              }
+            );
+            break;
+
+          case 'network':
+            console.log('🌐 [ERROR] Network error detected');
+            showSnackbar(userMessage, 'error');
+            break;
+
+          case 'invalid_url':
+            console.log('🔗 [ERROR] Invalid URL detected');
+            showSnackbar(userMessage, 'warning');
+            break;
+
+          case 'api_auth':
+            console.log('🔑 [ERROR] API authentication error detected');
+            showSnackbar(userMessage, 'error');
+            break;
+
+          default:
+            console.log('❓ [ERROR] Unknown error type detected');
+            showSnackbar(userMessage, 'error');
+        }
       }
     } catch (error) {
       console.error('💥 [WORKFLOW ERROR] Unexpected error in handleAddResource:', {
@@ -229,6 +328,15 @@ export default function TeacherLessons() {
         url: newResourceUrl.trim(),
         lessonId: currentLesson?.id
       });
+
+      showSnackbar(
+        'An unexpected error occurred. Please try again.',
+        'error',
+        {
+          label: 'Retry',
+          onPress: () => handleAddResource()
+        }
+      );
     }
   };
 
@@ -713,6 +821,15 @@ export default function TeacherLessons() {
         visible={bottomSheetVisible}
         onClose={() => setBottomSheetVisible(false)}
         options={menuOptions}
+      />
+      
+      <GSSnackbar
+        visible={snackbar.visible}
+        onDismiss={hideSnackbar}
+        message={snackbar.message}
+        variant={snackbar.variant}
+        action={snackbar.action}
+        duration={snackbar.variant === 'error' ? 10000 : 7000}
       />
     </GSafeScreen>
   );
