@@ -19,7 +19,8 @@ import {
   Text,
   Badge,
   Progress,
-  Button
+  Button,
+  GSSnackbar
 } from '@/components/ui';
 
 
@@ -40,6 +41,11 @@ export default function CameraScreen() {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [facing, setFacing] = useState<CameraType>('back');
   
+  // Snackbar state
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarVariant, setSnackbarVariant] = useState<'info' | 'success' | 'warning' | 'error'>('error');
+  
   const activePlant = plants[0];
   const previousImage = activePlant?.images[0]?.uri;
   const plantAge = activePlant ? 
@@ -47,7 +53,12 @@ export default function CameraScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
 
-
+  // Function to show snackbar message
+  const showSnackbar = (message: string, variant: 'info' | 'success' | 'warning' | 'error' = 'error') => {
+    setSnackbarMessage(message);
+    setSnackbarVariant(variant);
+    setSnackbarVisible(true);
+  };
 
   const handlePermissions = async () => {
     try {
@@ -133,7 +144,8 @@ export default function CameraScreen() {
       
     } catch (error) {
       console.error('Analysis failed:', error);
-      Alert.alert('Analysis Failed', 'Unable to analyze your plant photo. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unable to analyze your plant photo. Please try again.';
+      showSnackbar(errorMessage, 'error');
       setIsAnalyzing(false);
     }
   };
@@ -226,6 +238,14 @@ export default function CameraScreen() {
             </View>
           </View>
         </View>
+        
+        <GSSnackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          message={snackbarMessage}
+          variant={snackbarVariant}
+          duration={4000}
+        />
       </SafeAreaView>
     );
   }
@@ -311,6 +331,14 @@ export default function CameraScreen() {
           </TouchableOpacity>
         </View>
       </CameraView>
+      
+      <GSSnackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        message={snackbarMessage}
+        variant={snackbarVariant}
+        duration={4000}
+      />
     </SafeAreaView>
   );
 }
