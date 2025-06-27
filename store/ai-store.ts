@@ -19,6 +19,7 @@ interface AIState {
   fetchMessages: (threadId?: string) => Promise<void>;
   sendMessage: (content: string, imageUri?: string, mode?: 'ai' | 'teacher', lessonId?: string, plantId?: string) => Promise<void>;
   clearConversation: () => Promise<void>;
+  clearError: () => void;
 }
 
 export const useAIStore = create<AIState>()(
@@ -32,16 +33,32 @@ export const useAIStore = create<AIState>()(
 
       initializeThread: async (studentId: string, teacherId: string) => {
         set({ isLoading: true, error: null });
+        console.log('=== AI Store initializeThread START ===');
+        console.log('Parameters:', { studentId, teacherId });
+        
         try {
           // Get or create thread between student and teacher
           const thread = await MessageService.getOrCreateThread(studentId, teacherId);
+          console.log('Thread obtained:', thread.id);
           set({ currentThreadId: thread.id });
           
           // Fetch existing messages for this thread
+          console.log('Fetching messages for thread:', thread.id);
           await get().fetchMessages(thread.id);
-        } catch (error) {
-          console.error('Error initializing thread:', error);
-          set({ error: 'Failed to initialize conversation', isLoading: false });
+          set({ isLoading: false, error: null });
+          console.log('=== AI Store initializeThread SUCCESS ===');
+        } catch (error: any) {
+          console.error('=== AI Store initializeThread ERROR ===');
+          console.error('Error details:', {
+            error,
+            message: error?.message,
+            code: error?.code,
+            details: error?.details,
+            hint: error?.hint
+          });
+          set({ error: error?.message || 'Failed to initialize conversation', isLoading: false });
+          console.error('=== AI Store initializeThread END (with error) ===');
+          throw error; // Re-throw to be caught by component
         }
       },
 
@@ -69,11 +86,11 @@ export const useAIStore = create<AIState>()(
           return;
         }
 
-        // Get the user's details
+        // Get the user's details from the database using email
         const { data: userData } = await supabase
           .from('users')
           .select('id, role')
-          .eq('id', user.id)
+          .eq('email', user.email)
           .single();
 
         if (!userData) {
@@ -86,11 +103,11 @@ export const useAIStore = create<AIState>()(
         if (userData.role === 'student') {
           // Student user - use test teacher
           const teacherId = 'ee242274-2c32-4432-bfad-69cbeb9d1228'; // Hutch Herchenbach (teacher)
-          await get().initializeThread(user.id, teacherId);
+          await get().initializeThread(userData.id, teacherId);
         } else if (userData.role === 'teacher') {
           // Teacher user - use test student
           const studentId = '9bc5a262-f6ce-4da5-bdfc-28a9383cabb2'; // Hutch Herky (student)
-          await get().initializeThread(studentId, user.id);
+          await get().initializeThread(studentId, userData.id);
         } else {
           console.error('Unknown user role:', userData.role);
           set({ error: 'Unknown user role', isLoading: false });
@@ -99,25 +116,40 @@ export const useAIStore = create<AIState>()(
 
       fetchMessages: async (threadId?: string) => {
         const thread = threadId || get().currentThreadId;
+        console.log('=== AI Store fetchMessages START ===');
+        console.log('Thread ID:', thread);
+        
         if (!thread) {
+          console.error('No active thread for message fetching');
           set({ error: 'No active thread', isLoading: false });
           return;
         }
 
         set({ isLoading: true, error: null });
         try {
+          console.log('Calling MessageService.getThreadMessages...');
           const messages = await MessageService.getThreadMessages(thread);
+          console.log(`Retrieved ${messages.length} messages`);
           
           // Get current user to determine message roles
           const { data: { user } } = await supabase.auth.getUser();
+          console.log('Current auth user:', user?.email);
           
           // Get user roles for proper message classification
-          const { data: usersData } = await supabase
+          const uniqueSenderIds = [...new Set(messages.map(m => m.sender_id))];
+          console.log('Unique sender IDs:', uniqueSenderIds);
+          
+          const { data: usersData, error: usersError } = await supabase
             .from('users')
             .select('id, role')
-            .in('id', messages.map(m => m.sender_id));
+            .in('id', uniqueSenderIds);
+          
+          if (usersError) {
+            console.error('Error fetching user roles:', usersError);
+          }
           
           const userRoles = new Map(usersData?.map(u => [u.id, u.role]) || []);
+          console.log('User roles map:', Object.fromEntries(userRoles));
           
           // Convert database messages to AIMessage format
           const aiMessages: AIMessage[] = messages.map(msg => {
@@ -145,10 +177,21 @@ export const useAIStore = create<AIState>()(
             };
           });
           
-          set({ messages: aiMessages, isLoading: false });
-        } catch (error) {
-          console.error('Error fetching messages:', error);
-          set({ error: 'Failed to fetch messages', isLoading: false });
+          console.log(`Converted to ${aiMessages.length} AI messages`);
+          set({ messages: aiMessages, isLoading: false, error: null });
+          console.log('=== AI Store fetchMessages SUCCESS ===');
+        } catch (error: any) {
+          console.error('=== AI Store fetchMessages ERROR ===');
+          console.error('Error details:', {
+            error,
+            message: error?.message,
+            code: error?.code,
+            details: error?.details,
+            threadId: thread
+          });
+          set({ error: error?.message || 'Failed to fetch messages', isLoading: false });
+          console.error('=== AI Store fetchMessages END (with error) ===');
+          // Don't re-throw here, let the UI handle empty messages gracefully
         }
       },
 
@@ -167,19 +210,24 @@ export const useAIStore = create<AIState>()(
             throw new Error('User not authenticated');
           }
 
-          // Get user's role from database
+          // Get user's database ID and role using email
           const { data: userData } = await supabase
             .from('users')
-            .select('role')
-            .eq('id', user.id)
+            .select('id, role')
+            .eq('email', user.email)
             .single();
 
-          const userRole = userData?.role;
+          if (!userData) {
+            throw new Error('User data not found');
+          }
+
+          const userDbId = userData.id;
+          const userRole = userData.role;
 
           // If current user is a teacher, always save as teacher message regardless of mode
           if (userRole === 'teacher') {
             // Teacher sending message - just save to database, no AI response
-            const teacherMessage = await MessageService.sendMessage(currentThreadId, user.id, content, imageUri);
+            const teacherMessage = await MessageService.sendMessage(currentThreadId, userDbId, content, imageUri);
             
             // Update local state with the saved teacher message
             const savedTeacherMessage: AIMessage = {
@@ -213,7 +261,7 @@ export const useAIStore = create<AIState>()(
 
           if (mode === 'teacher') {
             // Student sending message to teacher - save to database only
-            const studentMessage = await MessageService.sendMessage(currentThreadId, user.id, content, imageUri);
+            const studentMessage = await MessageService.sendMessage(currentThreadId, userDbId, content, imageUri);
             
             // Update local state with the saved user message
             const savedUserMessage: AIMessage = {
@@ -310,6 +358,10 @@ export const useAIStore = create<AIState>()(
 
       clearConversation: async () => {
         set({ messages: [], currentThreadId: null, error: null });
+      },
+
+      clearError: () => {
+        set({ error: null });
       }
     }),
     {

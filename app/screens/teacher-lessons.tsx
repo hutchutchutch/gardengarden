@@ -610,6 +610,7 @@ export default function TeacherLessons() {
                         processingProgress={item.processing_progress}
                         errorMessage={item.error_message}
                         ragReferences={item.rag_references}
+                        chunkCount={item.chunk_count}
                         onRetry={() => console.log('Retry document:', item.id)}
                       />
                     )}

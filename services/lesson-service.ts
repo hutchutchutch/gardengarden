@@ -10,6 +10,7 @@ export interface LessonDocument {
   rag_references: number;
   processing_progress: number;
   error_message?: string;
+  chunk_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -77,15 +78,36 @@ export class LessonService {
       // Get the first active lesson
       const activeLesson = lessons[0];
       
-      // Fetch lesson_urls separately
-      const { data: urls } = await supabase
+      // Fetch lesson_urls with chunk counts using a direct query
+      const { data: urls, error: urlsError } = await supabase
         .from('lesson_urls')
         .select('*')
         .eq('lesson_id', activeLesson.id);
+
+      if (urlsError) {
+        console.error('Error fetching lesson URLs:', urlsError);
+      }
+
+      // Get chunk counts for each URL
+      const urlsWithChunkCount = [];
+      if (urls) {
+        for (const url of urls) {
+          const { count } = await supabase
+            .from('url_chunks')
+            .select('*', { count: 'exact', head: true })
+            .eq('lesson_url_id', url.id);
+          
+                     urlsWithChunkCount.push({
+            ...url,
+            status: url.processing_status, // Map processing_status to status
+            chunk_count: count || 0
+          });
+        }
+      }
       
       const result = {
         ...activeLesson,
-        lesson_urls: urls || []
+        lesson_urls: urlsWithChunkCount
       };
       
       return result;
@@ -131,7 +153,34 @@ export class LessonService {
         return [];
       }
 
-      return data || [];
+      // Transform the data to include chunk_count
+      const lessonsWithChunkCount = [];
+      if (data) {
+        for (const lesson of data) {
+          const lessonUrlsWithChunks = [];
+          if (lesson.lesson_urls) {
+            for (const url of lesson.lesson_urls) {
+              const { count } = await supabase
+                .from('url_chunks')
+                .select('*', { count: 'exact', head: true })
+                .eq('lesson_url_id', url.id);
+              
+              lessonUrlsWithChunks.push({
+                ...url,
+                status: url.processing_status, // Map processing_status to status
+                chunk_count: count || 0
+              });
+            }
+          }
+          
+          lessonsWithChunkCount.push({
+            ...lesson,
+            lesson_urls: lessonUrlsWithChunks
+          });
+        }
+      }
+
+      return lessonsWithChunkCount;
     } catch (error) {
       console.error('Error in getCompletedLessons:', error);
       return [];
@@ -174,7 +223,34 @@ export class LessonService {
         return [];
       }
 
-      return data || [];
+      // Transform the data to include chunk_count
+      const lessonsWithChunkCount = [];
+      if (data) {
+        for (const lesson of data) {
+          const lessonUrlsWithChunks = [];
+          if (lesson.lesson_urls) {
+            for (const url of lesson.lesson_urls) {
+              const { count } = await supabase
+                .from('url_chunks')
+                .select('*', { count: 'exact', head: true })
+                .eq('lesson_url_id', url.id);
+              
+              lessonUrlsWithChunks.push({
+                ...url,
+                status: url.processing_status, // Map processing_status to status
+                chunk_count: count || 0
+              });
+            }
+          }
+          
+          lessonsWithChunkCount.push({
+            ...lesson,
+            lesson_urls: lessonUrlsWithChunks
+          });
+        }
+      }
+
+      return lessonsWithChunkCount;
     } catch (error) {
       console.error('Error in getUpcomingLessons:', error);
       return [];

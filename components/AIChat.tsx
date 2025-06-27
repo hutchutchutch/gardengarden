@@ -35,7 +35,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [documentsData, setDocumentsData] = useState<{[key: string]: {title: string, url: string}}>({});
   const [teacherLessonId, setTeacherLessonId] = useState<string | null>(null);
-  const { messages, isLoading, sendMessage, fetchMessages, initializeThread, initializeDefaultThread, initializeExistingThread } = useAIStore();
+  const { messages, isLoading, error, sendMessage, fetchMessages, initializeThread, initializeDefaultThread, initializeExistingThread, clearError } = useAIStore();
   const { user } = useAuth();
   const { plants } = usePlantStore();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -45,6 +45,11 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   // Get the current lesson ID from the plant for students, or fetch it for teachers
   const currentPlant = plants.find(p => p.id === plantId);
   const lessonId = currentPlant?.lessonId || teacherLessonId || undefined;
+
+  // Clear any persisted errors on mount
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
 
   // Fetch the teacher's active lesson ID
   useEffect(() => {
@@ -90,10 +95,23 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
         // If threadId is provided (from teacher interface), use existing thread
         if (threadId) {
           console.log('Using existing thread:', threadId);
-          await initializeExistingThread(threadId);
+          try {
+            await initializeExistingThread(threadId);
+            console.log('✅ Existing thread initialized successfully');
+          } catch (error: any) {
+            console.error('❌ Failed to initialize existing thread:', {
+              threadId,
+              error,
+              errorMessage: error?.message,
+              errorCode: error?.code
+            });
+          }
           return;
         }
 
+        // Use the database user ID from the auth context (not the auth user ID)
+        const currentUserId = user.id; // This is already the database user ID
+        
         // Otherwise, get the teacher for this student's active lesson
         if (user.role === 'student') {
           try {
@@ -112,7 +130,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
                   )
                 )
               `)
-              .eq('student_id', user.id)
+              .eq('student_id', currentUserId)
               .eq('lessons.status', 'active')
               .single();
 
@@ -121,8 +139,19 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
             if (studentLessonData && !error) {
               const teacherId = (studentLessonData.lessons as any).classes.teacher_id;
               console.log('Found teacher from lesson:', teacherId);
-              // Initialize thread with the actual teacher
-              await initializeThread(user.id, teacherId);
+              // Initialize thread with the actual teacher using database IDs
+              try {
+                await initializeThread(currentUserId, teacherId);
+                console.log('✅ Thread initialized successfully');
+              } catch (threadError: any) {
+                console.error('❌ Thread initialization failed:', {
+                  threadError,
+                  currentUserId,
+                  teacherId,
+                  errorMessage: threadError?.message,
+                  errorCode: threadError?.code
+                });
+              }
             } else {
               console.log('No active lesson found, checking class directly...');
               // If no active lesson, try to get the student's class teacher directly
@@ -134,7 +163,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
                     teacher_id
                   )
                 `)
-                .eq('id', user.id)
+                .eq('id', currentUserId)
                 .single();
 
               console.log('User class query result:', { data: userData, error: userError });
@@ -142,27 +171,66 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
               if (userData?.class_id && userData.classes && !userError) {
                 const teacherId = (userData.classes as any).teacher_id;
                 console.log('Found teacher from class:', teacherId);
-                await initializeThread(user.id, teacherId);
+                try {
+                  await initializeThread(currentUserId, teacherId);
+                  console.log('✅ Thread initialized successfully');
+                } catch (threadError: any) {
+                  console.error('❌ Thread initialization failed:', {
+                    threadError,
+                    currentUserId,
+                    teacherId,
+                    errorMessage: threadError?.message,
+                    errorCode: threadError?.code
+                  });
+                }
               } else {
                 // No teacher found - show appropriate message
                 console.log('No teacher assigned to student, using default thread');
                 // For now, use default thread for testing
-                await initializeDefaultThread();
+                try {
+                  await initializeDefaultThread();
+                  console.log('✅ Default thread initialized');
+                } catch (defaultError: any) {
+                  console.error('❌ Default thread initialization failed:', {
+                    defaultError,
+                    errorMessage: defaultError?.message
+                  });
+                }
               }
             }
           } catch (error) {
             console.error('Error getting teacher for student:', error);
             // Fallback to default thread
-            await initializeDefaultThread();
+            try {
+              await initializeDefaultThread();
+              console.log('✅ Fallback to default thread successful');
+            } catch (fallbackError: any) {
+              console.error('❌ Fallback to default thread failed:', fallbackError);
+            }
           }
         } else if (user.role === 'teacher' && studentId) {
-          console.log('Teacher viewing student chat:', { teacherId: user.id, studentId });
-          // Teacher viewing a specific student's chat
-          await initializeThread(studentId, user.id);
+          console.log('Teacher viewing student chat:', { teacherId: currentUserId, studentId });
+          // Teacher viewing a specific student's chat - use database IDs
+          try {
+            await initializeThread(studentId, currentUserId);
+            console.log('✅ Teacher-student thread initialized');
+          } catch (teacherError: any) {
+            console.error('❌ Teacher thread initialization failed:', {
+              teacherError,
+              studentId,
+              teacherId: currentUserId,
+              errorMessage: teacherError?.message
+            });
+          }
         } else {
           console.log('Other case - using default thread');
           // For other cases, use default thread
-          await initializeDefaultThread();
+          try {
+            await initializeDefaultThread();
+            console.log('✅ Default thread initialized for other case');
+          } catch (otherError: any) {
+            console.error('❌ Default thread failed for other case:', otherError);
+          }
         }
       } else {
         console.log('No user object available');
@@ -374,6 +442,16 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={100}
     >
+      {/* Display error if exists */}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable onPress={clearError} style={styles.errorCloseButton}>
+            <Text style={styles.errorCloseText}>×</Text>
+          </Pressable>
+        </View>
+      )}
+      
       <ScrollView
         ref={scrollViewRef}
         style={styles.messagesContainer}
@@ -516,6 +594,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.backgroundLight,
+  },
+  errorContainer: {
+    padding: 12,
+    backgroundColor: colors.error,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.error,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: colors.white,
+    fontSize: 14,
+    textAlign: 'center',
+    flex: 1,
+  },
+  errorCloseButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  errorCloseText: {
+    color: colors.white,
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   modeToggleContainer: {
     flexDirection: 'row',

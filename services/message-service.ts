@@ -266,21 +266,6 @@ export class MessageService {
         user_metadata: user?.user_metadata
       });
 
-      // Get detailed user info from database
-      if (user) {
-        const { data: dbUser, error: dbError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (dbError) {
-          console.error('Error fetching DB user:', dbError);
-        } else {
-          console.log('Database user info:', dbUser);
-        }
-      }
-
       // Verify student and teacher exist and have correct roles
       const { data: studentData, error: studentError } = await supabase
         .from('users')
@@ -324,22 +309,6 @@ export class MessageService {
         console.log('Found existing thread:', existingThread.id);
         console.log('=== getOrCreateThread DEBUG END (existing) ===');
         return existingThread;
-      }
-
-      // Verify the authenticated user is either the student or teacher
-      const isParticipant = user?.id === studentId || user?.id === teacherId;
-      console.log('Is authenticated user a participant?', {
-        isParticipant,
-        userId: user?.id,
-        studentId,
-        teacherId,
-        userIsStudent: user?.id === studentId,
-        userIsTeacher: user?.id === teacherId
-      });
-
-      if (!isParticipant) {
-        console.error('User is not a participant in this thread');
-        throw new Error('User is not authorized to create this thread');
       }
 
       // Verify roles match

@@ -15,6 +15,7 @@ export interface DocumentItemProps {
   processingProgress?: number;
   errorMessage?: string;
   ragReferences?: number;
+  chunkCount?: number;
   onRetry?: () => void;
   isLoading?: boolean;
 }
@@ -27,6 +28,7 @@ export const GSDocumentItem: React.FC<DocumentItemProps> = ({
   processingProgress = 0,
   errorMessage,
   ragReferences = 0,
+  chunkCount = 0,
   onRetry,
   isLoading = false,
 }) => {
@@ -73,7 +75,7 @@ export const GSDocumentItem: React.FC<DocumentItemProps> = ({
   const getStatusText = () => {
     switch (status) {
       case 'completed':
-        return `Ready - ${sections} sections`;
+        return chunkCount > 0 ? `Chunks: ${chunkCount}` : `Ready - ${sections} sections`;
       case 'processing':
         return `Processing... ${processingProgress}%`;
       case 'failed':
