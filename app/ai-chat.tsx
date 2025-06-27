@@ -6,6 +6,7 @@ import colors from '@/constants/colors';
 import { analyzePhoto } from '@/services/ai-service';
 import { AIPlantAnalysis } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/config/supabase';
 
 export default function AIChatScreen() {
   const { photoUri, plantId, mode, threadId, studentId } = useLocalSearchParams<{ 
@@ -17,6 +18,7 @@ export default function AIChatScreen() {
   }>();
   const [analysis, setAnalysis] = useState<AIPlantAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [studentName, setStudentName] = useState<string>('');
   const { setShowFAB } = useAuth();
 
   useEffect(() => {
@@ -31,6 +33,31 @@ export default function AIChatScreen() {
     }
   }, [photoUri, mode]);
 
+  // Fetch student information when in teacher mode
+  useEffect(() => {
+    const fetchStudentInfo = async () => {
+      if (mode === 'teacher' && studentId) {
+        try {
+          const { data: student, error } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', studentId)
+            .single();
+
+          if (student && !error) {
+            // Extract first name from full name
+            const firstName = student.name.split(' ')[0];
+            setStudentName(firstName);
+          }
+        } catch (error) {
+          console.error('Error fetching student info:', error);
+        }
+      }
+    };
+
+    fetchStudentInfo();
+  }, [mode, studentId]);
+
   const analyzePhotoAndUpdate = async () => {
     setIsAnalyzing(true);
     try {
@@ -43,11 +70,20 @@ export default function AIChatScreen() {
     }
   };
 
+  // Helper function to get the header title
+  const getHeaderTitle = () => {
+    if (mode === 'teacher') {
+      return studentName ? `Chat with ${studentName}` : 'Chat with Student';
+    }
+    return 'Garden Mentor AI';
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen 
         options={{
-          title: mode === 'teacher' ? `Chat with ${studentId ? 'Student' : 'Teacher'}` : 'Garden Mentor AI',
+          title: getHeaderTitle(),
+          headerBackTitle: mode === 'teacher' ? 'Messages' : undefined,
           headerStyle: {
             backgroundColor: colors.white,
           },
