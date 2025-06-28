@@ -172,16 +172,23 @@ export default function StudentIndexScreen() {
         const plantingDate = new Date(plantData.planting_date);
         const dayNumber = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         
+        // Fetch latest analysis for current stage info
+        const latestAnalysisData = await ImageAnalysisService.getLatestAnalysis(user.id);
+        setLatestAnalysis(latestAnalysisData);
+        
         // Get latest health score from image analysis
         const healthScore = await ImageAnalysisService.getLatestHealthScore(user.id) || plantData.current_health_score || 0;
         
+        // Get the latest image URL from analysis if available
+        const latestImageUrl = latestAnalysisData?.image_url || plantData.latest_photo_url || null;
+        
         setPlantProgress({
-          currentStage: plantData.current_stage,
+          currentStage: latestAnalysisData?.current_stage_name || plantData.current_stage,
           dayNumber,
           healthScore,
           height: plantData.predictions?.current_height || '0',
           streak: 7, // TODO: Calculate actual streak
-          imageUrl: 'https://picsum.photos/400/300?random=plant'
+          imageUrl: latestImageUrl
         });
         
         // Store lesson data
@@ -189,10 +196,6 @@ export default function StudentIndexScreen() {
           setLessonData(plantData.lesson);
         }
       }
-      
-      // Fetch latest analysis for current stage info
-      const latestAnalysisData = await ImageAnalysisService.getLatestAnalysis(user.id);
-      setLatestAnalysis(latestAnalysisData);
       
       // Fetch yesterday's analysis for feedback
       const yesterdayAnalysisData = await ImageAnalysisService.getYesterdayAnalysis(user.id);
@@ -465,6 +468,11 @@ export default function StudentIndexScreen() {
   // Check for photo submission when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
+      // Always refresh data when screen comes into focus
+      if (user?.id && !isTeacherMode) {
+        fetchStudentData();
+      }
+      
       if (pendingPhotoTaskId) {
         // Small delay to ensure photo processing is complete
         const timer = setTimeout(() => {
@@ -487,7 +495,7 @@ export default function StudentIndexScreen() {
       return () => {
         if (pollInterval) clearInterval(pollInterval);
       };
-    }, [checkForPhotoSubmission, checkAnalysisStatus, pendingPhotoTaskId, isAnalyzingPhoto])
+    }, [checkForPhotoSubmission, checkAnalysisStatus, pendingPhotoTaskId, isAnalyzingPhoto, user?.id, isTeacherMode, fetchStudentData])
   );
 
   const handleTaskToggle = async (taskId: string) => {

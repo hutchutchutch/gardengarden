@@ -45,47 +45,16 @@ export class PlantStoriesService {
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
 
-      // Query for recent daily submissions from classmates with plant stories
-      const { data: storiesData, error: storiesError } = await supabase
-        .from('plant_stories')
+      // Query for recent image analyses from classmates
+      const { data: analysisData, error: analysisError } = await supabase
+        .from('image_analysis')
         .select(`
           id,
           student_id,
-          health_badge,
-          reactions,
-          reaction_count,
-          created_at,
-          expires_at,
-          daily_submissions!inner (
-            id,
-            photo_url,
-            thumbnail_url,
-            health_score,
-            created_at
-          ),
-          users!inner (
-            id,
-            name,
-            class_id
-          )
-        `)
-        .eq('users.class_id', currentUser.class_id)
-        .gte('daily_submissions.created_at', yesterday.toISOString())
-        .order('created_at', { ascending: false });
-
-      if (storiesError) {
-        throw storiesError;
-      }
-
-      // Also get daily submissions that don't have stories yet (for current user)
-      const { data: submissionsWithoutStories, error: submissionsError } = await supabase
-        .from('daily_submissions')
-        .select(`
-          id,
-          student_id,
-          photo_url,
-          thumbnail_url,
-          health_score,
+          image_url,
+          health_rating,
+          current_stage_name,
+          processing_status,
           created_at,
           users!inner (
             id,
@@ -94,64 +63,38 @@ export class PlantStoriesService {
           )
         `)
         .eq('users.class_id', currentUser.class_id)
-        .eq('student_id', currentUserId)
+        .eq('processing_status', 'completed')
         .gte('created_at', yesterday.toISOString())
-        .is('plant_stories.submission_id', null)
         .order('created_at', { ascending: false });
 
-      if (submissionsError) {
-        console.warn('Error fetching submissions without stories:', submissionsError);
+      if (analysisError) {
+        throw analysisError;
       }
 
       // Transform the data
       const stories: PlantStoryData[] = [];
 
-      // Add existing plant stories
-      if (storiesData) {
-        for (const story of storiesData) {
-          const submission = Array.isArray(story.daily_submissions) ? story.daily_submissions[0] : story.daily_submissions;
-          const user = Array.isArray(story.users) ? story.users[0] : story.users;
+      if (analysisData) {
+        for (const analysis of analysisData) {
+          const user = Array.isArray(analysis.users) ? analysis.users[0] : analysis.users;
           
-          if (submission && user) {
-            stories.push({
-              id: story.id,
-              student_id: story.student_id,
-              student_name: user.name,
-              photo_url: submission.photo_url,
-              thumbnail_url: submission.thumbnail_url || undefined,
-              health_score: Number(submission.health_score) || 0,
-              health_badge: story.health_badge,
-              reaction_count: story.reaction_count || 0,
-              reactions: story.reactions || {},
-              submission_date: submission.created_at,
-              expires_at: story.expires_at,
-              isCurrentUser: story.student_id === currentUserId,
-              hasSubmittedToday: true
-            });
-          }
-        }
-      }
-
-      // Add submissions without stories (mainly for current user's submissions)
-      if (submissionsWithoutStories) {
-        for (const submission of submissionsWithoutStories) {
-          const user = Array.isArray(submission.users) ? submission.users[0] : submission.users;
-          const healthScore = Number(submission.health_score) || 0;
+          // Convert health rating to numeric score
+          const healthScore = this.getHealthScoreFromRating(analysis.health_rating);
           
           if (user) {
             stories.push({
-              id: submission.id,
-              student_id: submission.student_id,
+              id: analysis.id,
+              student_id: analysis.student_id,
               student_name: user.name,
-              photo_url: submission.photo_url,
-              thumbnail_url: submission.thumbnail_url || undefined,
+              photo_url: analysis.image_url,
+              thumbnail_url: undefined,
               health_score: healthScore,
               health_badge: this.getHealthBadge(healthScore),
               reaction_count: 0,
               reactions: {},
-              submission_date: submission.created_at,
-              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
-              isCurrentUser: submission.student_id === currentUserId,
+              submission_date: analysis.created_at,
+              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              isCurrentUser: analysis.student_id === currentUserId,
               hasSubmittedToday: true
             });
           }
@@ -165,12 +108,7 @@ export class PlantStoriesService {
         return new Date(b.submission_date).getTime() - new Date(a.submission_date).getTime();
       });
 
-      // Remove duplicates (in case a submission has both a story and appears in submissions without stories)
-      const uniqueStories = sortedStories.filter((story, index, array) => 
-        array.findIndex(s => s.student_id === story.student_id) === index
-      );
-
-      return uniqueStories;
+      return sortedStories;
 
     } catch (error) {
       console.error('Error fetching class plant stories:', error);
@@ -241,6 +179,20 @@ export class PlantStoriesService {
   }
 
   /**
+   * Convert health rating text to numeric score
+   */
+  private static getHealthScoreFromRating(rating: string | null): number {
+    const ratingMap: Record<string, number> = {
+      'Excellent': 95,
+      'Good': 80,
+      'Fair': 65,
+      'Poor': 40,
+      'Critical': 20
+    };
+    return ratingMap[rating || ''] || 0;
+  }
+
+  /**
    * Determine health badge color based on health score
    */
   private static getHealthBadge(healthScore: number): 'green' | 'yellow' | 'red' {
@@ -258,9 +210,10 @@ export class PlantStoriesService {
       today.setHours(0, 0, 0, 0);
       
       const { data, error } = await supabase
-        .from('daily_submissions')
+        .from('image_analysis')
         .select('id')
         .eq('student_id', userId)
+        .eq('processing_status', 'completed')
         .gte('created_at', today.toISOString())
         .limit(1);
 

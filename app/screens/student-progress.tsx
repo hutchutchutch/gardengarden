@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
 import { useAppTheme } from '@/config/theme';
+import { supabase } from '@/config/supabase';
 import {
   GSScreenLayout,
   GSCard,
@@ -184,27 +185,6 @@ export default function StudentProgressScreen() {
     }
   }, [pendingPhotoTaskId, user?.id]);
 
-  // Check for photo submission when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      if (pendingPhotoTaskId) {
-        // Small delay to ensure photo processing is complete
-        const timer = setTimeout(() => {
-          checkForPhotoSubmission();
-        }, 1000);
-        return () => clearTimeout(timer);
-      }
-    }, [checkForPhotoSubmission, pendingPhotoTaskId])
-  );
-
-  useEffect(() => {
-    if (isTeacherMode) {
-      router.replace('/(tabs)/progress');
-      return;
-    }
-    loadStudentProgressData();
-  }, [isTeacherMode, user?.id]);
-
   const loadStudentProgressData = async () => {
     if (!user?.id) return;
     
@@ -226,45 +206,47 @@ export default function StudentProgressScreen() {
         plant_day: currentDayNumber,
       };
       
-      // Mock guidance history with accurate day numbers
-      const mockGuidanceHistory: GuidanceRecord[] = [
-        {
-          id: '1',
-          guidance_text: 'Your seedling is showing excellent growth! The leaves are vibrant green and healthy. Continue your current watering schedule.',
-          priority: 'routine',
-          created_at: new Date().toISOString(),
-          health_score: plantData.current_health_score,
-          plant_day: currentDayNumber,
-          currentStage: plantData.current_stage,
-          positiveSigns: ['Vibrant green leaves', 'Strong stem', 'Healthy growth'],
-          areasForImprovement: ['Continue consistent watering'],
-          imageUrl: 'https://picsum.photos/400/300?random=plant1'
-        },
-        {
-          id: '2', 
-          guidance_text: 'Great progress! Your plant has grown noticeably. Watch for any yellowing on lower leaves.',
-          priority: 'routine',
-          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          health_score: Math.max(plantData.current_health_score - 3, 0),
-          plant_day: Math.max(currentDayNumber - 1, 1),
-          currentStage: plantData.current_stage,
-          positiveSigns: ['Noticeable growth', 'Good root development'],
-          areasForImprovement: ['Monitor for yellowing leaves', 'Adjust watering if needed'],
-          imageUrl: 'https://picsum.photos/400/300?random=plant2'
-        },
-        {
-          id: '3', 
-          guidance_text: 'Steady development continues. Your plant is adapting well to its environment.',
-          priority: 'routine',
-          created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-          health_score: Math.max(plantData.current_health_score - 5, 0),
-          plant_day: Math.max(currentDayNumber - 2, 1),
-          currentStage: plantData.current_stage,
-          positiveSigns: ['Good environmental adaptation', 'Stable growth'],
-          areasForImprovement: ['Keep monitoring daily'],
-          imageUrl: 'https://picsum.photos/400/300?random=plant3'
-        },
-      ];
+      // Fetch real guidance history from image_analysis
+      const { data: analysisHistory } = await supabase
+        .from('image_analysis')
+        .select('*')
+        .eq('student_id', user.id)
+        .eq('processing_status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(7); // Last 7 days
+
+      const guidanceHistory: GuidanceRecord[] = [];
+      
+      if (analysisHistory) {
+        for (const analysis of analysisHistory) {
+          // Calculate plant day based on analysis date
+          const analysisDate = new Date(analysis.created_at);
+          const daysSinceStart = Math.floor((analysisDate.getTime() - lessonStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          
+          // Convert health rating to score
+          const healthScoreMap: Record<string, number> = {
+            'Excellent': 95,
+            'Good': 80,
+            'Fair': 65,
+            'Poor': 40,
+            'Critical': 20
+          };
+          const healthScore = healthScoreMap[analysis.health_rating] || 0;
+          
+          guidanceHistory.push({
+            id: analysis.id,
+            guidance_text: analysis.current_stage_description || '',
+            priority: healthScore < 40 ? 'urgent' : healthScore < 65 ? 'attention' : 'routine',
+            created_at: analysis.created_at,
+            health_score: healthScore,
+            plant_day: daysSinceStart,
+            currentStage: analysis.current_stage_name || plantData.current_stage,
+            positiveSigns: analysis.positive_signs || [],
+            areasForImprovement: analysis.areas_for_improvement || [],
+            imageUrl: analysis.image_url
+          });
+        }
+      }
       
       // Mock health trend with accurate day numbers
       const mockHealthTrend: HealthTrend[] = [
@@ -294,7 +276,7 @@ export default function StudentProgressScreen() {
       ];
       
       setPlantData(plantData);
-      setGuidanceHistory(mockGuidanceHistory);
+      setGuidanceHistory(guidanceHistory);
       setHealthTrend(mockHealthTrend);
       setDailyTasks(dailyTasks);
       
@@ -315,6 +297,32 @@ export default function StudentProgressScreen() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isTeacherMode) {
+      router.replace('/(tabs)/progress');
+      return;
+    }
+    loadStudentProgressData();
+  }, [isTeacherMode, user?.id]);
+
+  // Check for photo submission when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Always refresh data when screen comes into focus
+      if (user?.id && !isTeacherMode) {
+        loadStudentProgressData();
+      }
+      
+      if (pendingPhotoTaskId) {
+        // Small delay to ensure photo processing is complete
+        const timer = setTimeout(() => {
+          checkForPhotoSubmission();
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }, [checkForPhotoSubmission, pendingPhotoTaskId, user?.id, isTeacherMode])
+  );
 
   const getCurrentStage = () => {
     if (!plantData) return growthStages[0];
