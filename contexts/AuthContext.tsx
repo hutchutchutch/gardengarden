@@ -8,6 +8,8 @@ export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isInitializing: boolean;
+  hasSeenOnboarding: boolean;
+  completeOnboarding: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   showFAB: boolean;
@@ -41,12 +43,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const [isInitializing, setIsInitializing] = useState(true);
   const [showFAB, setShowFAB] = useState(true);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
 
   useEffect(() => {
     // Only clear session once on app load to force fresh sign-in
     const initializeAuth = async () => {
       try {
         setIsInitializing(true);
+        
+        // Check if user has seen onboarding
+        const onboardingStatus = await storage.getItem('hasSeenOnboarding');
+        setHasSeenOnboarding(onboardingStatus === 'true');
         
         if (!hasCleared) {
           console.log('🔄 App load - clearing session to force fresh sign-in');
@@ -289,10 +296,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const completeOnboarding = () => {
+    setHasSeenOnboarding(true);
+    storage.setItem('hasSeenOnboarding', 'true');
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
     isInitializing,
+    hasSeenOnboarding,
+    completeOnboarding,
     signIn,
     signOut,
     showFAB,

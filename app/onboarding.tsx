@@ -1,175 +1,250 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   Dimensions,
-  Image,
-  FlatList,
-  ViewToken,
+  Animated,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 import colors from '@/constants/colors';
-import { ChevronRight, ChevronLeft, Home, Camera, BookOpen, TrendingUp } from 'lucide-react-native';
+import { 
+  Brain, 
+  Shield, 
+  BookOpen, 
+  ChevronRight,
+  Users,
+  CheckCircle,
+  Sparkles
+} from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface OnboardingSlide {
-  id: string;
+  id: number;
   title: string;
   subtitle: string;
   description: string;
-  image: any;
   icon: React.ReactElement;
+  color: string;
+  accentColor: string;
 }
 
 const slides: OnboardingSlide[] = [
   {
-    id: '1',
-    title: 'Welcome to GardenSnap',
-    subtitle: 'Your Plant Learning Companion',
-    description: 'Discover, learn, and grow with our interactive gardening platform designed for students and teachers.',
-    image: require('@/assets/images/Onboarding.webp'),
-    icon: <Home size={24} color={colors.primary} />,
+    id: 1,
+    title: 'Your students will be using AI',
+    subtitle: 'The future of learning is here',
+    description: 'AI tools are becoming essential in education. Students are already using chatbots for homework, research, and learning support.',
+    icon: <Brain size={60} color="#4CAF50" />,
+    color: '#4CAF50',
+    accentColor: '#E8F5E9',
   },
   {
-    id: '2',
-    title: 'Scan & Identify',
-    subtitle: 'AI-Powered Plant Recognition',
-    description: 'Take photos of plants and get instant identification with detailed information about species, care, and growing tips.',
-    image: require('@/assets/images/Scan.webp'),
-    icon: <Camera size={24} color={colors.primary} />,
+    id: 2,
+    title: 'So give them one that you trust',
+    subtitle: 'Quality education requires quality tools',
+    description: 'Not all AI is created equal. Your students deserve an AI assistant that provides accurate, educational, and age-appropriate responses.',
+    icon: <Shield size={60} color="#43A047" />,
+    color: '#43A047',
+    accentColor: '#C8E6C9',
   },
   {
-    id: '3',
-    title: 'Learn & Analyze',
-    subtitle: 'Deep Plant Knowledge',
-    description: 'Access comprehensive plant analysis, care guides, and educational content to become a gardening expert.',
-    image: require('@/assets/images/Analysis.webp'),
-    icon: <BookOpen size={24} color={colors.primary} />,
-  },
-  {
-    id: '4',
-    title: 'Track Progress',
-    subtitle: 'Complete Tasks & Stories',
-    description: 'Engage with interactive lessons, complete gardening tasks, and track your learning journey.',
-    image: require('@/assets/images/Task.webp'),
-    icon: <TrendingUp size={24} color={colors.primary} />,
+    id: 3,
+    title: 'By choosing the knowledge that goes into their Chatbot',
+    subtitle: 'Curated content for better learning',
+    description: 'Take control of your students\' AI experience. Customize the knowledge base with curriculum-aligned content you trust.',
+    icon: <BookOpen size={60} color="#388E3C" />,
+    color: '#388E3C',
+    accentColor: '#A5D6A7',
   },
 ];
 
 export default function OnboardingScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
+  const { completeOnboarding } = useAuth();
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const onViewableItemsChanged = ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    if (viewableItems.length > 0) {
-      setCurrentIndex(viewableItems[0].index || 0);
+  useEffect(() => {
+    // Auto-advance slides with smooth animation, but stop on the last slide
+    if (currentIndex < slides.length - 1) {
+      const timer = setTimeout(() => {
+        goToNext();
+      }, 4000); // 4 seconds per slide
+
+      return () => clearTimeout(timer);
     }
-  };
-
-  const viewabilityConfig = {
-    itemVisiblePercentThreshold: 50,
-  };
+  }, [currentIndex]);
 
   const goToNext = () => {
     if (currentIndex < slides.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
-    } else {
-      router.push('/auth/signin');
+      // Animate transition with smooth easing
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: -30,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setCurrentIndex(currentIndex + 1);
+        slideAnim.setValue(30);
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            tension: 120,
+            friction: 7,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
     }
   };
 
-  const goToPrevious = () => {
-    if (currentIndex > 0) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex - 1 });
-    }
+  const handleGetStarted = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 0.95,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      completeOnboarding();
+      router.replace('/auth/signin');
+    });
   };
 
-  const skip = () => {
-    router.push('/auth/signin');
-  };
-
-  const renderSlide = ({ item }: { item: OnboardingSlide }) => (
-    <View style={styles.slide}>
-      <View style={styles.imageContainer}>
-        <Image source={item.image} style={styles.image} resizeMode="contain" />
-        <View style={styles.iconOverlay}>
-          {item.icon}
-        </View>
-      </View>
+  const renderSlide = (slide: OnboardingSlide) => (
+    <Animated.View
+      style={[
+        styles.slide,
+        {
+          opacity: fadeAnim,
+          transform: [
+            { translateY: slideAnim },
+            { scale: scaleAnim },
+          ],
+        },
+      ]}
+    >
+             {/* Background decoration */}
+       <View style={[styles.backgroundCircle, { backgroundColor: slide.accentColor }]} />
+       <View style={[styles.backgroundCircle2, { backgroundColor: slide.accentColor }]} />
       
+      {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.subtitle}>{item.subtitle}</Text>
-        <Text style={styles.description}>{item.description}</Text>
+        <View style={[styles.iconContainer, { backgroundColor: slide.accentColor }]}>
+          {slide.icon}
+          <View style={[styles.iconGlow, { backgroundColor: slide.color + '30' }]} />
+        </View>
+        
+                 <Text style={styles.title}>
+           {slide.title}
+         </Text>
+         
+         <Text style={styles.subtitle}>
+           {slide.subtitle}
+         </Text>
+         
+         <Text style={styles.description}>
+           {slide.description}
+         </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 
   const renderDots = () => (
     <View style={styles.dotsContainer}>
       {slides.map((_, index) => (
-        <View
+        <Animated.View
           key={index}
           style={[
             styles.dot,
-            index === currentIndex ? styles.activeDot : styles.inactiveDot,
+            {
+              backgroundColor: index === currentIndex ? slides[currentIndex].color : colors.grayLight,
+              transform: [
+                {
+                  scale: index === currentIndex ? 1.2 : 1,
+                },
+              ],
+            },
           ]}
         />
       ))}
     </View>
   );
 
+  const currentSlide = slides[currentIndex];
+
   return (
     <View style={styles.container}>
+      {/* Skip button */}
       <View style={styles.header}>
-        <Pressable onPress={skip} style={styles.skipButton}>
+        <Pressable onPress={handleGetStarted} style={styles.skipButton}>
           <Text style={styles.skipText}>Skip</Text>
         </Pressable>
       </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={slides}
-        renderItem={renderSlide}
-        keyExtractor={(item) => item.id}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-      />
+      {/* Main content */}
+      <View style={styles.slideContainer}>
+        {renderSlide(currentSlide)}
+      </View>
 
+      {/* Progress dots */}
       {renderDots()}
 
+      {/* Bottom section */}
       <View style={styles.footer}>
-        <Pressable
-          onPress={goToPrevious}
-          style={[styles.button, styles.previousButton]}
-          disabled={currentIndex === 0}
-        >
-          <ChevronLeft 
-            size={20} 
-            color={currentIndex === 0 ? colors.grayLight : colors.primary} 
-          />
-          <Text style={[
-            styles.buttonText, 
-            styles.previousButtonText,
-            currentIndex === 0 && styles.disabledButtonText
-          ]}>
-            Previous
-          </Text>
-        </Pressable>
-
-        <Pressable onPress={goToNext} style={[styles.button, styles.nextButton]}>
-          <Text style={[styles.buttonText, styles.nextButtonText]}>
-            {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
-          </Text>
-          <ChevronRight size={20} color={colors.white} />
-        </Pressable>
+        {currentIndex === slides.length - 1 ? (
+          <Pressable 
+            onPress={handleGetStarted} 
+            style={[styles.getStartedButton, { backgroundColor: currentSlide.color }]}
+          >
+            <Text style={styles.getStartedText}>Get Started</Text>
+            <CheckCircle size={20} color={colors.white} />
+          </Pressable>
+        ) : (
+          <Pressable 
+            onPress={goToNext} 
+            style={[styles.nextButton, { backgroundColor: currentSlide.color }]}
+          >
+            <Text style={styles.nextText}>Next</Text>
+            <ChevronRight size={20} color={colors.white} />
+          </Pressable>
+        )}
+        
+                 {/* Progress indicator */}
+         <View style={styles.progressContainer}>
+           <Text style={styles.progressText}>
+             {currentIndex + 1} of {slides.length}
+           </Text>
+         </View>
       </View>
     </View>
   );
@@ -178,7 +253,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: '#FAFAFA',
   },
   header: {
     paddingTop: 60,
@@ -191,119 +266,144 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   skipText: {
-    color: colors.textLight,
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: 'rgba(0,0,0,0.60)',
   },
-  slide: {
-    width,
-    flex: 1,
-    paddingHorizontal: 24,
-  },
-  imageContainer: {
+  slideContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
   },
-  image: {
-    width: width * 0.8,
-    height: width * 0.6,
-    borderRadius: 16,
+  slide: {
+    width: width - 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
   },
-  iconOverlay: {
+  backgroundCircle: {
     position: 'absolute',
-    top: 20,
-    right: 20,
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    top: -50,
+    right: -100,
+    opacity: 0.15,
+  },
+  backgroundCircle2: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    bottom: -50,
+    left: -50,
+    opacity: 0.1,
   },
   content: {
-    paddingVertical: 40,
     alignItems: 'center',
+    zIndex: 1,
+  },
+  iconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 32,
+    position: 'relative',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  iconGlow: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    zIndex: -1,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: colors.text,
+    color: 'rgba(0,0,0,0.87)',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+    lineHeight: 34,
   },
   subtitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: colors.primary,
+    fontWeight: '500',
+    color: 'rgba(0,0,0,0.60)',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   description: {
     fontSize: 16,
-    color: colors.textLight,
+    color: 'rgba(0,0,0,0.60)',
     textAlign: 'center',
     lineHeight: 24,
-    paddingHorizontal: 20,
+    maxWidth: 300,
   },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
+    marginBottom: 40,
   },
   dot: {
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
-  },
-  activeDot: {
-    width: 24,
-    backgroundColor: colors.primary,
-  },
-  inactiveDot: {
-    width: 8,
-    backgroundColor: colors.grayLight,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginHorizontal: 6,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 24,
     paddingBottom: 40,
+    alignItems: 'center',
   },
-  button: {
+  getStartedButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    minWidth: 100,
     justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    width: '100%',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  previousButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.grayLight,
+  getStartedText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.white,
+    marginRight: 8,
   },
   nextButton: {
-    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginBottom: 16,
   },
-  buttonText: {
+  nextText: {
     fontSize: 16,
     fontWeight: '600',
-    marginHorizontal: 4,
-  },
-  previousButtonText: {
-    color: colors.primary,
-  },
-  nextButtonText: {
     color: colors.white,
+    marginRight: 6,
   },
-  disabledButtonText: {
-    color: colors.grayLight,
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(0,0,0,0.60)',
   },
 }); 

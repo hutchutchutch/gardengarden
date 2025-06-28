@@ -26,28 +26,33 @@ SplashScreen.preventAutoHideAsync();
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, isInitializing } = useAuth();
+  const { user, isLoading, isInitializing, hasSeenOnboarding } = useAuth();
   const { isSwitchingMode } = useMode();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    console.log('ProtectedRoute: isLoading =', isLoading, 'isInitializing =', isInitializing, 'user =', user?.email, 'isSwitchingMode =', isSwitchingMode);
+    console.log('ProtectedRoute: isLoading =', isLoading, 'isInitializing =', isInitializing, 'user =', user?.email, 'isSwitchingMode =', isSwitchingMode, 'hasSeenOnboarding =', hasSeenOnboarding);
     
     // Don't apply auth protection during initialization, loading, or mode switching
     if (!isLoading && !isSwitchingMode && !isInitializing) {
-      // Check if we're in the auth group
       const inAuthGroup = segments[0] === 'auth';
+      const inOnboarding = segments[0] === 'onboarding';
       
-      if (!user && !inAuthGroup) {
-        // Redirect to sign in if not authenticated
+      // If user hasn't seen onboarding and isn't on onboarding screen, redirect to onboarding
+      if (!hasSeenOnboarding && !inOnboarding) {
+        router.replace('/onboarding');
+      }
+      // If user has seen onboarding but not authenticated and not in auth group, redirect to signin
+      else if (hasSeenOnboarding && !user && !inAuthGroup) {
         router.replace('/auth/signin');
-      } else if (user && inAuthGroup) {
-        // Redirect to home if authenticated and trying to access auth pages
+      }
+      // If user is authenticated and trying to access auth pages or onboarding, redirect to home
+      else if (user && (inAuthGroup || inOnboarding)) {
         router.replace('/(tabs)');
       }
     }
-  }, [user, isLoading, isInitializing, segments, isSwitchingMode]);
+  }, [user, isLoading, isInitializing, segments, isSwitchingMode, hasSeenOnboarding]);
 
   if (isLoading || isInitializing) {
     console.log('ProtectedRoute: Still loading/initializing, showing loading screen');
