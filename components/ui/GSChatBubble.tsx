@@ -65,21 +65,21 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   const getBubbleColor = () => {
     if (type === 'document') return '#F59E0B'; // Orange for document references
     
-    // Current user's messages are always gray
-    if (isCurrentUserMessage()) return '#E5E7EB';
+    // Current user's messages are always muted gray
+    if (isCurrentUserMessage()) return theme.colors.muted + '20'; // 12% opacity
     
-    // AI messages are always purple
-    if (type === 'ai') return '#A78BFA';
+    // AI messages use secondary colors (purple)
+    if (type === 'ai') return theme.colors.secondaryLight;
     
-    // Other user's messages are always blue
-    return '#3B82F6';
+    // Other user's messages use primary colors (green) 
+    return theme.colors.primary;
   };
 
   const getTextColor = () => {
     if (type === 'document') return '#FFFFFF'; // White text on orange
     
-    // Current user's messages have dark text on gray background
-    if (isCurrentUserMessage()) return '#374151';
+    // Current user's messages have dark text on light gray background
+    if (isCurrentUserMessage()) return theme.colors.primaryDark;
     
     // AI and other user messages have white text on colored backgrounds
     return '#FFFFFF';
@@ -99,7 +99,7 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
 
   const getBubbleStyle = (): ViewStyle => {
     const alignment = getAlignment();
-    const baseRadius = theme.borderRadius.lg;
+    const baseRadius = 16; // Use hardcoded border radius
     
     return {
       backgroundColor: getBubbleColor(),
@@ -107,8 +107,8 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
       // Reduce the corner radius for the appropriate corner based on alignment
       borderTopLeftRadius: alignment === 'flex-start' ? baseRadius : baseRadius,
       borderTopRightRadius: alignment === 'flex-end' ? baseRadius : baseRadius,
-      borderBottomLeftRadius: alignment === 'flex-start' ? theme.borderRadius.xs : baseRadius,
-      borderBottomRightRadius: alignment === 'flex-end' ? theme.borderRadius.xs : baseRadius,
+      borderBottomLeftRadius: alignment === 'flex-start' ? 4 : baseRadius,
+      borderBottomRightRadius: alignment === 'flex-end' ? 4 : baseRadius,
       padding: theme.spacing.md,
       maxWidth: '80%',
       minWidth: 100,
@@ -253,7 +253,7 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
               <Icon
                 source={isRead ? 'check-all' : 'check'}
                 size={16}
-                color={isRead ? theme.colors.primary : theme.colors.textHint}
+                color={isRead ? theme.colors.primary : theme.colors.muted}
               />
             )}
           </View>

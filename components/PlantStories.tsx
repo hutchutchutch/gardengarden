@@ -100,9 +100,9 @@ export default function PlantStories({ onAddPhoto, onStoryPress, isAnalyzing = f
   }, [isAnalyzing, user?.id]);
 
   const getHealthColor = (score: number) => {
-    if (score >= 80) return '#10B981'; // green
-    if (score >= 60) return '#F59E0B'; // yellow
-    return '#EF4444'; // red
+    if (score >= 80) return '#4CAF50'; // primary - healthy green
+    if (score >= 60) return '#81C784'; // primaryLight - light green
+    return '#F59E0B'; // warning color for unhealthy
   };
 
   const handleStoryPress = (story: PlantStory) => {
@@ -161,7 +161,7 @@ export default function PlantStories({ onAddPhoto, onStoryPress, isAnalyzing = f
         };
       } else {
         return {
-          icon: <Plus size={24} color="#64748B" />,
+          icon: <Plus size={24} color="#6B7280" />,
           text: 'Add Photo',
           circleStyle: styles.addPhotoCircle
         };
@@ -275,13 +275,33 @@ export default function PlantStories({ onAddPhoto, onStoryPress, isAnalyzing = f
     );
   }
 
+  // Show skeleton animations if no stories are available (but not loading)
+  const shouldShowSkeletons = !loading && stories.length === 0;
+
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.container}>
       <View style={styles.content}>
         <AddStoryButton />
-        {stories.map((story) => (
-          <StoryItem key={story.id} story={story} />
-        ))}
+        {shouldShowSkeletons ? (
+          // Show skeleton placeholders when no stories are available
+          [1, 2, 3].map((i) => (
+            <View key={`skeleton-${i}`} style={styles.storyItem}>
+              <View style={styles.relative}>
+                <View style={[styles.addPhotoCircle, styles.skeleton]}>
+                  <View style={[styles.storyImage, styles.skeleton]} />
+                </View>
+              </View>
+              <View style={styles.storyTextContainer}>
+                <View style={[styles.skeleton, { width: 50, height: 12, borderRadius: 6 }]} />
+              </View>
+            </View>
+          ))
+        ) : (
+          // Show actual stories
+          stories.map((story) => (
+            <StoryItem key={story.id} story={story} />
+          ))
+        )}
       </View>
     </ScrollView>
   );
@@ -289,7 +309,7 @@ export default function PlantStories({ onAddPhoto, onStoryPress, isAnalyzing = f
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
   header: {
     paddingHorizontal: 16,
@@ -319,10 +339,10 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#FAFAFA',
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#E2E8F0',
+    borderColor: '#6B7280',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -347,7 +367,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
   },
   placeholderImage: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#6B7280',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -402,7 +422,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   skeleton: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#6B7280',
   },
   content: {
     flexDirection: 'row',

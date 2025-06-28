@@ -26,6 +26,7 @@ export interface Message {
   id: string;
   thread_id: string;
   sender_id: string;
+  receiver_id?: string;
   content: string;
   image_url?: string;
   is_read: boolean;
@@ -364,7 +365,8 @@ export class MessageService {
     threadId: string,
     senderId: string,
     content: string,
-    imageUrl?: string
+    imageUrl?: string,
+    receiverId?: string
   ): Promise<Message> {
     try {
       // Insert the message
@@ -373,6 +375,7 @@ export class MessageService {
         .insert({
           thread_id: threadId,
           sender_id: senderId,
+          receiver_id: receiverId || null,
           content: content,
           image_url: imageUrl || null,
           is_read: false

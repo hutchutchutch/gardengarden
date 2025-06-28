@@ -6,6 +6,7 @@ import { GSHealthBadge } from './GSHealthBadge';
 import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 import { GSIconButton } from './GSIconButton';
 import { GSChip } from './GSChip';
+import colors, { DESIGN_TOKENS } from '@/constants/colors';
 
 interface GSPlantCardProps {
   imageUrl?: string | null;
@@ -46,7 +47,7 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
         style={[
           styles.card,
           {
-            backgroundColor: theme.colors.surface,
+            backgroundColor: colors.background,
             width: cardWidth,
           },
         ]}
@@ -82,7 +83,7 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
       style={[
         styles.card,
         {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: colors.background,
           width: cardWidth,
         },
       ]}
@@ -95,16 +96,16 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
               <View style={styles.titleRow}>
                 <Text 
                   variant="titleMedium" 
-                  style={[styles.plantName, { color: theme.colors.onSurface }]}
+                  style={[styles.plantName, { color: colors.primaryDark }]}
                   numberOfLines={1}
                 >
                   {plantName}
                 </Text>
                 <View style={styles.badgeContainer}>
-                  <Surface style={[styles.dayBadgeCompact, { backgroundColor: theme.colors.primaryContainer }]}>
+                  <Surface style={[styles.dayBadgeCompact, { backgroundColor: colors.primaryLight }]}>
                     <Text 
                       variant="labelSmall" 
-                      style={{ color: theme.colors.onPrimaryContainer, fontWeight: '600' }}
+                      style={{ color: colors.white, fontWeight: '600' }}
                     >
                       Day {dayNumber}
                     </Text>
@@ -120,10 +121,10 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
               {/* First Positive Sign */}
               {positiveSigns.length > 0 && (
                 <View style={styles.firstSignRow}>
-                  <GSIconButton icon="check-circle" onPress={() => {}} size={16} color="#4CAF50" />
+                  <GSIconButton icon="check-circle" onPress={() => {}} size={16} color={colors.primary} />
                   <Text 
                     variant="bodySmall" 
-                    style={[styles.firstSignText, { color: theme.colors.onSurfaceVariant }]}
+                    style={[styles.firstSignText, { color: colors.muted }]}
                   >
                     {positiveSigns[0]}
                   </Text>
@@ -137,10 +138,10 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
             {/* Stage on the left */}
             {currentStage && (
               <View style={styles.stageBottomRow}>
-                <GSIconButton icon="sprout" onPress={() => {}} size={16} color={theme.colors.primary} />
+                <GSIconButton icon="sprout" onPress={() => {}} size={16} color={colors.primary} />
                 <Text 
                   variant="labelMedium" 
-                  style={[styles.stageBottomText, { color: theme.colors.onSurfaceVariant }]}
+                  style={[styles.stageBottomText, { color: colors.muted }]}
                 >
                   {currentStage}
                 </Text>
@@ -152,7 +153,7 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
               <Pressable onPress={handleExpand} style={styles.moreDetailsButton}>
                 <Text 
                   variant="labelMedium" 
-                  style={[styles.moreDetailsText, { color: theme.colors.primary }]}
+                  style={[styles.moreDetailsText, { color: colors.primary }]}
                 >
                   More details
                 </Text>
@@ -167,13 +168,11 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
             )}
           </View>
 
-
-
           {expanded && (positiveSigns.length > 1 || areasForImprovement.length > 0) && (
             <View style={styles.analysisContainer}>
               {positiveSigns.length > 1 && (
                 <View style={styles.signSection}>
-                  <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                  <Text variant="labelMedium" style={[styles.sectionTitle, { color: colors.primaryDark }]}>
                     Additional Positive Signs
                   </Text>
                   <View style={styles.chipContainer}>
@@ -186,7 +185,7 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
               
               {areasForImprovement.length > 0 && (
                 <View style={[styles.signSection, positiveSigns.length > 1 && { marginTop: 12 }]}>
-                  <Text variant="labelMedium" style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                  <Text variant="labelMedium" style={[styles.sectionTitle, { color: colors.primaryDark }]}>
                     Areas for Improvement
                   </Text>
                   <View style={styles.chipContainer}>
@@ -290,7 +289,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.08)',
+    borderTopColor: DESIGN_TOKENS.muted + '20', // Use our muted color with 12% opacity
   },
   signSection: {
     marginBottom: 8,

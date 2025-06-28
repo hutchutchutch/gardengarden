@@ -10,6 +10,7 @@ import PlantStories from '@/components/PlantStories';
 import { supabase } from '@/config/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImageAnalysisService, ImageAnalysisRecord } from '@/services/image-analysis-service';
+import colors, { DESIGN_TOKENS } from '@/constants/colors';
 
 import {
   GSModeToggle,
@@ -103,7 +104,7 @@ export default function StudentIndexScreen() {
             paddingHorizontal: 16, 
             paddingVertical: 12,
             borderBottomWidth: i < 3 ? 1 : 0,
-            borderBottomColor: '#f0f0f0'
+            borderBottomColor: colors.muted + '40'
           }}>
             <ShimmerPlaceholder width={24} height={24} borderRadius={3} style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
@@ -577,10 +578,10 @@ export default function StudentIndexScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flex: 1 }}>
         {/* Fixed Mode Toggle at the top */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: colors.background }}>
           <GSModeToggle />
         </View>
         
@@ -606,7 +607,7 @@ export default function StudentIndexScreen() {
               {/* Plant Stories Section */}
               <View style={{ marginBottom: 16, marginTop: 24 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingHorizontal: 16 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#000' }}>Class Gardens</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryDark }}>Class Gardens</Text>
                 </View>
                 
                 <PlantStories 
@@ -626,7 +627,7 @@ export default function StudentIndexScreen() {
               {/* My Plant Progress Section with GSPlantCard */}
               {activePlant && plantProgress && (
                 <View style={{ marginBottom: 24, marginTop: 8, paddingHorizontal: 16 }}>
-                  <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>My Plant Progress</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.primaryDark }}>My Plant Progress</Text>
                   
                   <View style={{ marginTop: 12 }}>
                     <GSPlantCard
@@ -644,7 +645,7 @@ export default function StudentIndexScreen() {
                   {/* Today's Photo CTA */}
                   <View style={{ marginTop: 16 }}>
                     <GSButton 
-                      variant="secondary" 
+                      variant="primary" 
                       icon="camera" 
                       fullWidth
                       onPress={() => router.push('/(tabs)/camera')}
@@ -672,7 +673,7 @@ export default function StudentIndexScreen() {
               {/* Yesterday's Feedback Section - Show Welcome on Day 1 */}
               {(plantProgress?.dayNumber === 1 && lessonData) ? (
                 <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
-                  <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Welcome to Your Garden Journey</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.primaryDark }}>Welcome to Your Garden Journey</Text>
                   
                   <View style={{ marginTop: 12 }}>
                     <GSGuidanceCard
@@ -684,7 +685,7 @@ export default function StudentIndexScreen() {
                 </View>
               ) : yesterdaysFeedback && (
             <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Yesterday's Feedback</Text>
+              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.primaryDark }}>Yesterday's Feedback</Text>
               
               <View style={{ marginTop: 12 }}>
                 <GSGuidanceCard
@@ -697,14 +698,14 @@ export default function StudentIndexScreen() {
               {/* Additional feedback details */}
               <GSCard variant="elevated" padding="medium" margin="none" style={{ marginTop: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <Text style={{ fontWeight: '500', fontSize: 16, color: '#000' }}>Health Assessment</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#4CAF50' }}>{yesterdaysFeedback.health_rating}</Text>
+                  <Text style={{ fontWeight: '500', fontSize: 16, color: colors.primaryDark }}>Health Assessment</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{yesterdaysFeedback.health_rating}</Text>
                 </View>
 
                 {/* Positive Signs */}
                 {yesterdaysFeedback.positive_signs && yesterdaysFeedback.positive_signs.length > 0 && (
                   <View style={{ marginBottom: 12 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8, color: '#000' }}>Positive Signs:</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8, color: colors.primaryDark }}>Positive Signs:</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       {yesterdaysFeedback.positive_signs.map((sign: string, index: number) => (
                         <GSChip key={index} label={sign} variant="success" />
@@ -716,7 +717,7 @@ export default function StudentIndexScreen() {
                 {/* Areas for Improvement */}
                 {yesterdaysFeedback.areas_for_improvement && yesterdaysFeedback.areas_for_improvement.length > 0 && (
                   <View style={{ marginBottom: 12 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8, color: '#000' }}>Areas for Improvement:</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '500', marginBottom: 8, color: colors.primaryDark }}>Areas for Improvement:</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       {yesterdaysFeedback.areas_for_improvement.map((area: string, index: number) => (
                         <GSChip key={index} label={area} variant="warning" />
@@ -730,8 +731,8 @@ export default function StudentIndexScreen() {
                   <GSCollapsible label="View Tips">
                     {yesterdaysFeedback.tips.map((tip: any, index: number) => (
                       <View key={index} style={{ paddingVertical: 8 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#000', marginBottom: 4 }}>{tip.title}</Text>
-                        <Text style={{ fontSize: 12, color: '#666', lineHeight: 16 }}>{tip.description}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primaryDark, marginBottom: 4 }}>{tip.title}</Text>
+                        <Text style={{ fontSize: 12, color: colors.muted, lineHeight: 16 }}>{tip.description}</Text>
                       </View>
                     ))}
                   </GSCollapsible>
@@ -743,11 +744,11 @@ export default function StudentIndexScreen() {
           {/* Today's Tasks Section */}
           <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Today's Tasks</Text>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: colors.primaryDark }}>Today's Tasks</Text>
               {todaysTasks.length > 0 && (
                 <View style={{ alignItems: 'flex-end' }}>
                   <GSProgressIndicator progress={completedTasksPercentage / 100} size="small" />
-                  <Text style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
                     {earnedPoints}/{totalPoints} points
                   </Text>
                 </View>
@@ -768,21 +769,21 @@ export default function StudentIndexScreen() {
                           paddingHorizontal: 16, 
                           paddingVertical: 12,
                           borderBottomWidth: index < todaysTasks.length - 1 || isExpanded ? 1 : 0,
-                          borderBottomColor: '#f0f0f0'
+                          borderBottomColor: colors.muted + '40'
                         }}>
                           {/* Checkbox */}
                           <View style={{
                             borderWidth: 1,
-                            borderColor: task.isCompleted ? '#4CAF50' : '#d0d0d0',
+                            borderColor: task.isCompleted ? colors.primary : colors.muted,
                             borderRadius: 3,
                             padding: 1,
-                            backgroundColor: task.isCompleted ? '#4CAF5008' : 'transparent'
+                            backgroundColor: task.isCompleted ? colors.primary + '08' : 'transparent'
                           }}>
                             <Checkbox
                               status={task.isCompleted ? 'checked' : 'unchecked'}
                               onPress={() => handleTaskToggle(task.id)}
-                              color="#4CAF50"
-                              uncheckedColor="#757575"
+                              color={colors.primary}
+                              uncheckedColor={colors.muted}
                             />
                           </View>
                           
@@ -794,7 +795,7 @@ export default function StudentIndexScreen() {
                             <Text style={{ 
                               fontSize: 15, 
                               fontWeight: '500', 
-                              color: '#000',
+                              color: colors.primaryDark,
                               textDecorationLine: task.isCompleted ? 'line-through' : 'none',
                               opacity: task.isCompleted ? 0.6 : 1
                             }}>
@@ -806,17 +807,19 @@ export default function StudentIndexScreen() {
                           <Pressable 
                             onPress={() => setExpandedTaskIndex(isExpanded ? null : index)}
                             style={{ 
-                              backgroundColor: task.isCompleted ? '#4CAF50' : '#f5f5f5',
+                              backgroundColor: task.isCompleted ? colors.primary : colors.background,
                               paddingHorizontal: 8,
                               paddingVertical: 4,
                               borderRadius: 12,
-                              marginLeft: 8
+                              marginLeft: 8,
+                              borderWidth: task.isCompleted ? 0 : 1,
+                              borderColor: colors.muted + '40'
                             }}
                           >
                             <Text style={{ 
                               fontSize: 12, 
                               fontWeight: '600',
-                              color: task.isCompleted ? 'white' : '#666'
+                              color: task.isCompleted ? colors.white : colors.muted
                             }}>
                               {task.points || 0}pts
                             </Text>
@@ -828,21 +831,21 @@ export default function StudentIndexScreen() {
                           <View style={{ 
                             paddingHorizontal: 16, 
                             paddingVertical: 12, 
-                            backgroundColor: '#f9f9f9',
+                            backgroundColor: colors.background,
                             borderBottomWidth: index < todaysTasks.length - 1 ? 1 : 0,
-                            borderBottomColor: '#f0f0f0'
+                            borderBottomColor: colors.muted + '40'
                           }}>
                             {task.description && (
-                              <Text style={{ fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 8 }}>
+                              <Text style={{ fontSize: 14, color: colors.muted, lineHeight: 20, marginBottom: 8 }}>
                                 {task.description}
                               </Text>
                             )}
                             {task.instructions && (
                               <View>
-                                <Text style={{ fontSize: 13, fontWeight: '500', color: '#333', marginBottom: 4 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '500', color: colors.primaryDark, marginBottom: 4 }}>
                                   Instructions:
                                 </Text>
-                                <Text style={{ fontSize: 13, color: '#666', lineHeight: 18 }}>
+                                <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 18 }}>
                                   {task.instructions}
                                 </Text>
                               </View>
@@ -855,8 +858,8 @@ export default function StudentIndexScreen() {
                 </GSCard>
               ) : (
                 <GSCard variant="elevated" padding="large" style={{ alignItems: 'center' }}>
-                  <Text style={{ fontSize: 16, fontWeight: '500', color: '#333' }}>No active lesson</Text>
-                  <Text style={{ textAlign: 'center', marginTop: 8, color: '#666' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '500', color: colors.primaryDark }}>No active lesson</Text>
+                  <Text style={{ textAlign: 'center', marginTop: 8, color: colors.muted }}>
                     It looks like you are not currently enrolled in an active lesson. Please contact your teacher to get started.
                   </Text>
                 </GSCard>
@@ -866,7 +869,7 @@ export default function StudentIndexScreen() {
 
               {/* Tips & Reminders Section */}
               <View style={{ marginBottom: 24, marginTop: 24, paddingHorizontal: 16 }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Tips & Reminders</Text>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.primaryDark }}>Tips & Reminders</Text>
                 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
                   <View style={{ flexDirection: 'row', gap: 12, paddingRight: 16 }}>
@@ -887,21 +890,21 @@ export default function StudentIndexScreen() {
                             }}
                           >
                             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
-                              <GSIconButton icon={tip.icon} onPress={() => {}} size={22} color="#4CAF50" />
+                              <GSIconButton icon={tip.icon} onPress={() => {}} size={22} color={colors.primary} />
                               <View style={{ flex: 1 }}>
-                                <Text style={{ fontWeight: '500', fontSize: 15, color: '#000', lineHeight: 20, flexWrap: 'wrap' }}>{tip.title}</Text>
+                                <Text style={{ fontWeight: '500', fontSize: 15, color: colors.primaryDark, lineHeight: 20, flexWrap: 'wrap' }}>{tip.title}</Text>
                               </View>
                               <View style={{ marginLeft: 4 }}>
                                 <GSIconButton 
                                   icon={isExpanded ? "chevron-up" : "chevron-down"} 
                                   onPress={() => setExpandedTipIndex(isExpanded ? null : index)} 
                                   size={18} 
-                                  color="#666" 
+                                  color={colors.muted} 
                                 />
                               </View>
                             </View>
                             <Text 
-                              style={{ fontSize: 13, color: '#666', lineHeight: 18 }} 
+                              style={{ fontSize: 13, color: colors.muted, lineHeight: 18 }} 
                               numberOfLines={isExpanded ? undefined : 7}
                             >
                               {tip.description}

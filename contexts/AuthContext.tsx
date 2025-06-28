@@ -143,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (profile && !error) {
         console.log('🔄 Profile found, creating user data...');
         const userData: User = {
-          id: profile.id,
+          id: session.user.id, // Use auth.uid() instead of public.users.id for RLS compatibility
           email: profile.email,
           name: profile.name,
           role: profile.role,
@@ -154,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         
         setUser(userData);
-        console.log('✅ Loaded user from session:', userData.email, userData.role);
+        console.log('✅ Loaded user from session:', userData.email, userData.role, 'auth_id:', session.user.id);
       } else {
         console.error('❌ Failed to load user profile:', error);
         console.log('🔄 Setting user to null and signing out...');

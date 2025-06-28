@@ -17,7 +17,7 @@ interface AIState {
   initializeExistingThread: (threadId: string) => Promise<void>;
   initializeDefaultThread: () => Promise<void>; // Helper for testing with Hutch users
   fetchMessages: (threadId?: string) => Promise<void>;
-  sendMessage: (content: string, imageUri?: string, mode?: 'ai' | 'teacher', lessonId?: string, plantId?: string) => Promise<void>;
+  sendMessage: (content: string, imageUri?: string, mode?: 'ai' | 'teacher', lessonId?: string, plantId?: string, receiverId?: string) => Promise<void>;
   clearConversation: () => Promise<void>;
   clearError: () => void;
 }
@@ -182,7 +182,7 @@ export const useAIStore = create<AIState>()(
         }
       },
 
-      sendMessage: async (content, imageUri, mode = 'ai', lessonId, plantId) => {
+      sendMessage: async (content, imageUri, mode = 'ai', lessonId, plantId, receiverId) => {
         const { currentThreadId } = get();
         if (!currentThreadId) {
           set({ error: 'No active thread' });
@@ -214,7 +214,7 @@ export const useAIStore = create<AIState>()(
           // If current user is a teacher, always save as teacher message regardless of mode
           if (userRole === 'teacher') {
             // Teacher sending message - just save to database, no AI response
-            const teacherMessage = await MessageService.sendMessage(currentThreadId, userDbId, content, imageUri);
+            const teacherMessage = await MessageService.sendMessage(currentThreadId, userDbId, content, imageUri, receiverId);
             
             // Update local state with the saved teacher message
             const savedTeacherMessage: AIMessage = {
@@ -248,7 +248,7 @@ export const useAIStore = create<AIState>()(
 
           if (mode === 'teacher') {
             // Student sending message to teacher - save to database only
-            const studentMessage = await MessageService.sendMessage(currentThreadId, userDbId, content, imageUri);
+            const studentMessage = await MessageService.sendMessage(currentThreadId, userDbId, content, imageUri, receiverId);
             
             // Update local state with the saved user message
             const savedUserMessage: AIMessage = {

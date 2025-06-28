@@ -17,6 +17,7 @@ import { PhotoService } from '@/services/photo-service';
 import { supabase } from '@/config/supabase';
 import { useMode } from '@/contexts/ModeContext';
 import { safeMessageContent } from '@/utils/textUtils';
+import { useAppTheme } from '@/config/theme';
 
 interface AIChatProps {
   analysis?: AIPlantAnalysis | null;
@@ -41,6 +42,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const scrollViewRef = useRef<ScrollView>(null);
   const isTeacher = user?.role === 'teacher';
   const { isTeacherMode } = useMode();
+  const theme = useAppTheme();
 
   // Get the current lesson ID from the plant for students, or fetch it for teachers
   const currentPlant = plants.find(p => p.id === plantId);
@@ -323,9 +325,71 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const handleSend = async () => {
     if (message.trim() === '' && !imageUri) return;
     
+    // Determine receiver_id based on mode and user role
+    let receiverId: string | undefined;
+    
+    if (user?.role === 'teacher' && studentId) {
+      // Teacher sending message - receiver is the student
+      receiverId = studentId;
+    } else if (user?.role === 'student') {
+      // Student sending message - need to find their teacher
+      try {
+        // First try to get teacher from student's active lesson
+        const { data: studentPlant } = await supabase
+          .from('plants')
+          .select('lesson_id')
+          .eq('student_id', user.id)
+          .single();
+
+        if (studentPlant?.lesson_id) {
+          const { data: lesson } = await supabase
+            .from('lessons')
+            .select('class_id')
+            .eq('id', studentPlant.lesson_id)
+            .eq('status', 'active')
+            .single();
+
+          if (lesson?.class_id) {
+            const { data: classData } = await supabase
+              .from('classes')
+              .select('teacher_id')
+              .eq('id', lesson.class_id)
+              .single();
+
+            if (classData?.teacher_id) {
+              receiverId = classData.teacher_id;
+            }
+          }
+        }
+
+        // Fallback: get teacher from student's class directly
+        if (!receiverId) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('class_id')
+            .eq('id', user.id)
+            .single();
+
+          if (userData?.class_id) {
+            const { data: classData } = await supabase
+              .from('classes')
+              .select('teacher_id')
+              .eq('id', userData.class_id)
+              .single();
+
+            if (classData?.teacher_id) {
+              receiverId = classData.teacher_id;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error finding teacher for student message:', error);
+      }
+    }
+    
     // If current user is a teacher, send the message and any selected documents
     if (user?.role === 'teacher') {
-      await sendMessage(message, imageUri || undefined, 'teacher', lessonId, plantId);
+      await sendMessage(message, imageUri || undefined, 'teacher', lessonId, plantId, receiverId);
       
       // Send document reference messages for each selected document
       for (const docId of selectedDocuments) {
@@ -333,7 +397,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
         if (docData) {
           // Create a document message with URL embedded in content
           const documentContent = `DOCUMENT_REF:${docData.url}:${docData.title}`;
-          await sendMessage(documentContent, undefined, 'teacher', lessonId, plantId);
+          await sendMessage(documentContent, undefined, 'teacher', lessonId, plantId, receiverId);
         }
       }
       
@@ -381,13 +445,13 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
     }
     
     // Send the user message with image (students only)
-    await sendMessage(message, finalImageUrl || undefined, mode, lessonId, plantId);
+    await sendMessage(message, finalImageUrl || undefined, mode, lessonId, plantId, receiverId);
     
     // If we have AI analysis from the image, send it as a follow-up AI message
     if (aiAnalysisMessage && mode === 'ai') {
       // Small delay to ensure the user message is sent first
       setTimeout(() => {
-        sendMessage(aiAnalysisMessage, undefined, 'ai', lessonId, plantId);
+        sendMessage(aiAnalysisMessage, undefined, 'ai', lessonId, plantId, undefined);
         setIsAIThinking(false);
       }, 500);
     } else {
@@ -430,11 +494,11 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-
-
   // For now, show all messages in the current thread
   // In the future, we might want to filter by message type or have separate threads for AI vs teacher
   const filteredMessages = messages;
+
+  const canSend = message.trim() !== '' || imageUri !== null;
 
   return (
     <KeyboardAvoidingView
@@ -446,8 +510,8 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <Pressable onPress={clearError} style={styles.errorCloseButton}>
-            <Text style={styles.errorCloseText}>×</Text>
+          <Pressable onPress={clearError} style={styles.retryButton}>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
       )}
@@ -455,11 +519,11 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
       <ScrollView
         ref={scrollViewRef}
         style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
+        contentContainerStyle={styles.messagesList}
       >
         {filteredMessages.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>
               {mode === 'ai' 
                 ? "Ask your garden mentor any questions about plant care, identification, or troubleshooting."
                 : "Send a message to your teacher for personalized help and guidance."
@@ -537,7 +601,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
 
       {/* Mode Toggle for students, Reference Documents for teachers */}
       {!isTeacher ? (
-        <View style={styles.modeToggleContainer}>
+        <View style={styles.segmentedButtonContainer}>
           <Text style={styles.chatWithLabel}>Chat with: </Text>
           <SegmentedButtons
             value={mode}
@@ -572,16 +636,23 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
           <ImageIcon size={24} color={colors.primary} />
         </Pressable>
         <TextInput
-          style={styles.input}
+          style={styles.textInput}
           placeholder={mode === 'ai' ? "Ask about your plants..." : "Message your teacher..."}
           value={message}
           onChangeText={setMessage}
           multiline
         />
-        <Pressable
-          style={[styles.sendButton, (!message.trim() && !imageUri) && styles.sendButtonDisabled]}
+        <Pressable 
+          style={[
+            styles.sendButton,
+            { 
+              backgroundColor: canSend 
+                ? (mode === 'ai' ? theme.colors.secondary : theme.colors.primary)
+                : theme.colors.muted
+            }
+          ]}
           onPress={handleSend}
-          disabled={!message.trim() && !imageUri}
+          disabled={!canSend || isLoading}
         >
           <Send size={20} color={colors.white} />
         </Pressable>
@@ -593,45 +664,84 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: '#FAFAFA', // Use background token
   },
   errorContainer: {
-    padding: 12,
     backgroundColor: colors.error,
-    borderBottomWidth: 1,
+    paddingVertical: 8,
     borderBottomColor: colors.error,
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderBottomWidth: 1,
   },
   errorText: {
+    textAlign: 'center',
     color: colors.white,
     fontSize: 14,
+  },
+  retryText: {
     textAlign: 'center',
-    flex: 1,
-  },
-  errorCloseButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  errorCloseText: {
     color: colors.white,
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
-  modeToggleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    backgroundColor: colors.white,
+  messagesContainer: {
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: colors.grayLight,
+    borderBottomColor: '#6B728040', // Use muted with opacity
   },
-  chatWithLabel: {
+  messagesList: {
+    flex: 1,
+    paddingVertical: 8,
+  },
+  messageContainer: {
+    marginBottom: 8,
+  },
+  loadingContainer: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 8,
+    color: '#6B7280', // Use muted token
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    padding: 16,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: '#6B728040', // Use muted with opacity
+  },
+  textInput: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 120,
+    backgroundColor: colors.background,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginRight: 8,
     fontSize: 16,
-    color: colors.text,
-    fontWeight: '500',
-    marginRight: 12,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageButton: {
+    backgroundColor: '#6B7280', // Use muted token
+    marginRight: 8,
+  },
+  imagePreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  segmentedButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   segmentedButtons: {
     maxWidth: 200,
@@ -656,63 +766,17 @@ const styles = StyleSheet.create({
   segmentedButtonInactiveLabel: {
     color: colors.textLight,
   },
-  messagesContainer: {
-    flex: 1,
-  },
-  messagesContent: {
-    padding: 16,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 12,
-    backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: colors.grayLight,
-    alignItems: 'center',
-  },
-  imageButton: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: colors.backgroundLight,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    maxHeight: 100,
-  },
-  sendButton: {
-    backgroundColor: colors.primary,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  sendButtonDisabled: {
-    backgroundColor: colors.gray,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: colors.textLight,
+  chatWithLabel: {
     fontSize: 16,
+    color: colors.text,
+    fontWeight: '500',
+    marginRight: 12,
   },
   imagePreviewContainer: {
     padding: 8,
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.grayLight,
-  },
-  imagePreview: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
   },
   placeholderImage: {
     backgroundColor: '#E5E7EB',
@@ -739,5 +803,16 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  retryButton: {
+    backgroundColor: colors.error,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 8,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontWeight: '600',
   },
 });
