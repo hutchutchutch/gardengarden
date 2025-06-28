@@ -90,9 +90,47 @@ export default function CameraScreen() {
 
   const takePicture = async () => {
     if (cameraRef.current) {
-      const photo = await cameraRef.current.takePictureAsync();
-      if (photo) {
-        setCapturedImage(photo.uri);
+      try {
+        console.log('📸 Taking picture...');
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          base64: false,
+          skipProcessing: false,
+        });
+        
+        if (photo) {
+          console.log('📸 Photo captured:', {
+            uri: photo.uri,
+            width: photo.width,
+            height: photo.height
+          });
+          
+          // Check if the captured image file exists and has content
+          const FileSystem = await import('expo-file-system');
+          const fileInfo = await FileSystem.getInfoAsync(photo.uri);
+          console.log('📄 Captured image file info:', fileInfo);
+          
+          if (!fileInfo.exists) {
+            console.error('❌ Captured image file does not exist!');
+            showSnackbar('Failed to capture image - file not found', 'error');
+            return;
+          }
+          
+          if (fileInfo.size === 0) {
+            console.error('❌ Captured image file is empty!');
+            showSnackbar('Failed to capture image - empty file', 'error');
+            return;
+          }
+          
+          console.log('✅ Image captured successfully, size:', fileInfo.size, 'bytes');
+          setCapturedImage(photo.uri);
+        } else {
+          console.error('❌ No photo returned from camera');
+          showSnackbar('Failed to capture image', 'error');
+        }
+      } catch (error) {
+        console.error('❌ Error taking picture:', error);
+        showSnackbar('Failed to capture image: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
       }
     }
   };
@@ -119,7 +157,34 @@ export default function CameraScreen() {
       });
 
       if (!result.canceled) {
-        setCapturedImage(result.assets[0].uri);
+        const selectedImage = result.assets[0];
+        console.log('📱 Image selected from library:', {
+          uri: selectedImage.uri,
+          width: selectedImage.width,
+          height: selectedImage.height,
+          fileSize: selectedImage.fileSize,
+          type: selectedImage.type
+        });
+        
+        // Check if the selected image file exists and has content
+        const FileSystem = await import('expo-file-system');
+        const fileInfo = await FileSystem.getInfoAsync(selectedImage.uri);
+        console.log('📄 Selected image file info:', fileInfo);
+        
+        if (!fileInfo.exists) {
+          console.error('❌ Selected image file does not exist!');
+          showSnackbar('Failed to load image - file not found', 'error');
+          return;
+        }
+        
+        if (fileInfo.size === 0) {
+          console.error('❌ Selected image file is empty!');
+          showSnackbar('Failed to load image - empty file', 'error');
+          return;
+        }
+        
+        console.log('✅ Image selected successfully, size:', fileInfo.size, 'bytes');
+        setCapturedImage(selectedImage.uri);
       }
     } catch (error) {
       console.error('Error picking image:', error);

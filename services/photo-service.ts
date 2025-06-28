@@ -339,25 +339,51 @@ export class PhotoService {
    */
   static async convertHeicToJpg(uri: string): Promise<string> {
     try {
+      console.log('🔄 Checking image format for:', uri);
+      
       // Check if the image is HEIC/HEIF format
       const isHeic = uri.toLowerCase().includes('.heic') || uri.toLowerCase().includes('.heif');
+      const isPotentialHeic = !uri.toLowerCase().includes('.jpg') && !uri.toLowerCase().includes('.jpeg') && !uri.toLowerCase().includes('.png');
       
-      if (!isHeic) {
-        // Return original URI if not HEIC
+      console.log('📋 Format analysis:', {
+        isHeic,
+        isPotentialHeic,
+        hasJpgExtension: uri.toLowerCase().includes('.jpg') || uri.toLowerCase().includes('.jpeg'),
+        hasPngExtension: uri.toLowerCase().includes('.png'),
+        originalUri: uri
+      });
+      
+      if (!isHeic && !isPotentialHeic) {
+        console.log('✅ Image appears to be standard format, skipping conversion');
         return uri;
+      }
+      
+      if (isPotentialHeic) {
+        console.log('⚠️ Image might be HEIC (no standard extension detected), attempting conversion...');
       }
 
       // Create a temporary file path for the converted image
       const tempFileName = `converted_${Date.now()}.jpg`;
       const tempUri = `${FileSystem.documentDirectory}${tempFileName}`;
+      console.log('📁 Temp file path:', tempUri);
 
       // Copy the HEIC file to a temporary location
+      console.log('📋 Copying original file to temp location...');
       await FileSystem.copyAsync({
         from: uri,
         to: tempUri,
       });
+      
+      // Verify copy was successful
+      const tempFileInfo = await FileSystem.getInfoAsync(tempUri);
+      console.log('📄 Temp file info after copy:', tempFileInfo);
+      
+      if (!tempFileInfo.exists || tempFileInfo.size === 0) {
+        throw new Error('Failed to copy image to temporary location');
+      }
 
       // Convert to JPG using ImageManipulator
+      console.log('🔄 Converting image format...');
       const result = await manipulateAsync(
         tempUri,
         [], // No transformations, just format conversion
@@ -366,6 +392,16 @@ export class PhotoService {
           format: SaveFormat.JPEG,
         }
       );
+      
+      console.log('✅ Conversion result:', result);
+      
+      // Verify converted file
+      const convertedFileInfo = await FileSystem.getInfoAsync(result.uri);
+      console.log('📄 Converted file info:', convertedFileInfo);
+      
+      if (!convertedFileInfo.exists || convertedFileInfo.size === 0) {
+        throw new Error('Image conversion resulted in empty file');
+      }
 
       // Clean up the temporary file
       try {
@@ -569,17 +605,76 @@ export class PhotoService {
       console.log('⏭️ Skipping duplicate detection, proceeding with upload and analysis');
       
       console.log('🌐 Fetching compressed image...');
+      
+      // Add detailed request debugging
+      console.log('🔍 Fetch request details:', {
+        url: compressedUri,
+        isFileUri: compressedUri.startsWith('file://'),
+        isContentUri: compressedUri.startsWith('content://'),
+        isHttpUri: compressedUri.startsWith('http')
+      });
+      
       const response = await fetch(compressedUri);
+      
+      console.log('📡 Fetch response:', {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
       }
       
-      const blob = await response.blob();
-      console.log('📦 Blob created, size:', blob.size, 'type:', blob.type);
+            let blob = await response.blob();
+      console.log('📦 Blob created:', {
+        size: blob.size,
+        type: blob.type,
+        hasStream: blob.stream !== undefined,
+        hasArrayBuffer: blob.arrayBuffer !== undefined
+      });
       
       if (blob.size === 0) {
-        throw new Error('Image blob is empty - fetch returned 0 bytes');
+        // Try to get more info about why blob is empty
+        console.error('❌ Empty blob - trying alternative approach...');
+        
+        // Try reading the file directly with FileSystem
+        try {
+          const base64Data = await FileSystem.readAsStringAsync(compressedUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          console.log('📄 Direct file read result:', {
+            base64Length: base64Data.length,
+            first50Chars: base64Data.substring(0, 50)
+          });
+          
+          if (base64Data.length > 0) {
+            // Convert base64 to blob manually
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            const manualBlob = new Blob([bytes], { type: 'image/jpeg' });
+            console.log('🔧 Manual blob created:', {
+              size: manualBlob.size,
+              type: manualBlob.type
+            });
+            
+            if (manualBlob.size > 0) {
+              console.log('✅ Using manually created blob');
+              blob = manualBlob;
+            } else {
+              throw new Error('Even manual blob creation resulted in 0 bytes');
+            }
+          } else {
+            throw new Error('File exists but contains no data');
+          }
+        } catch (directReadError) {
+          console.error('❌ Direct file read also failed:', directReadError);
+          throw new Error('Image blob is empty and direct file read failed');
+        }
       }
       
       const { data: uploadData, error: uploadError } = await supabase.storage

@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import { Home, Sprout, Camera, Bot, TrendingUp, User, MessageCircle } from 'lucide-react-native';
 import { useColorScheme, View } from 'react-native';
 import { useMode } from '@/contexts/ModeContext';
@@ -6,13 +6,17 @@ import { useMode } from '@/contexts/ModeContext';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { isTeacherMode } = useMode();
+  const pathname = usePathname();
+  
+  // Hide tab bar on camera screen
+  const shouldHideTabBar = pathname === '/(tabs)/camera';
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colorScheme === 'dark' ? '#FFFFFF' : '#000000',
-        tabBarStyle: {
+        tabBarStyle: shouldHideTabBar ? { display: 'none' } : {
           position: 'absolute',
           bottom: 0,
           left: 0,
