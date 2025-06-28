@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, ActivityIndicator, Text, Pressable } from 'react-native';
+import { View, StyleSheet, Image, ActivityIndicator, Text } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import AIChat from '@/components/AIChat';
 import colors from '@/constants/colors';
@@ -7,11 +7,11 @@ import { analyzePhoto } from '@/services/ai-service';
 import { AIPlantAnalysis } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/config/supabase';
-import { GSAuthDebug } from '@/components/ui/GSAuthDebug';
-import { testThreadCreation, refreshAuthSession, checkRLSContext } from '@/utils/debug-utils';
 
 // Expose debug functions globally for testing
 if (typeof window !== 'undefined' && __DEV__) {
+  // Keep these for potential console debugging
+  const { testThreadCreation, refreshAuthSession, checkRLSContext } = require('@/utils/debug-utils');
   (window as any).testThreadCreation = testThreadCreation;
   (window as any).refreshAuthSession = refreshAuthSession;
   (window as any).checkRLSContext = checkRLSContext;
@@ -28,7 +28,6 @@ export default function AIChatScreen() {
   const [analysis, setAnalysis] = useState<AIPlantAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [studentName, setStudentName] = useState<string>('');
-  const [debugInfo, setDebugInfo] = useState<any>({});
   const { setShowFAB, user } = useAuth();
 
   useEffect(() => {
@@ -68,20 +67,6 @@ export default function AIChatScreen() {
     fetchStudentInfo();
   }, [mode, studentId]);
 
-  // Collect debug info
-  useEffect(() => {
-    const collectDebugInfo = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      setDebugInfo({
-        params: { photoUri: !!photoUri, plantId, mode, threadId, studentId },
-        contextUser: user ? { id: user.id, role: user.role, email: user.email } : null,
-        authUser: authUser ? { id: authUser.id, email: authUser.email } : null,
-        timestamp: new Date().toISOString()
-      });
-    };
-    collectDebugInfo();
-  }, [photoUri, plantId, mode, threadId, studentId, user]);
-
   const analyzePhotoAndUpdate = async () => {
     setIsAnalyzing(true);
     try {
@@ -107,7 +92,7 @@ export default function AIChatScreen() {
       <Stack.Screen 
         options={{
           title: getHeaderTitle(),
-          headerBackTitle: mode === 'teacher' ? 'Messages' : undefined,
+          headerBackTitle: 'Back',
           headerStyle: {
             backgroundColor: colors.white,
           },
@@ -118,25 +103,6 @@ export default function AIChatScreen() {
           headerTintColor: colors.primary,
         }} 
       />
-      {/* Temporary debug info */}
-      {__DEV__ && (
-        <View style={styles.debugContainer}>
-          <Text style={styles.debugTitle}>Debug Info:</Text>
-          <Text style={styles.debugText}>{JSON.stringify(debugInfo, null, 2)}</Text>
-          <View style={styles.debugButtons}>
-            <Pressable style={styles.debugButton} onPress={testThreadCreation}>
-              <Text style={styles.debugButtonText}>Test Thread Creation</Text>
-            </Pressable>
-            <Pressable style={styles.debugButton} onPress={refreshAuthSession}>
-              <Text style={styles.debugButtonText}>Refresh Auth</Text>
-            </Pressable>
-            <Pressable style={styles.debugButton} onPress={checkRLSContext}>
-              <Text style={styles.debugButtonText}>Check RLS</Text>
-            </Pressable>
-          </View>
-          <GSAuthDebug />
-        </View>
-      )}
       {photoUri && mode !== 'teacher' && (
         <View style={styles.photoContainer}>
           <Image source={{ uri: photoUri }} style={styles.photo} />
@@ -189,36 +155,5 @@ const styles = StyleSheet.create({
     color: colors.white,
     marginTop: 8,
     fontSize: 16,
-  },
-  debugContainer: {
-    padding: 10,
-    backgroundColor: colors.grayLight,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray,
-  },
-  debugTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  debugText: {
-    fontSize: 10,
-    fontFamily: 'monospace',
-    marginBottom: 8,
-  },
-  debugButtons: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  debugButton: {
-    padding: 8,
-    backgroundColor: colors.primary,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  debugButtonText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '600',
   },
 });
