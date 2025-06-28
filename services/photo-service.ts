@@ -392,16 +392,46 @@ export class PhotoService {
     quality: number = 0.7
   ): Promise<string> {
     try {
+      // First verify the input image exists and has content
+      const inputInfo = await FileSystem.getInfoAsync(uri);
+      console.log('🔍 Input image info:', inputInfo);
+      
+      if (!inputInfo.exists || inputInfo.size === 0) {
+        console.error('❌ Input image is empty or doesn\'t exist');
+        throw new Error('Input image is invalid');
+      }
+      
       const result = await manipulateAsync(
         uri,
         [{ resize: { width: maxWidth } }],
         { compress: quality, format }
       );
+      
+      // Verify the compressed result is valid
+      const outputInfo = await FileSystem.getInfoAsync(result.uri);
+      console.log('✅ Compressed image info:', outputInfo);
+      
+      if (!outputInfo.exists || outputInfo.size === 0) {
+        console.error('❌ Compression resulted in empty file');
+        throw new Error('Compression produced empty file');
+      }
+      
       return result.uri;
     } catch (error) {
       console.error('Error compressing image:', error);
-      // Return original URI if compression fails
-      return uri;
+      
+      // Verify original URI is still valid before returning it
+      try {
+        const originalInfo = await FileSystem.getInfoAsync(uri);
+        if (originalInfo.exists && originalInfo.size > 0) {
+          console.log('🔄 Returning original URI as fallback');
+          return uri;
+        }
+      } catch (fallbackError) {
+        console.error('Original URI also invalid:', fallbackError);
+      }
+      
+      throw new Error('Both compression and original image are invalid');
     }
   }
 
@@ -512,85 +542,45 @@ export class PhotoService {
     fileName?: string
   ): Promise<PhotoUploadResult> {
     try {
+      console.log('📸 Starting uploadAndAnalyze with URI:', imageUri);
+      
       // Generate filename if not provided
       const finalFileName = fileName || `plant-photo-${Date.now()}.jpg`;
+      console.log('📝 Generated filename:', finalFileName);
       
       // Convert HEIC to JPG if necessary
       const convertedUri = await this.convertHeicToJpg(imageUri);
+      console.log('🔄 Converted URI:', convertedUri);
       
       // Compress image for analysis (to stay under 4MB limit)
       const compressedUri = await this.compressImage(convertedUri, SaveFormat.JPEG, 1200, 0.7);
+      console.log('📦 Compressed URI:', compressedUri);
       
-      // Generate perceptual hash BEFORE uploading to check for duplicates
-      const imageHash = await this.generateImageHash(compressedUri);
+      // Check if the compressed image is valid
+      const fileInfo = await FileSystem.getInfoAsync(compressedUri);
+      console.log('📊 Compressed file info:', fileInfo);
       
-      // Check for duplicates to save on API costs
-      const duplicateCheck = await this.checkForDuplicate(
-        imageHash.perceptualHash, 
-        imageHash.fileSize
-      );
-
-      if (duplicateCheck.isDuplicate) {
-        console.log(`Duplicate image detected! Original analysis ID: ${duplicateCheck.originalAnalysisId}, Hamming distance: ${duplicateCheck.hammingDistance}`);
-        
-        // Still upload the image but skip expensive analysis
-        const response = await fetch(compressedUri);
-        const blob = await response.blob();
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('plant-photos')
-          .upload(`${studentId}/${finalFileName}`, blob, {
-            contentType: 'image/jpeg',
-            upsert: false
-          });
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          return {
-            success: false,
-            error: 'Failed to upload photo'
-          };
-        }
-
-        const { data: publicUrlData } = supabase.storage
-          .from('plant-photos')
-          .getPublicUrl(uploadData.path);
-
-        const photoUrl = publicUrlData.publicUrl;
-
-        // Create a duplicate analysis record pointing to the original
-        const { data: duplicateAnalysis, error: duplicateError } = await supabase
-          .from('image_analysis')
-          .insert([{
-            student_id: studentId,
-            image_url: photoUrl,
-            perceptual_hash: imageHash.perceptualHash,
-            file_size_bytes: imageHash.fileSize,
-            image_dimensions: imageHash.dimensions,
-            is_duplicate: true,
-            original_analysis_id: duplicateCheck.originalAnalysisId,
-            processing_status: 'completed' // Skip analysis for duplicates
-          }])
-          .select()
-          .single();
-
-        if (duplicateError) {
-          console.error('Error creating duplicate analysis record:', duplicateError);
-        }
-
-        return {
-          success: true,
-          photoUrl,
-          analysisId: duplicateAnalysis?.id,
-          isDuplicate: true,
-          originalAnalysisId: duplicateCheck.originalAnalysisId,
-          error: duplicateError ? 'Photo uploaded but failed to create analysis record' : undefined
-        };
+      if (!fileInfo.exists || fileInfo.size === 0) {
+        console.error('❌ Compressed image is empty or doesn\'t exist');
+        throw new Error('Image compression failed - resulting file is empty');
       }
-
-      // Not a duplicate - proceed with normal upload and analysis
+      
+      // Skip duplicate detection for now to simplify debugging
+      console.log('⏭️ Skipping duplicate detection, proceeding with upload and analysis');
+      
+      console.log('🌐 Fetching compressed image...');
       const response = await fetch(compressedUri);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      }
+      
       const blob = await response.blob();
+      console.log('📦 Blob created, size:', blob.size, 'type:', blob.type);
+      
+      if (blob.size === 0) {
+        throw new Error('Image blob is empty - fetch returned 0 bytes');
+      }
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('plant-photos')
@@ -615,23 +605,6 @@ export class PhotoService {
 
       // Trigger image analysis for original images
       const analysisResult = await ImageAnalysisService.analyzeImage(photoUrl, studentId);
-      
-      if (analysisResult.success && analysisResult.analysisId) {
-        // Update the analysis record with perceptual hash data
-        const { error: updateError } = await supabase
-          .from('image_analysis')
-          .update({
-            perceptual_hash: imageHash.perceptualHash,
-            file_size_bytes: imageHash.fileSize,
-            image_dimensions: imageHash.dimensions,
-            is_duplicate: false
-          })
-          .eq('id', analysisResult.analysisId);
-
-        if (updateError) {
-          console.error('Error updating analysis with hash data:', updateError);
-        }
-      }
 
       return {
         success: true,
