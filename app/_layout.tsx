@@ -26,16 +26,16 @@ SplashScreen.preventAutoHideAsync();
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isInitializing } = useAuth();
   const { isSwitchingMode } = useMode();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    console.log('ProtectedRoute: isLoading =', isLoading, 'user =', user?.email, 'isSwitchingMode =', isSwitchingMode);
+    console.log('ProtectedRoute: isLoading =', isLoading, 'isInitializing =', isInitializing, 'user =', user?.email, 'isSwitchingMode =', isSwitchingMode);
     
-    // Don't apply auth protection during mode switching
-    if (!isLoading && !isSwitchingMode) {
+    // Don't apply auth protection during initialization, loading, or mode switching
+    if (!isLoading && !isSwitchingMode && !isInitializing) {
       // Check if we're in the auth group
       const inAuthGroup = segments[0] === 'auth';
       
@@ -47,10 +47,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         router.replace('/(tabs)');
       }
     }
-  }, [user, isLoading, segments, isSwitchingMode]);
+  }, [user, isLoading, isInitializing, segments, isSwitchingMode]);
 
-  if (isLoading) {
-    console.log('ProtectedRoute: Still loading, showing loading screen');
+  if (isLoading || isInitializing) {
+    console.log('ProtectedRoute: Still loading/initializing, showing loading screen');
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
         <CheckCircle2 size={48} color="#4CAF50" />

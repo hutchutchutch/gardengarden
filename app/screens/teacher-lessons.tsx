@@ -31,6 +31,12 @@ import { LessonService, Lesson, LessonDocument } from '@/services/lesson-service
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/config/supabase';
 import { format } from 'date-fns';
 
+// PURPLE ACCENT IMPLEMENTATION GUIDE:
+// Primary Purple: #8B5CF6 - Active AI features, clickable elements
+// Light Purple: #EDE9FE - AI section backgrounds
+// Dark Purple: #6D28D9 - High-impact metrics
+// Purple Gradient: Processing animations (from #8B5CF6 to #6D28D9)
+
 export default function TeacherLessons() {
   const router = useRouter();
   const { user } = useAuth();
@@ -397,8 +403,6 @@ export default function TeacherLessons() {
     }
   };
 
-
-
   const handleEditLesson = () => {
     setBottomSheetVisible(false);
     if (currentLesson) {
@@ -475,8 +479,8 @@ export default function TeacherLessons() {
         <GSEmptyState
           icon="book-open"
           title="No active lesson"
-          description="Create a new lesson to get started"
-          actionLabel="Create Lesson"
+          description="Create an AI-powered lesson to get started"
+          actionLabel="Create AI Lesson"
           onAction={handleCreateLesson}
         />
       );
@@ -518,31 +522,45 @@ export default function TeacherLessons() {
                 value={`${7} active`}
                 icon="account-group"
               />
-              <GSStatCard
-                label="Avg Health"
-                value={`${83}%`}
-                icon="heart"
-              />
+              <View style={styles.statCardWithAccent}>
+                <GSStatCard
+                  label="Avg Health"
+                  value={`${83}%`}
+                  icon="heart"
+                />
+                <View style={styles.purpleAccentBar} />
+              </View>
             </View>
 
-            <GSCard variant="filled" padding="medium" margin="none" style={styles.documentsCard}>
+            <GSCard 
+              variant="filled" 
+              padding="medium" 
+              margin="none" 
+              style={styles.aiKnowledgeBase}
+            >
               <View style={styles.documentsHeader}>
                 <View style={styles.documentsHeaderLeft}>
-                  <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-                    Lesson Resources
+                  <GSIconButton
+                    icon="brain"
+                    size={20}
+                    color="#8B5CF6"
+                    onPress={() => {}}
+                  />
+                  <Text style={[styles.sectionTitle, styles.purpleText]}>
+                    AI Knowledge Base
                   </Text>
                 </View>
                 <View style={styles.chipContainer}>
                   {completed > 0 && (
                     <GSChip
-                      label={`${completed} Completed`}
+                      label={`${completed} Ready`}
                       variant="success"
                       size="small"
                     />
                   )}
                   {pending > 0 && (
                     <GSChip
-                      label={`${pending} Pending`}
+                      label={`${pending} Processing`}
                       variant="warning"
                       size="small"
                     />
@@ -626,7 +644,7 @@ export default function TeacherLessons() {
                 fullWidth
                 onPress={handleViewAnalytics}
               >
-                View Full Analytics
+                View AI Analytics
               </GSButton>
             </View>
           </GSCard>
@@ -701,12 +719,15 @@ export default function TeacherLessons() {
                         {92}%
                       </Text>
                     </View>
-                    <View style={[styles.metricCard, { backgroundColor: theme.colors.surfaceVariant }]}>
+                    <View style={[
+                      styles.metricCard, 
+                      { backgroundColor: theme.colors.surfaceVariant, borderColor: '#8B5CF6', borderWidth: 1 }
+                    ]}>
                       <Text style={[styles.metricLabel, { color: theme.colors.onSurfaceVariant }]} numberOfLines={1}>
-                        Duration
+                        Top AI Resource
                       </Text>
-                      <Text style={[styles.metricValue, { color: theme.colors.onSurface }]} numberOfLines={1}>
-                        {item.expected_duration_days} days
+                      <Text style={[styles.metricValue, styles.purpleText]} numberOfLines={1}>
+                        Guide #3
                       </Text>
                     </View>
                   </View>
@@ -785,18 +806,31 @@ export default function TeacherLessons() {
                       </View>
                     </View>
 
-                    <View style={styles.resourceRow}>
+                    <View style={[
+                      styles.resourceRow,
+                      !isReady && styles.processingBackground
+                    ]}>
                       <View style={styles.resourceInfo}>
                         <Text style={[styles.resourceText, { color: theme.colors.onSurfaceVariant }]}>
                           {item.lesson_urls?.length || 0} resources
                         </Text>
                         {isReady ? (
-                          <GSBadge label="Ready" variant="primary" />
-                        ) : (
-                          <GSProgressIndicator
-                            type="linear"
-                            progress={processingProgress / 100}
+                          <GSBadge 
+                            label="AI Ready"
+                            variant="primary"
+                            icon="check"
                           />
+                        ) : (
+                          <View style={styles.progressContainer}>
+                            <GSProgressIndicator
+                              type="linear"
+                              progress={processingProgress / 100}
+                              color="#8B5CF6"
+                            />
+                            <Text style={[styles.progressLabel, styles.purpleText]}>
+                              Preparing AI Knowledge...
+                            </Text>
+                          </View>
                         )}
                       </View>
                     </View>
@@ -842,8 +876,8 @@ export default function TeacherLessons() {
           <GSEmptyState
             icon="book-open"
             title="No upcoming lessons"
-            description="Create a new lesson to get started"
-            actionLabel="Create Lesson"
+            description="Create an AI-powered lesson to get started"
+            actionLabel="Create AI Lesson"
             onAction={handleCreateLesson}
           />
         )}
@@ -880,6 +914,7 @@ export default function TeacherLessons() {
               icon="plus"
               size={24}
               onPress={handleCreateLesson}
+              style={!currentLesson && styles.glowEffect}
             />
           </View>
         </View>
@@ -899,7 +934,14 @@ export default function TeacherLessons() {
 
       {renderContent()}
 
-
+      <GSFAB
+        icon="plus"
+        label="New Lesson"
+        position="bottom-right"
+        style={styles.purpleFAB}
+        tooltip="Create AI-powered lesson"
+        onPress={handleCreateLesson}
+      />
 
       <GSBottomSheet
         visible={bottomSheetVisible}
@@ -991,8 +1033,24 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 24,
   },
+  statCardWithAccent: {
+    flex: 1,
+    position: 'relative',
+  },
+  purpleAccentBar: {
+    height: 3,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 1.5,
+    marginTop: 4,
+  },
   documentsCard: {
     marginTop: 16,
+    transition: 'box-shadow 0.2s ease',
+  },
+  aiKnowledgeBase: {
+    backgroundColor: '#EDE9FE',
+    borderColor: '#8B5CF6',
+    borderWidth: 1,
   },
   documentsHeader: {
     flexDirection: 'row',
@@ -1012,6 +1070,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
+  purpleText: {
+    color: '#8B5CF6',
+  },
   chipContainer: {
     flexDirection: 'row',
     gap: 8,
@@ -1027,6 +1088,10 @@ const styles = StyleSheet.create({
   },
   actionContainer: {
     marginTop: 24,
+  },
+  purpleGradientButton: {
+    backgroundColor: '#8B5CF6',
+    // Note: For full gradient support, this would need to be implemented in the GSButton component
   },
   listContainer: {
     paddingBottom: 16,
@@ -1062,6 +1127,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: '48%',
     alignItems: 'center',
+    transition: 'border-color 0.2s ease',
   },
   metricLabel: {
     fontSize: 12,
@@ -1095,6 +1161,12 @@ const styles = StyleSheet.create({
   },
   resourceRow: {
     marginBottom: 12,
+    transition: 'background-color 0.3s ease',
+  },
+  processingBackground: {
+    backgroundColor: '#EDE9FE',
+    padding: 12,
+    borderRadius: 8,
   },
   resourceInfo: {
     flexDirection: 'row',
@@ -1103,6 +1175,14 @@ const styles = StyleSheet.create({
   },
   resourceText: {
     fontSize: 14,
+  },
+  progressContainer: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  progressLabel: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   actionRow: {
     flexDirection: 'row',
@@ -1134,5 +1214,18 @@ const styles = StyleSheet.create({
   shimmerUrl: {
     fontSize: 12,
     marginTop: 4,
+  },
+  glowEffect: {
+    shadowColor: '#8B5CF6',
+    shadowRadius: 8,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  purpleFAB: {
+    backgroundColor: '#8B5CF6',
+    shadowColor: '#8B5CF6',
+    shadowRadius: 12,
+    shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 4 },
   },
 });

@@ -7,6 +7,7 @@ import { storage } from '@/utils/storage';
 export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isInitializing: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   showFAB: boolean;
@@ -38,14 +39,19 @@ let hasCleared = false;
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [showFAB, setShowFAB] = useState(true);
 
   useEffect(() => {
     // Only clear session once on app load to force fresh sign-in
     const initializeAuth = async () => {
       try {
+        setIsInitializing(true);
+        
         if (!hasCleared) {
           console.log('🔄 App load - clearing session to force fresh sign-in');
+          // Add small delay to allow navigation to settle
+          await new Promise(resolve => setTimeout(resolve, 100));
           await supabase.auth.signOut();
           setUser(null);
           hasCleared = true;
@@ -56,9 +62,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await loadUserFromSession(session);
           }
         }
-        setIsLoading(false);
       } catch (error) {
         console.error('Error in auth initialization:', error);
+      } finally {
+        setIsInitializing(false);
         setIsLoading(false);
       }
     };
@@ -285,6 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: AuthContextType = {
     user,
     isLoading,
+    isInitializing,
     signIn,
     signOut,
     showFAB,

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import { Checkbox } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { usePlantStore } from '@/store/plant-store';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
 import { useAppTheme } from '@/config/theme';
-import { ImageAnalysisService, ImageAnalysisRecord } from '@/services/image-analysis-service';
 import {
   GSScreenLayout,
   GSCard,
@@ -26,25 +26,57 @@ import {
   GSFAB,
   GSHeader,
   GSLoadingSpinner,
+  GSSnackbar,
+  GSModeToggle,
+  GSPlantCard,
 } from '@/components/ui';
 
-// Mock data
-const growthStages = [
-  { id: 'seed', name: 'Seed', days: 3, completed: true },
-  { id: 'sprout', name: 'Sprout', days: 7, completed: true },
-  { id: 'seedling', name: 'Seedling', days: 14, completed: true },
-  { id: 'vegetative', name: 'Vegetative', days: 21, completed: false, current: true },
-  { id: 'flowering', name: 'Flowering', days: 14, completed: false },
-  { id: 'fruiting', name: 'Fruiting', days: 30, completed: false },
-];
+// Types for Supabase data
+interface PlantData {
+  id: string;
+  nickname: string;
+  planting_date: string;
+  current_stage: string;
+  current_health_score: number;
+  last_photo_date: string | null;
+  plant_day: number;
+}
 
-const achievements = [
-  { id: '1', name: 'First Sprout', icon: 'sprout', unlocked: true, description: 'Your seed has sprouted!' },
-  { id: '2', name: 'Week Streak', icon: 'fire', unlocked: true, description: '7 days in a row' },
-  { id: '3', name: 'Healthy Plant', icon: 'heart', unlocked: true, description: 'Maintained 80%+ health' },
-  { id: '4', name: 'Green Thumb', icon: 'hand-peace', unlocked: false, description: 'Complete vegetative stage' },
-  { id: '5', name: 'First Flower', icon: 'flower', unlocked: false, description: 'Reach flowering stage' },
-  { id: '6', name: 'Harvest Ready', icon: 'fruit-cherries', unlocked: false, description: 'First fruit appears' },
+interface GuidanceRecord {
+  id: string;
+  guidance_text: string;
+  priority: 'routine' | 'attention' | 'urgent';
+  created_at: string;
+  health_score: number;
+  plant_day: number;
+  currentStage: string;
+  positiveSigns: string[];
+  areasForImprovement: string[];
+  imageUrl: string;
+}
+
+interface HealthTrend {
+  health_score: number;
+  created_at: string;
+  plant_day: number;
+}
+
+interface TaskData {
+  id: string;
+  task_name: string;
+  task_type: string;
+  completed: boolean;
+  points: number;
+  day_number: number;
+}
+
+// Growth stages with expected duration
+const growthStages = [
+  { id: 'seed', name: 'Seed', days: 3, icon: 'seed' },
+  { id: 'seedling', name: 'Seedling', days: 14, icon: 'sprout' },
+  { id: 'vegetative', name: 'Vegetative', days: 21, icon: 'leaf' },
+  { id: 'flowering', name: 'Flowering', days: 14, icon: 'flower' },
+  { id: 'fruiting', name: 'Fruiting', days: 30, icon: 'fruit-cherries' },
 ];
 
 export default function StudentProgressScreen() {
@@ -52,42 +84,419 @@ export default function StudentProgressScreen() {
   const theme = useAppTheme();
   const { user } = useAuth();
   const { isTeacherMode } = useMode();
-  const { plants, fetchPlants } = usePlantStore();
+  
   const [loading, setLoading] = useState(true);
+  const [plantData, setPlantData] = useState<PlantData | null>(null);
+  const [guidanceHistory, setGuidanceHistory] = useState<GuidanceRecord[]>([]);
+  const [healthTrend, setHealthTrend] = useState<HealthTrend[]>([]);
+  const [dailyTasks, setDailyTasks] = useState<TaskData[]>([]);
+  const [snackbar, setSnackbar] = useState<{
+    visible: boolean;
+    message: string;
+    variant: 'info' | 'success' | 'warning' | 'error';
+  }>({
+    visible: false,
+    message: '',
+    variant: 'info',
+  });
+  const [activePlant, setActivePlant] = useState<any>(null);
+  const [expandedTaskIndex, setExpandedTaskIndex] = useState<number | null>(null);
+  const [pendingPhotoTaskId, setPendingPhotoTaskId] = useState<string | null>(null);
 
-  const activePlant = plants[0];
-  const plantAge = activePlant
-    ? Math.floor(
-        (new Date().getTime() - new Date(activePlant.plantedDate).getTime()) /
-          (1000 * 60 * 60 * 24)
-      )
-    : 0;
+  const showSnackbar = (message: string, variant: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    setSnackbar({ visible: true, message, variant });
+  };
 
-  const currentStage = growthStages.find(stage => stage.current) || growthStages[3];
-  const totalDays = growthStages.reduce((sum, stage) => sum + stage.days, 0);
-  const completedDays = growthStages.filter(s => s.completed).reduce((sum, stage) => sum + stage.days, 0) + 3; // Mock days in current stage
-  const overallProgress = Math.round((completedDays / totalDays) * 100);
+  // Function to mark a task as completed
+  const markTaskAsCompleted = async (taskId: string) => {
+    if (!user?.id || !activePlant) return;
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await fetchPlants();
-      setLoading(false);
-    };
-    loadData();
-  }, []);
+    const task = dailyTasks.find(t => t.id === taskId);
+    if (!task || task.completed) return;
+
+    try {
+      // Mock implementation - in production this would update Supabase
+      console.log('Photo task marked as completed:', taskId);
+      
+      // Update local state
+      setDailyTasks(prev => 
+        prev.map(t => 
+          t.id === taskId 
+            ? { ...t, completed: true }
+            : t
+        )
+      );
+    } catch (error) {
+      console.error('Error marking task as completed:', error);
+    }
+  };
+
+  const handleTaskToggle = async (taskId: string) => {
+    if (!user?.id) return;
+
+    const task = dailyTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    // Check if this is a photo task and it's currently unchecked
+    const isPhotoTask = task.task_name.toLowerCase().includes('take') && task.task_name.toLowerCase().includes('photo') ||
+                       task.task_name.toLowerCase().includes('photo');
+    
+    if (isPhotoTask && !task.completed) {
+      // Set pending photo task and navigate to camera screen
+      setPendingPhotoTaskId(taskId);
+      router.push('/(tabs)/camera');
+      return;
+    }
+
+    try {
+      const newCompletedState = !task.completed;
+      
+      // Mock implementation - in production this would update Supabase
+      console.log('Task toggled:', taskId, newCompletedState);
+
+      // Update local state
+      setDailyTasks(prev => 
+        prev.map(t => 
+          t.id === taskId 
+            ? { ...t, completed: newCompletedState }
+            : t
+        )
+      );
+
+    } catch (error) {
+      console.error('Error toggling task:', error);
+    }
+  };
+
+  // Check for completed photo submissions when returning from camera
+  const checkForPhotoSubmission = React.useCallback(async () => {
+    if (!pendingPhotoTaskId || !user?.id) return;
+
+    try {
+      // Mock check - in production this would check Supabase for recent photo submission
+      // For now, just mark as completed after a delay
+      setTimeout(() => {
+        markTaskAsCompleted(pendingPhotoTaskId);
+        setPendingPhotoTaskId(null);
+      }, 1000);
+    } catch (error) {
+      console.error('Error checking photo submission:', error);
+    }
+  }, [pendingPhotoTaskId, user?.id]);
+
+  // Check for photo submission when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (pendingPhotoTaskId) {
+        // Small delay to ensure photo processing is complete
+        const timer = setTimeout(() => {
+          checkForPhotoSubmission();
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }, [checkForPhotoSubmission, pendingPhotoTaskId])
+  );
 
   useEffect(() => {
     if (isTeacherMode) {
-              router.replace('/(tabs)/progress');
+      router.replace('/(tabs)/progress');
+      return;
     }
-  }, [isTeacherMode]);
+    loadStudentProgressData();
+  }, [isTeacherMode, user?.id]);
+
+  const loadStudentProgressData = async () => {
+    if (!user?.id) return;
+    
+    setLoading(true);
+    try {
+      // Simulate real Growing Tomatoes lesson data (lesson started 14 days ago)
+      const lessonStartDate = new Date();
+      lessonStartDate.setDate(lessonStartDate.getDate() - 14); // 2 weeks ago
+      
+      const currentDayNumber = Math.floor((new Date().getTime() - lessonStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      const plantData: PlantData = {
+        id: '1',
+        nickname: `${user.name || 'Student'}'s Tomato`,
+        planting_date: lessonStartDate.toISOString(),
+        current_stage: 'seedling',
+        current_health_score: 85,
+        last_photo_date: new Date().toISOString(),
+        plant_day: currentDayNumber,
+      };
+      
+      // Mock guidance history with accurate day numbers
+      const mockGuidanceHistory: GuidanceRecord[] = [
+        {
+          id: '1',
+          guidance_text: 'Your seedling is showing excellent growth! The leaves are vibrant green and healthy. Continue your current watering schedule.',
+          priority: 'routine',
+          created_at: new Date().toISOString(),
+          health_score: plantData.current_health_score,
+          plant_day: currentDayNumber,
+          currentStage: plantData.current_stage,
+          positiveSigns: ['Vibrant green leaves', 'Strong stem', 'Healthy growth'],
+          areasForImprovement: ['Continue consistent watering'],
+          imageUrl: 'https://picsum.photos/400/300?random=plant1'
+        },
+        {
+          id: '2', 
+          guidance_text: 'Great progress! Your plant has grown noticeably. Watch for any yellowing on lower leaves.',
+          priority: 'routine',
+          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          health_score: Math.max(plantData.current_health_score - 3, 0),
+          plant_day: Math.max(currentDayNumber - 1, 1),
+          currentStage: plantData.current_stage,
+          positiveSigns: ['Noticeable growth', 'Good root development'],
+          areasForImprovement: ['Monitor for yellowing leaves', 'Adjust watering if needed'],
+          imageUrl: 'https://picsum.photos/400/300?random=plant2'
+        },
+        {
+          id: '3', 
+          guidance_text: 'Steady development continues. Your plant is adapting well to its environment.',
+          priority: 'routine',
+          created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+          health_score: Math.max(plantData.current_health_score - 5, 0),
+          plant_day: Math.max(currentDayNumber - 2, 1),
+          currentStage: plantData.current_stage,
+          positiveSigns: ['Good environmental adaptation', 'Stable growth'],
+          areasForImprovement: ['Keep monitoring daily'],
+          imageUrl: 'https://picsum.photos/400/300?random=plant3'
+        },
+      ];
+      
+      // Mock health trend with accurate day numbers
+      const mockHealthTrend: HealthTrend[] = [
+        { health_score: plantData.current_health_score, created_at: new Date().toISOString(), plant_day: currentDayNumber },
+        { health_score: Math.max(plantData.current_health_score - 3, 0), created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), plant_day: Math.max(currentDayNumber - 1, 1) },
+        { health_score: Math.max(plantData.current_health_score - 5, 0), created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), plant_day: Math.max(currentDayNumber - 2, 1) },
+      ];
+      
+      // Mock today's tasks with accurate day numbers
+      const dailyTasks: TaskData[] = [
+        { 
+          id: '1', 
+          task_name: 'Take daily photo', 
+          task_type: 'photo', 
+          completed: false, 
+          points: 10, 
+          day_number: currentDayNumber 
+        },
+        { 
+          id: '2', 
+          task_name: 'Check soil moisture', 
+          task_type: 'observe', 
+          completed: true, 
+          points: 5, 
+          day_number: currentDayNumber 
+        },
+      ];
+      
+      setPlantData(plantData);
+      setGuidanceHistory(mockGuidanceHistory);
+      setHealthTrend(mockHealthTrend);
+      setDailyTasks(dailyTasks);
+      
+      // Set activePlant for task operations
+      setActivePlant({
+        id: plantData.id,
+        name: plantData.nickname,
+        lessonId: 'growing-tomatoes-lesson',
+        plantingDate: plantData.planting_date,
+        currentStage: plantData.current_stage,
+        currentHealthScore: plantData.current_health_score
+      });
+      
+    } catch (error) {
+      console.error('Failed to load progress data:', error);
+      showSnackbar('Failed to load progress data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCurrentStage = () => {
+    if (!plantData) return growthStages[0];
+    return growthStages.find(stage => stage.id === plantData.current_stage) || growthStages[0];
+  };
+
+  const getTotalExpectedDays = () => {
+    return growthStages.reduce((sum, stage) => sum + stage.days, 0);
+  };
+
+  const getCompletedDays = () => {
+    return plantData?.plant_day || 0;
+  };
+
+  const getOverallProgress = () => {
+    const completed = getCompletedDays();
+    const total = getTotalExpectedDays();
+    return Math.min(Math.round((completed / total) * 100), 100);
+  };
+
+  // FR-042: Highlight critical issues (health < 40%) with red warning banner
+  const renderCriticalHealthWarning = () => {
+    if (!plantData || plantData.current_health_score >= 40) return null;
+    
+    return (
+      <GSCard 
+        variant="elevated" 
+        padding="medium" 
+        style={[styles.criticalAlert, { borderColor: theme.colors.error }] as any}
+      >
+        <View style={styles.criticalAlertContent}>
+          <MaterialCommunityIcons 
+            name="alert-circle" 
+            size={24} 
+            color={theme.colors.error} 
+          />
+          <View style={styles.criticalAlertText}>
+            <Text variant="titleMedium" style={{ color: theme.colors.error, fontWeight: 'bold' }}>
+              🚨 Critical Plant Health Alert
+            </Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.error }}>
+              Your plant's health is critically low ({Math.round(plantData.current_health_score)}%). 
+              Please review the latest guidance and contact your teacher immediately.
+            </Text>
+          </View>
+        </View>
+      </GSCard>
+    );
+  };
+
+  // FR-041: Use specific format for guidance
+  const formatGuidanceText = (guidance: GuidanceRecord) => {
+    const emoji = guidance.priority === 'urgent' ? '🚨' : 
+                 guidance.priority === 'attention' ? '⚠️' : '🌱';
+    
+    return `${emoji} Day ${guidance.plant_day}: ${guidance.guidance_text}`;
+  };
+
+  const renderGuidanceHistory = () => {
+    if (guidanceHistory.length === 0) {
+      return (
+        <GSEmptyState
+          icon="lightbulb-outline"
+          title="No Guidance Yet"
+          description="Take your first photo to receive personalized plant care guidance!"
+          actionLabel="Take Photo"
+          onAction={() => router.push('/(tabs)/camera')}
+        />
+      );
+    }
+
+    return guidanceHistory.map((guidance) => (
+      <View key={guidance.id} style={{ marginBottom: 20 }}>
+        {/* Day Number above card */}
+        <Text style={{ 
+          fontSize: 14, 
+          fontWeight: '600', 
+          color: '#666', 
+          marginBottom: 8,
+          marginLeft: 4
+        }}>
+          Day {guidance.plant_day}
+        </Text>
+        
+        {/* GSPlantCard without plantName and studentName */}
+        <GSPlantCard
+          imageUrl={guidance.imageUrl}
+          studentName=""
+          plantName=""
+          dayNumber={guidance.plant_day}
+          healthScore={guidance.health_score}
+          currentStage={guidance.currentStage}
+          positiveSigns={guidance.positiveSigns}
+          areasForImprovement={guidance.areasForImprovement}
+        />
+      </View>
+    ));
+  };
+
+  const renderHealthTrendChart = () => {
+    if (healthTrend.length === 0) {
+      return (
+        <View style={styles.chartPlaceholder}>
+          <MaterialCommunityIcons name="chart-line" size={48} color={theme.colors.outline} />
+          <Text style={{ color: theme.colors.outline, marginTop: 8 }}>
+            No health data yet
+          </Text>
+        </View>
+      );
+    }
+
+    // Simple visual representation of health trend
+    const averageHealth = healthTrend.reduce((sum, h) => sum + h.health_score, 0) / healthTrend.length;
+    const trend = healthTrend.length > 1 ? 
+      healthTrend[0].health_score - healthTrend[healthTrend.length - 1].health_score : 0;
+
+    return (
+      <View style={styles.healthTrendContainer}>
+        <View style={styles.healthMetric}>
+          <Text variant="headlineMedium" style={{ fontWeight: 'bold' }}>
+            {Math.round(averageHealth)}%
+          </Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+            Average Health
+          </Text>
+        </View>
+        <View style={styles.trendIndicator}>
+          <MaterialCommunityIcons 
+            name={trend > 0 ? 'trending-up' : trend < 0 ? 'trending-down' : 'trending-neutral'}
+            size={32}
+            color={trend > 0 ? theme.colors.primary : trend < 0 ? theme.colors.error : theme.colors.outline}
+          />
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+            {trend > 0 ? 'Improving' : trend < 0 ? 'Declining' : 'Stable'}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderGrowthMilestones = () => {
+    const currentStage = getCurrentStage();
+    const completedDays = getCompletedDays();
+    
+    return (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={styles.milestonesContainer}>
+          {growthStages.map((stage, index) => {
+            const stageStartDay = growthStages.slice(0, index).reduce((sum, s) => sum + s.days, 0);
+            const stageEndDay = stageStartDay + stage.days;
+            const isCompleted = completedDays > stageEndDay;
+            const isCurrent = currentStage.id === stage.id;
+            const isUpcoming = completedDays < stageStartDay;
+            
+            let status = 'Upcoming';
+            if (isCompleted) status = 'Completed';
+            else if (isCurrent) status = `Day ${completedDays - stageStartDay + 1}/${stage.days}`;
+            
+            return (
+              <GSMilestone
+                key={stage.id}
+                icon={isCompleted ? 'check-circle' : isCurrent ? 'circle-half-full' : 'circle-outline'}
+                title={stage.name}
+                description={`${stage.days} days`}
+                date={status}
+              />
+            );
+          })}
+        </View>
+      </ScrollView>
+    );
+  };
 
   if (loading) {
-    return <GSScreenLayout isLoading={true} />;
+    return (
+      <GSScreenLayout>
+        <GSLoadingSpinner />
+      </GSScreenLayout>
+    );
   }
 
-  if (!activePlant) {
+  if (!plantData) {
     return (
       <GSScreenLayout>
         <GSHeader title="My Progress" variant="back" onBack={() => router.back()} />
@@ -102,18 +511,21 @@ export default function StudentProgressScreen() {
     );
   }
 
+  const currentHealth = plantData.current_health_score;
+  const plantAge = plantData.plant_day;
+  const overallProgress = getOverallProgress();
+  const currentStage = getCurrentStage();
+
   return (
-    <GSScreenLayout showModeToggle={true}>
-      <GSHeader
-        title="My Progress"
-        variant="back"
-        onBack={() => router.back()}
-        actions={[{ icon: 'share-variant-outline', onPress: () => {} }]}
-      />
+    <GSScreenLayout>
+      {/* Fixed Mode Toggle at the top */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
+        <GSModeToggle />
+      </View>
+      
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.modeToggleContainer}>
-          <GSModeToggle />
-        </View>
+        {/* Critical Health Warning (FR-042) */}
+        {renderCriticalHealthWarning()}
 
         {/* Hero Section */}
         <View style={styles.section}>
@@ -122,16 +534,25 @@ export default function StudentProgressScreen() {
             <View style={styles.heroContent}>
               <GSProgressIndicator
                 type="circular"
-                progress={completedDays / totalDays}
+                progress={overallProgress / 100}
                 size="large"
                 showPercentage={false}
               />
               <View style={styles.heroTextContainer}>
                 <Text style={styles.heroDayNumber}>{plantAge}</Text>
-                <Text style={styles.heroDayLabel}>of {totalDays} days</Text>
+                <Text style={styles.heroDayLabel}>of {getTotalExpectedDays()} days</Text>
               </View>
             </View>
-            <GSBadge label={`Current Stage: ${currentStage.name}`} variant="primary" size="large" />
+            <GSBadge 
+              label={`Current Stage: ${currentStage.name}`} 
+              variant="primary" 
+              size="large" 
+            />
+            <GSHealthBadge 
+              score={currentHealth} 
+              size="large" 
+              showLabel={true}
+            />
           </GSCard>
         </View>
 
@@ -139,72 +560,177 @@ export default function StudentProgressScreen() {
         <View style={styles.section}>
           <SectionHeader title="Your Garden Stats" />
           <View style={styles.statsGrid}>
-            <GSStatCard label="Current Streak" value="7 days" icon="fire" className={styles.statCard} />
-            <GSStatCard label="Photos Taken" value="12" icon="camera-outline" className={styles.statCard} />
-            <GSStatCard label="Average Health" value="88%" icon="heart-outline" className={styles.statCard} />
-            <GSStatCard label="Badges Earned" value="3/12" icon="trophy-outline" className={styles.statCard} />
+            <GSCard variant="elevated" padding="medium" style={styles.statCard}>
+              <Text variant="titleMedium">Plant Health</Text>
+              <Text variant="headlineSmall">{Math.round(currentHealth)}%</Text>
+            </GSCard>
+            <GSCard variant="elevated" padding="medium" style={styles.statCard}>
+              <Text variant="titleMedium">Current Stage</Text>
+              <Text variant="headlineSmall">{currentStage.name}</Text>
+            </GSCard>
+            <GSCard variant="elevated" padding="medium" style={styles.statCard}>
+              <Text variant="titleMedium">Days Growing</Text>
+              <Text variant="headlineSmall">{plantAge}</Text>
+            </GSCard>
+            <GSCard variant="elevated" padding="medium" style={styles.statCard}>
+              <Text variant="titleMedium">Progress</Text>
+              <Text variant="headlineSmall">{overallProgress}%</Text>
+            </GSCard>
           </View>
         </View>
 
         {/* Health Trend Chart */}
         <View style={styles.section}>
-          <SectionHeader title="Plant Health Journey" />
+          <SectionHeader title="Health Journey" />
           <GSCard variant="elevated" padding="medium">
-            <View style={styles.chartPlaceholder}>
-              <Text>Health Trend Chart Placeholder</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.chipContainer}>
-                <GSChip label="80-100%" variant="success" />
-                <GSChip label="60-79%" variant="primary" />
-                <GSChip label="40-59%" variant="warning" />
-                <GSChip label="<40%" variant="destructive" />
-              </View>
-            </ScrollView>
+            {renderHealthTrendChart()}
           </GSCard>
         </View>
 
         {/* Growth Milestones */}
         <View style={styles.section}>
           <SectionHeader title="Growth Milestones" />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.milestonesContainer}>
-              {growthStages.map(stage => (
-                <GSMilestone
-                  key={stage.id}
-                  icon={stage.completed ? 'check-circle' : 'circle-outline'}
-                  title={stage.name}
-                  description={`${stage.days} days`}
-                  date={stage.completed ? 'Completed' : stage.current ? 'In Progress' : 'Upcoming'}
-                />
-              ))}
-            </View>
-          </ScrollView>
+          {renderGrowthMilestones()}
         </View>
 
-        {/* Achievements */}
+        {/* Today's Tasks Section */}
         <View style={styles.section}>
-          <SectionHeader title="Achievements">
-            <GSButton onPress={() => {}}>View All</GSButton>
-          </SectionHeader>
-          <View style={styles.achievementGrid}>
-            {achievements.slice(0, 6).map(ach => (
-              <View key={ach.id} style={styles.achievementItem}>
-                <GSIconButton
-                  icon={ach.icon}
-                  size={32}
-                  onPress={() => {}}
-                  mode="contained"
-                  disabled={!ach.unlocked}
-                />
-                <Text style={styles.achievementName}>{ach.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Today's Tasks</Text>
+            {dailyTasks.length > 0 && (
+              <View style={{ alignItems: 'flex-end' }}>
+                <GSProgressIndicator progress={dailyTasks.filter(t => t.completed).length / dailyTasks.length} size="small" />
+                <Text style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                  {dailyTasks.filter(t => t.completed).reduce((sum, task) => sum + (task.points || 0), 0)}/{dailyTasks.reduce((sum, task) => sum + (task.points || 0), 0)} points
+                </Text>
               </View>
-            ))}
+            )}
+          </View>
+          
+          <View style={{ marginTop: 12 }}>
+            {dailyTasks.length > 0 ? (
+              <GSCard variant="elevated" padding="none">
+                {dailyTasks.map((task, index) => {
+                  const isExpanded = expandedTaskIndex === index;
+                  return (
+                    <View key={task.id}>
+                      {/* Task Row */}
+                      <View style={{ 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        paddingHorizontal: 16, 
+                        paddingVertical: 12,
+                        borderBottomWidth: index < dailyTasks.length - 1 || isExpanded ? 1 : 0,
+                        borderBottomColor: '#f0f0f0'
+                      }}>
+                        {/* Checkbox */}
+                        <View style={{
+                          borderWidth: 1,
+                          borderColor: task.completed ? '#4CAF50' : '#d0d0d0',
+                          borderRadius: 3,
+                          padding: 1,
+                          backgroundColor: task.completed ? '#4CAF5008' : 'transparent'
+                        }}>
+                          <Checkbox
+                            status={task.completed ? 'checked' : 'unchecked'}
+                            onPress={() => handleTaskToggle(task.id)}
+                            color="#4CAF50"
+                            uncheckedColor="#757575"
+                          />
+                        </View>
+                        
+                        {/* Task Title - Clickable */}
+                        <Pressable 
+                          style={{ flex: 1, marginLeft: 8 }}
+                          onPress={() => setExpandedTaskIndex(isExpanded ? null : index)}
+                        >
+                          <Text style={{ 
+                            fontSize: 15, 
+                            fontWeight: '500', 
+                            color: '#000',
+                            textDecorationLine: task.completed ? 'line-through' : 'none',
+                            opacity: task.completed ? 0.6 : 1
+                          }}>
+                            {task.task_name}
+                          </Text>
+                        </Pressable>
+                        
+                        {/* Task Points - Clickable */}
+                        <Pressable 
+                          onPress={() => setExpandedTaskIndex(isExpanded ? null : index)}
+                          style={{ 
+                            backgroundColor: task.completed ? '#4CAF50' : '#f5f5f5',
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 12,
+                            marginLeft: 8
+                          }}
+                        >
+                          <Text style={{ 
+                            fontSize: 12, 
+                            fontWeight: '600',
+                            color: task.completed ? 'white' : '#666'
+                          }}>
+                            {task.points || 0}pts
+                          </Text>
+                        </Pressable>
+                      </View>
+                      
+                      {/* Task Description - Expandable */}
+                      {isExpanded && (
+                        <View style={{ 
+                          paddingHorizontal: 16, 
+                          paddingVertical: 12, 
+                          backgroundColor: '#f9f9f9',
+                          borderBottomWidth: index < dailyTasks.length - 1 ? 1 : 0,
+                          borderBottomColor: '#f0f0f0'
+                        }}>
+                          <Text style={{ fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 8 }}>
+                            Click the task to complete it. Photo tasks will take you to the camera.
+                          </Text>
+                          <View>
+                            <Text style={{ fontSize: 13, fontWeight: '500', color: '#333', marginBottom: 4 }}>
+                              Task Type: {task.task_type}
+                            </Text>
+                            <Text style={{ fontSize: 13, color: '#666', lineHeight: 18 }}>
+                              Day {task.day_number} • {task.points} points
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </GSCard>
+            ) : (
+              <GSCard variant="elevated" padding="large" style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#333' }}>No tasks for today</Text>
+                <Text style={{ textAlign: 'center', marginTop: 8, color: '#666' }}>
+                  Check back tomorrow for new tasks or contact your teacher.
+                </Text>
+              </GSCard>
+            )}
           </View>
         </View>
 
+        {/* Guidance History (FR-043: Store guidance history for student progress tracking) */}
+        <View style={styles.section}>
+          <SectionHeader title="AI Guidance History">
+            <GSButton onPress={() => router.push('/ai-chat')}>View All</GSButton>
+          </SectionHeader>
+          {renderGuidanceHistory()}
+        </View>
+
       </ScrollView>
+      
       <GSFAB icon="camera" onPress={() => router.push('/(tabs)/camera')} />
+      
+      <GSSnackbar
+        visible={snackbar.visible}
+        message={snackbar.message}
+        variant={snackbar.variant}
+        onDismiss={() => setSnackbar({ ...snackbar, visible: false })}
+      />
     </GSScreenLayout>
   );
 }
@@ -212,10 +738,6 @@ export default function StudentProgressScreen() {
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 80,
-  },
-  modeToggleContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
   },
   section: {
     marginBottom: 24,
@@ -241,6 +763,21 @@ const styles = StyleSheet.create({
   heroDayLabel: {
     fontSize: 12,
   },
+  criticalAlert: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    backgroundColor: 'rgba(211, 47, 47, 0.1)',
+  },
+  criticalAlertContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  criticalAlertText: {
+    flex: 1,
+    gap: 4,
+  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -251,34 +788,27 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   chartPlaceholder: {
-    height: 200,
-    backgroundColor: '#f0f0f0',
+    height: 150,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 8,
-    marginBottom: 12,
   },
-  chipContainer: {
+  healthTrendContainer: {
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  healthMetric: {
+    alignItems: 'center',
+  },
+  trendIndicator: {
+    alignItems: 'center',
+    gap: 4,
   },
   milestonesContainer: {
     flexDirection: 'row',
     gap: 16,
-  },
-  achievementGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    gap: 16,
-  },
-  achievementItem: {
-    alignItems: 'center',
-    width: '30%',
-  },
-  achievementName: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 4,
+    paddingHorizontal: 16,
   },
 });

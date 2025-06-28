@@ -614,7 +614,10 @@ export default function StudentIndexScreen() {
                     setAnalysisError(false);
                     router.push('/(tabs)/camera');
                   }}
-                  onStoryPress={(story) => console.log('View story:', story.id)}
+                  onStoryPress={(story) => {
+                    console.log('View story:', story.id);
+                    // TODO: Navigate to story detail view or show story modal
+                  }}
                   isAnalyzing={isAnalyzingPhoto}
                   analysisError={analysisError}
                 />

@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, Pressable, Image, StyleSheet, Animated } from 'react-native';
-import { Heart, MessageCircle, Camera, Plus, Loader, AlertTriangle } from 'lucide-react-native';
+import { Camera, Plus, Loader, AlertTriangle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Text } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import StoryCard from './StoryCard';
+import { PlantStoriesService, PlantStoryData } from '@/services/plant-stories-service';
 
 export interface PlantStory {
   id: string;
@@ -34,57 +33,71 @@ export default function PlantStories({ onAddPhoto, onStoryPress, isAnalyzing = f
   const { user } = useAuth();
   const router = useRouter();
   const [stories, setStories] = useState<PlantStory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hasUserSubmittedToday, setHasUserSubmittedToday] = useState(false);
+
+  // Convert PlantStoryData to PlantStory format for compatibility
+  const convertToPlantStory = (storyData: PlantStoryData): PlantStory => ({
+    id: storyData.id,
+    studentName: storyData.student_name,
+    healthScore: storyData.health_score,
+    photoUrl: PlantStoriesService.getPhotoUrl(storyData.photo_url),
+    hasSubmittedToday: storyData.hasSubmittedToday,
+    isCurrentUser: storyData.isCurrentUser,
+    reactions: {
+      heart: storyData.reactions.celebrate || 0,
+      thumbsUp: storyData.reactions.thumbs_up || 0,
+      sparkles: storyData.reactions.strong || 0,
+      trophy: storyData.reactions.seedling || 0,
+      lightbulb: storyData.reactions.idea || 0,
+    }
+  });
+
+  const fetchStories = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch stories and check if user submitted today
+      const [storiesData, userSubmittedToday] = await Promise.all([
+        PlantStoriesService.fetchClassPlantStories(user.id),
+        PlantStoriesService.hasUserSubmittedToday(user.id)
+      ]);
+      
+      const convertedStories = storiesData.map(convertToPlantStory);
+      setStories(convertedStories);
+      setHasUserSubmittedToday(userSubmittedToday);
+      
+    } catch (err) {
+      console.error('Error fetching plant stories:', err);
+      setError('Unable to load class gardens');
+      // Fallback to mock data in case of error
+      setStories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Mock data - replace with actual API calls
-    const mockStories: PlantStory[] = [
-      {
-        id: 'user123',
-        studentName: 'Sarah Chen',
-        healthScore: 85,
-        photoUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=200&fit=crop&crop=center',
-        hasSubmittedToday: false,
-        isCurrentUser: user?.id === 'user123'
-      },
-      {
-        id: 'user456',
-        studentName: 'Alex Rivera',
-        healthScore: 92,
-        photoUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=200&fit=crop&crop=center',
-        hasSubmittedToday: true,
-        isCurrentUser: false,
-        reactions: { heart: 3, thumbsUp: 2, sparkles: 1 }
-      },
-      {
-        id: 'user789',
-        studentName: 'Maya Patel',
-        healthScore: 78,
-        photoUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=200&fit=crop&crop=center',
-        hasSubmittedToday: true,
-        isCurrentUser: false,
-        reactions: { thumbsUp: 1, trophy: 2 }
-      },
-      {
-        id: 'user101',
-        studentName: 'Jordan Kim',
-        healthScore: 65,
-        photoUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=200&fit=crop&crop=center',
-        hasSubmittedToday: true,
-        isCurrentUser: false,
-        reactions: { lightbulb: 1, heart: 1 }
-      },
-      {
-        id: 'user202',
-        studentName: 'Emma Wilson',
-        healthScore: 88,
-        photoUrl: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=200&h=200&fit=crop&crop=center',
-        hasSubmittedToday: true,
-        isCurrentUser: false,
-        reactions: { sparkles: 2, trophy: 1, thumbsUp: 3 }
-      }
-    ];
-    setStories(mockStories);
+    if (user?.id) {
+      fetchStories();
+    }
   }, [user?.id]);
+
+  // Refresh stories when coming back from camera (if user was analyzing)
+  useEffect(() => {
+    if (!isAnalyzing && user?.id) {
+      // Small delay to allow for processing
+      const timer = setTimeout(() => {
+        fetchStories();
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAnalyzing, user?.id]);
 
   const getHealthColor = (score: number) => {
     if (score >= 80) return '#10B981'; // green
@@ -139,6 +152,12 @@ export default function PlantStories({ onAddPhoto, onStoryPress, isAnalyzing = f
           icon: <AlertTriangle size={24} color="#EF4444" />,
           text: 'Try Again',
           circleStyle: [styles.addPhotoCircle, styles.errorCircle]
+        };
+      } else if (hasUserSubmittedToday) {
+        return {
+          icon: <Camera size={24} color="#4CAF50" />,
+          text: 'Submitted',
+          circleStyle: [styles.addPhotoCircle, styles.submittedCircle]
         };
       } else {
         return {
@@ -199,24 +218,20 @@ export default function PlantStories({ onAddPhoto, onStoryPress, isAnalyzing = f
                 />
               ) : (
                 <View style={[styles.storyImage, styles.placeholderImage]}>
-                  <Heart size={24} color="#9CA3AF" />
+                  <Camera size={30} color="#64748B" />
                 </View>
               )}
             </View>
           </View>
           
           {/* Health score badge */}
-          <View 
-            style={[styles.healthBadge, { backgroundColor: healthColor }]}
-          >
-            <Text variant="labelSmall" style={styles.healthBadgeText}>
-              {story.healthScore}
-            </Text>
+          <View style={[styles.healthBadge, { backgroundColor: healthColor }]}>
+            <Text style={styles.healthScore}>{Math.round(story.healthScore)}</Text>
           </View>
         </View>
         
         <View style={styles.storyTextContainer}>
-          <Text variant="labelSmall" style={styles.storyName} numberOfLines={1}>
+          <Text variant="labelSmall" style={styles.storyName}>
             {story.isCurrentUser ? 'You' : formatName(story.studentName)}
           </Text>
         </View>
@@ -224,38 +239,51 @@ export default function PlantStories({ onAddPhoto, onStoryPress, isAnalyzing = f
     );
   };
 
-  const currentUserStory = stories.find(s => s.isCurrentUser);
-  const otherStories = stories
-    .filter(story => !story.isCurrentUser)
+  if (loading) {
+    return (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.container}>
+        <View style={styles.content}>
+          <AddStoryButton />
+          {/* Loading skeleton */}
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={styles.storyItem}>
+              <View style={styles.relative}>
+                <View style={[styles.addPhotoCircle, styles.skeleton]}>
+                  <View style={[styles.storyImage, styles.skeleton]} />
+                </View>
+              </View>
+              <View style={styles.storyTextContainer}>
+                <View style={[styles.skeleton, { width: 50, height: 12, borderRadius: 6 }]} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  if (error) {
+    return (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.container}>
+        <View style={styles.content}>
+          <AddStoryButton />
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        </View>
+      </ScrollView>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-
-        
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          scrollEventThrottle={16}
-          decelerationRate="fast"
-          snapToInterval={110}
-          snapToAlignment="start"
-        >
-          {/* Current user's story or add button */}
-          {currentUserStory?.hasSubmittedToday ? (
-            <StoryItem story={currentUserStory} />
-          ) : (
-            <AddStoryButton />
-          )}
-          
-          {/* Other students' stories */}
-          {otherStories.map(story => (
-            <StoryItem key={story.id} story={story} />
-          ))}
-        </ScrollView>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.container}>
+      <View style={styles.content}>
+        <AddStoryButton />
+        {stories.map((story) => (
+          <StoryItem key={story.id} story={story} />
+        ))}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -355,5 +383,30 @@ const styles = StyleSheet.create({
   errorCircle: {
     borderColor: '#EF4444',
     borderStyle: 'solid',
+  },
+  submittedCircle: {
+    borderColor: '#4CAF50',
+    borderStyle: 'solid',
+  },
+  healthScore: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 10,
+  },
+  errorContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+  },
+  skeleton: {
+    backgroundColor: '#E5E7EB',
+  },
+  content: {
+    flexDirection: 'row',
+    paddingLeft: 16,
+    alignItems: 'center',
   },
 }); 

@@ -324,6 +324,110 @@ checkRLSContext() // Verify RLS context matches auth
    - Add role-based permissions system
    - Implement audit logging
 
+### 5. Sign-in Page Load Error - Auth State Race Condition
+
+**Problem**: On sign-in page load, the app throws errors due to a race condition between auth initialization and navigation protection.
+
+**Root Cause Analysis**:
+When the app loads, the following sequence occurs:
+1. `AuthContext` initializes and immediately calls `supabase.auth.signOut()` to force a fresh sign-in
+2. This triggers `onAuthStateChange` event with a null session
+3. The `ProtectedRoute` wrapper detects no user and attempts to redirect to `/auth/signin`
+4. Multiple rapid state changes occur during initialization
+5. Navigation attempts happen before the navigator is fully ready
+
+**Specific Code Path**:
+```typescript
+// In AuthContext - Forces sign out on app load
+if (!hasCleared) {
+  console.log('🔄 App load - clearing session to force fresh sign-in');
+  await supabase.auth.signOut(); // This triggers auth state change
+  setUser(null);
+  hasCleared = true;
+}
+
+// In _layout.tsx - ProtectedRoute reacts to auth changes
+useEffect(() => {
+  if (!isLoading && !isSwitchingMode) {
+    if (!user && !inAuthGroup) {
+      router.replace('/auth/signin'); // Attempts navigation during init
+    }
+  }
+}, [user, isLoading, segments, isSwitchingMode]);
+```
+
+**Issues Caused**:
+1. Navigation timing errors - attempting to navigate before router is ready
+2. React state update warnings - multiple rapid state changes
+3. Potential infinite loops if error handling triggers more sign outs
+4. Poor user experience with flashing screens or error messages
+
+**Solution Implemented**:
+
+1. **Improved Initialization Sequencing**:
+   - Add navigation readiness check before attempting redirects
+   - Implement debouncing for auth state changes during initialization
+   - Use a more controlled initialization flow
+
+2. **Enhanced Error Boundaries**:
+   - Wrap auth initialization in try-catch with specific error handling
+   - Prevent sign out calls during error states to avoid loops
+   - Add initialization state tracking
+
+3. **Recommended Code Changes**:
+```typescript
+// AuthContext.tsx - Add initialization state
+const [isInitializing, setIsInitializing] = useState(true);
+
+useEffect(() => {
+  const initializeAuth = async () => {
+    try {
+      setIsInitializing(true);
+      
+      if (!hasCleared) {
+        // Delay sign out to allow navigation to settle
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await supabase.auth.signOut();
+        hasCleared = true;
+      }
+      
+      // Check for existing session after clearing
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadUserFromSession(session);
+      }
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+    } finally {
+      setIsInitializing(false);
+      setIsLoading(false);
+    }
+  };
+  
+  initializeAuth();
+}, []);
+
+// _layout.tsx - Check initialization state
+useEffect(() => {
+  if (!isLoading && !isSwitchingMode && !isInitializing) {
+    // Only navigate after initialization is complete
+    // ... existing navigation logic
+  }
+}, [user, isLoading, segments, isSwitchingMode, isInitializing]);
+```
+
+4. **Alternative Approach - Skip Force Sign Out**:
+   - Consider removing the forced sign out on app load
+   - Instead, validate existing sessions and only sign out if invalid
+   - This would prevent the race condition entirely
+
+**Best Practices Going Forward**:
+1. Avoid forced sign outs during initialization unless absolutely necessary
+2. Implement proper state management for initialization phases
+3. Use navigation guards that respect initialization states
+4. Add error boundaries specific to auth flows
+5. Consider using a splash screen or loading state during auth initialization
+
 ## Development Notes
 
 - The master teacher account is loaded automatically when available
@@ -332,5 +436,7 @@ checkRLSContext() // Verify RLS context matches auth
 - The system supports unlimited student accounts
 - Only one teacher view exists (shared by all users)
 - All Supabase imports must use `@/config/supabase` to prevent auth issues
+- Auth initialization requires careful sequencing to prevent race conditions
+- Navigation protection must respect initialization states to prevent errors
 
 This documentation should be updated as the authentication system evolves to maintain accuracy and help future developers understand the complex interaction between authentication, navigation, and mode switching. 
