@@ -34,6 +34,7 @@ export const GSCard: React.FC<GSCardProps> = ({
       case 'small': return theme.spacing.sm;
       case 'medium': return theme.spacing.md;
       case 'large': return theme.spacing.lg;
+      default: return theme.spacing.md;
     }
   };
 
@@ -43,6 +44,7 @@ export const GSCard: React.FC<GSCardProps> = ({
       case 'small': return theme.spacing.xs;
       case 'medium': return theme.spacing.sm;
       case 'large': return theme.spacing.md;
+      default: return theme.spacing.xs;
     }
   };
 
@@ -72,6 +74,20 @@ export const GSCard: React.FC<GSCardProps> = ({
           backgroundColor: theme.colors.surface,
           borderWidth: 1,
           borderColor: theme.colors.outline,
+        };
+      default:
+        return {
+          backgroundColor: theme.colors.surface,
+          shadowColor: theme.colors.shadow,
+          shadowOffset: {
+            width: 0,
+            height: 1,
+          },
+          shadowOpacity: 0.06,
+          shadowRadius: 2,
+          elevation: theme.elevation.level1,
+          borderWidth: 0.5,
+          borderColor: theme.colors.outlineVariant,
         };
     }
   };

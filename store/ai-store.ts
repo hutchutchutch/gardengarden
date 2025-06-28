@@ -135,37 +135,24 @@ export const useAIStore = create<AIState>()(
           const { data: { user } } = await supabase.auth.getUser();
           console.log('Current auth user:', user?.email);
           
-          // Get user roles for proper message classification
+          // Simple role detection - no complex queries needed
           const uniqueSenderIds = [...new Set(messages.map(m => m.sender_id))];
           console.log('Unique sender IDs:', uniqueSenderIds);
           
-          const { data: usersData, error: usersError } = await supabase
-            .from('users')
-            .select('id, role')
-            .in('id', uniqueSenderIds);
-          
-          if (usersError) {
-            console.error('Error fetching user roles:', usersError);
-          }
-          
-          const userRoles = new Map(usersData?.map(u => [u.id, u.role]) || []);
-          console.log('User roles map:', Object.fromEntries(userRoles));
-          
           // Convert database messages to AIMessage format
           const aiMessages: AIMessage[] = messages.map(msg => {
-            // Determine role based on sender
+            // Determine role based on sender - simplified logic
             let role: 'user' | 'assistant' | 'teacher' = 'user';
             
-            if (msg.sender_id === '00000000-0000-0000-0000-000000000000') {
+            if (msg.sender_id === null) {
+              // AI messages have null sender_id
               role = 'assistant';
+            } else if (msg.sender_id === user?.id) {
+              // Current user's messages
+              role = 'user';
             } else {
-              // Check the actual role of the sender
-              const senderRole = userRoles.get(msg.sender_id);
-              if (senderRole === 'teacher') {
-                role = 'teacher';
-              } else {
-                role = 'user'; // student messages
-              }
+              // Anyone else is a teacher (in student context)
+              role = 'teacher';
             }
             
             return {

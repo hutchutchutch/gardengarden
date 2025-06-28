@@ -128,7 +128,7 @@ serve(async (req) => {
     let relevantChunks: ChunkResult[] = []
     let contextText = ''
 
-    // If we're in AI/chatbot mode and don't have a lesson_id, try to find the active lesson
+        // If we're in AI/chatbot mode and don't have a lesson_id, try to find the active lesson
     if (mode === 'ai' && !lesson_id) {
       console.log('[3.AUTO] No lesson_id provided in AI mode, attempting to find active lesson...')
       
@@ -143,23 +143,26 @@ serve(async (req) => {
         if (thread && !threadError) {
           console.log(`[3.AUTO.1] Found thread with student_id: ${thread.student_id}`)
           
-          // Find the student's active lesson
-          const { data: enrollment, error: enrollError } = await supabase
-            .from('lesson_enrollments')
-            .select('lesson_id')
+          // Find the student's active lesson via plants table (same method as student-index.tsx)
+          const { data: plant, error: plantError } = await supabase
+            .from('plants')
+            .select(`
+              lesson_id,
+              lesson:lessons(*)
+            `)
             .eq('student_id', thread.student_id)
-            .eq('is_active', true)
+            .eq('lesson.status', 'active')
             .single()
           
-          if (enrollment && !enrollError) {
-            effectiveLessonId = enrollment.lesson_id
+          if (plant && !plantError && plant.lesson) {
+            effectiveLessonId = plant.lesson_id
             console.log(`[3.AUTO.2] Found active lesson: ${effectiveLessonId}`)
           } else {
-            console.log(`[3.AUTO.3] No active lesson found: ${enrollError?.message || 'no enrollment'}`)
+            console.log(`[3.AUTO.3] No active lesson found: ${plantError?.message || 'no active plant/lesson'}`)
           }
         }
-             } catch (error) {
-         console.error('[3.AUTO.ERROR] Error finding active lesson:', error instanceof Error ? error.message : error)
+      } catch (error) {
+        console.error('[3.AUTO.ERROR] Error finding active lesson:', error instanceof Error ? error.message : error)
       }
     }
 
@@ -421,9 +424,15 @@ ${plantContext}`
       console.log(`[9] Logging API usage - Tokens: ${openAIData.usage.total_tokens}`)
       
       // Check if api_usage_logs table exists first
-      const { data: tables } = await supabase
-        .rpc('get_tables', { schema_name: 'public' })
-        .catch(() => ({ data: [] }))
+      let tables: any[] = []
+      try {
+        const { data: tablesData } = await supabase
+          .rpc('get_tables', { schema_name: 'public' })
+        tables = tablesData || []
+      } catch (error) {
+        console.log('[9.1] Error checking for tables, proceeding without usage logging')
+        tables = []
+      }
       
       const hasApiUsageTable = tables?.some((t: any) => t.table_name === 'api_usage_logs')
       

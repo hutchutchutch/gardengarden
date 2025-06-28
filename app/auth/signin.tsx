@@ -78,8 +78,8 @@ export default function SignInScreen() {
         <View style={styles.infoBox}>
           <Text style={styles.infoTitle}>Teacher Benefits:</Text>
           <Text style={styles.infoText}>
-            • Create a personalized knowledge base for your students{'\n'}
-            • Custom Chatbots for each lesson so your students can ask questions and get answers{'\n'}
+            • Your students are going to use AI{'\n'}
+            • Give them a chatbot that you trust{'\n'}
           </Text>
         </View>
 

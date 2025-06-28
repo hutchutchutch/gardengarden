@@ -184,7 +184,7 @@ export class MessageService {
 
       // If the current user is a student, only show their own messages and responses
       if (currentUserRole === 'student') {
-        // Get all messages first to identify teacher and AI senders
+        // Get all messages first
         const { data: allMessages, error: allError } = await query.order('created_at', { ascending: true });
         
         if (allError) {
@@ -194,38 +194,19 @@ export class MessageService {
 
         if (!allMessages) return [];
 
-        // Get unique sender IDs to check their roles
-        const senderIds = [...new Set(allMessages.map(m => m.sender_id))];
-        
-        // Get roles for all senders
-        const { data: senders, error: sendersError } = await supabase
-          .from('users')
-          .select('id, role')
-          .in('id', senderIds);
-
-        if (sendersError) {
-          console.error('Error fetching sender roles:', sendersError);
-        }
-
-        const senderRoles = new Map(senders?.map(s => [s.id, s.role]) || []);
-
-        // Filter messages: only show student's own messages, AI messages, and teacher messages
+        // Simple role detection for student view - no complex queries needed
         const filteredMessages = allMessages.filter(msg => {
-          // Always show AI messages
-          if (msg.sender_id === '00000000-0000-0000-0000-000000000000') {
+          // Show AI messages (sender_id is null)
+          if (msg.sender_id === null) {
             return true;
           }
           // Show the student's own messages
           if (msg.sender_id === user.id) {
             return true;
           }
-          // Show teacher messages
-          const senderRole = senderRoles.get(msg.sender_id);
-          if (senderRole === 'teacher') {
-            return true;
-          }
-          // Hide other students' messages
-          return false;
+          // Show messages from anyone who isn't the student (teachers)
+          // This avoids the need to query user roles
+          return msg.sender_id !== user.id;
         });
 
         return filteredMessages;

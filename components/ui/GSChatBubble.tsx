@@ -65,6 +65,19 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
     if (type === 'ai') return '#4CAF50'; // Green for AI/chatbot
     if (type === 'document') return '#F59E0B'; // Orange for document references
     
+    // For teacher viewing messages:
+    if (currentUserRole === 'teacher') {
+      if (type === 'student') return '#2196F3'; // Student messages in blue (left)
+      if (type === 'teacher') return '#E5E7EB'; // Teacher messages in gray (right)
+    }
+    
+    // For student viewing messages:
+    if (currentUserRole === 'student') {
+      if (type === 'student') return '#E5E7EB'; // Student messages in gray (right)
+      if (type === 'teacher') return '#2196F3'; // Teacher messages in blue (left)
+    }
+    
+    // Fallback to alignment-based coloring
     const alignment = getAlignment();
     if (alignment === 'flex-end') return '#E5E7EB'; // Gray for messages on right
     return '#2196F3'; // Blue for messages on left
