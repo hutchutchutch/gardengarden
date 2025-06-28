@@ -501,14 +501,10 @@ export class PhotoService {
         encoding: FileSystem.EncodingType.Base64,
       });
       
-      // Convert base64 to blob using decode
-      const arrayBuffer = decode(base64Data);
-      const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
-      
-      // Upload to Supabase Storage in chat folder
+      // Upload base64 directly to Supabase using decode
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('plant-photos')
-        .upload(`chat/${userId}/${fileName}`, blob, {
+        .upload(`chat/${userId}/${fileName}`, decode(base64Data), {
           contentType: 'image/jpeg',
           upsert: false
         });
@@ -632,32 +628,11 @@ export class PhotoService {
         throw new Error(`Failed to read image file: ${readError instanceof Error ? readError.message : 'Unknown error'}`);
       }
       
-      // Convert base64 to blob using decode from base64-arraybuffer
-      console.log('🔄 Converting base64 to blob...');
-      let blob: Blob;
-      try {
-        // Decode base64 to ArrayBuffer
-        const arrayBuffer = decode(base64Data);
-        console.log('📦 ArrayBuffer created, size:', arrayBuffer.byteLength);
-        
-        // Create blob from ArrayBuffer
-        blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
-        console.log('✅ Blob created successfully:', {
-          size: blob.size,
-          type: blob.type
-        });
-        
-        if (blob.size === 0) {
-          throw new Error('Blob creation resulted in 0 bytes');
-        }
-      } catch (blobError) {
-        console.error('❌ Failed to create blob:', blobError);
-        throw new Error(`Failed to create blob: ${blobError instanceof Error ? blobError.message : 'Unknown error'}`);
-      }
-      
+      // Upload base64 directly to Supabase using decode
+      console.log('☁️ Uploading to Supabase...');
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('plant-photos')
-        .upload(`${studentId}/${finalFileName}`, blob, {
+        .upload(`${studentId}/${finalFileName}`, decode(base64Data), {
           contentType: 'image/jpeg',
           upsert: false
         });
@@ -669,6 +644,8 @@ export class PhotoService {
           error: 'Failed to upload photo'
         };
       }
+      
+      console.log('✅ Upload successful:', uploadData);
 
       const { data: publicUrlData } = supabase.storage
         .from('plant-photos')
@@ -719,13 +696,10 @@ export class PhotoService {
         encoding: FileSystem.EncodingType.Base64,
       });
       
-      // Convert base64 to blob using decode
-      const arrayBuffer = decode(base64Data);
-      const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
-      
+      // Upload base64 directly to Supabase using decode
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('plant-photos')
-        .upload(`${studentId}/${finalFileName}`, blob, {
+        .upload(`${studentId}/${finalFileName}`, decode(base64Data), {
           contentType: 'image/jpeg',
           upsert: false
         });
