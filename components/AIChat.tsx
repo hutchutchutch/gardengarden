@@ -545,7 +545,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
             buttons={[
               {
                 value: 'ai',
-                label: 'Chatbot',
+                label: 'AI Assistant',
                 style: mode === 'ai' ? styles.segmentedButtonActiveAI : styles.segmentedButtonInactive,
                 labelStyle: mode === 'ai' ? styles.segmentedButtonActiveLabelAI : styles.segmentedButtonInactiveLabel,
               },
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
     maxWidth: 200,
   },
   segmentedButtonActiveAI: {
-    backgroundColor: '#4CAF50', // Green to match AI chat bubble
+    backgroundColor: '#A78BFA', // Purple to match AI chat bubble
   },
   segmentedButtonActiveTeacher: {
     backgroundColor: '#2196F3', // Blue to match teacher chat bubble

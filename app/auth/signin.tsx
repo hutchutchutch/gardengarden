@@ -104,8 +104,8 @@ export default function SignInScreen() {
                 setPassword('MasterSplinter');
               }}
             >
-              <GraduationCap size={16} color="#8B5CF6" />
-              <Text style={[styles.quickFillText, { color: '#8B5CF6' }]}>Hutch (Teacher)</Text>
+                              <GraduationCap size={16} color="#A78BFA" />
+                <Text style={[styles.quickFillText, { color: '#A78BFA' }]}>Hutch (Teacher)</Text>
             </Pressable>
           </View>
         </View>

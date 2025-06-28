@@ -6,6 +6,9 @@ Our design system embodies the nurturing journey of plant growth, combining eart
 🌈 Color Palette
 Primary Colors
 TokenHex ValueColor NameUsageprimary.50#E8F5E9Mint CreamBackgroundsprimary.100#C8E6C9Light SageHover statesprimary.200#A5D6A7Soft SageInactive elementsprimary.300#81C784Fresh SageSecondary actionsprimary.400#66BB6AGarden GreenPrimary buttonsprimary.500#4CAF50Growth GreenMain brand colorprimary.600#43A047Deep GardenPressed statesprimary.700#388E3CForestHeadersprimary.800#2E7D32Dark ForestText on lightprimary.900#1B5E20Midnight ForestHigh contrast
+
+AI Chat Colors
+TokenHex ValueColor NameUsageai.50#F3F4F6Light LavenderAI backgroundsai.100#E5E7EBGentle GrayStudent messagesai.200#C4B5FDSoft LavenderAI hoverstatesai.300#A78BFAGentle PurpleAI chat bubblesai.400#8B5CF6Active PurpleAI button activeai.500#7C3AEDDeep PurpleAI emphasizedai.600#6D28D9Bold PurpleAI headers
 Secondary Colors
 TokenHex ValueColor NameUsagesecondary.50#FFF3E0Sunshine CreamHighlightssecondary.100#FFE0B2Soft AmberBadgessecondary.200#FFCC80Golden HourWarningssecondary.300#FFB74DWarm AmberAccentssecondary.400#FFA726Sunset OrangeNotificationssecondary.500#FF9800Harvest OrangeCTAssecondary.600#FB8C00PumpkinActive statessecondary.700#F57C00Deep OrangeEmphasissecondary.800#EF6C00Burnt OrangeAlertssecondary.900#E65100Dark AmberCritical
 Semantic Colors
@@ -70,7 +73,7 @@ Health Badge: Top-right, 12px margin
 Text Overlay: Bottom gradient (rgba(0,0,0,0) to rgba(0,0,0,0.6))
 
 Chat Bubbles
-TypeBackgroundText ColorAlignmentTeacherLinear gradient: #4CAF50 to #43A047WhiteLeftAI AssistantLinear gradient: #2196F3 to #1976D2WhiteLeftStudent (self)#F5F5F5BlackRight
+TypeBackgroundText ColorAlignmentTeacher#3B82F6WhiteLeftAI Assistant#A78BFA (Gentle Purple)WhiteLeftStudent (self)#E5E7EB (Gentle Gray)BlackRight
 
 Max Width: 80% of screen
 Border Radius: 18px (4px on attachment corner)

@@ -25,7 +25,7 @@ export default function TeacherMessagesScreen() {
 
   // Helper function to get student initials
   const getStudentInitials = (studentName?: string) => {
-    if (!studentName) return 'U';
+    if (!studentName || typeof studentName !== 'string') return 'U';
     return studentName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
   };
 
@@ -156,11 +156,11 @@ export default function TeacherMessagesScreen() {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                       <Text style={{ fontWeight: '600', fontSize: 16, color: '#000' }}>
-                        {item.student?.name || 'Unknown Student'}
+                        {(item.student?.name && typeof item.student.name === 'string') ? item.student.name : 'Unknown Student'}
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={{ fontSize: 12, color: '#666' }}>
-                          {item.last_message ? MessageService.formatTimestamp(item.last_message.created_at) : 'No messages'}
+                          {item.last_message ? (MessageService.formatTimestamp(item.last_message.created_at) || 'Just now') : 'No messages'}
                         </Text>
                         {item.unread_count && item.unread_count > 0 && (
                           <View style={{ 
@@ -173,7 +173,7 @@ export default function TeacherMessagesScreen() {
                             paddingHorizontal: 6 
                           }}>
                             <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>
-                              {item.unread_count}
+                              {item.unread_count?.toString() || '0'}
                             </Text>
                           </View>
                         )}
@@ -181,7 +181,7 @@ export default function TeacherMessagesScreen() {
                     </View>
                     
                     <Text style={{ fontSize: 14, color: '#666', marginBottom: 8 }} numberOfLines={2}>
-                      {safeMessagePreview(item.last_message?.content)}
+                      {safeMessagePreview(item.last_message?.content) || 'No message preview'}
                     </Text>
                   </View>
 

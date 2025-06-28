@@ -39,57 +39,50 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   const theme = useAppTheme();
   const [showExpandedSources, setShowExpandedSources] = useState(false);
 
+  // Helper function to determine if this is the current user's message
+  const isCurrentUserMessage = (): boolean => {
+    if (currentUserRole === 'teacher' && type === 'teacher') return true;
+    if (currentUserRole === 'student' && type === 'student') return true;
+    return false;
+  };
+
   const getAlignment = (): 'flex-start' | 'flex-end' => {
     // Document bubbles always appear on the left (from teacher)
     if (type === 'document') return 'flex-start';
     
-    // When viewing as a student:
-    if (currentUserRole === 'student') {
-      if (type === 'student') return 'flex-end'; // Student messages on right
-      if (type === 'ai') return 'flex-start'; // Chatbot messages on left
-      if (type === 'teacher') return 'flex-start'; // Teacher messages on left
+    // Current user's messages always on the right
+    if (isCurrentUserMessage()) return 'flex-end';
+    
+    // AI messages: right for teachers, left for students
+    if (type === 'ai') {
+      return currentUserRole === 'teacher' ? 'flex-end' : 'flex-start';
     }
     
-    // When viewing as a teacher:
-    if (currentUserRole === 'teacher') {
-      if (type === 'teacher') return 'flex-end'; // Teacher messages on right
-      if (type === 'ai') return 'flex-end'; // Chatbot messages on right
-      if (type === 'student') return 'flex-start'; // Student messages on left
-    }
-    
-    // Fallback
+    // Other user's messages always on the left
     return 'flex-start';
   };
 
   const getBubbleColor = () => {
-    if (type === 'ai') return '#4CAF50'; // Green for AI/chatbot
     if (type === 'document') return '#F59E0B'; // Orange for document references
     
-    // For teacher viewing messages:
-    if (currentUserRole === 'teacher') {
-      if (type === 'student') return '#2196F3'; // Student messages in blue (left)
-      if (type === 'teacher') return '#E5E7EB'; // Teacher messages in gray (right)
-    }
+    // Current user's messages are always gray
+    if (isCurrentUserMessage()) return '#E5E7EB';
     
-    // For student viewing messages:
-    if (currentUserRole === 'student') {
-      if (type === 'student') return '#E5E7EB'; // Student messages in gray (right)
-      if (type === 'teacher') return '#2196F3'; // Teacher messages in blue (left)
-    }
+    // AI messages are always purple
+    if (type === 'ai') return '#A78BFA';
     
-    // Fallback to alignment-based coloring
-    const alignment = getAlignment();
-    if (alignment === 'flex-end') return '#E5E7EB'; // Gray for messages on right
-    return '#2196F3'; // Blue for messages on left
+    // Other user's messages are always blue
+    return '#3B82F6';
   };
 
   const getTextColor = () => {
-    const alignment = getAlignment();
-    
-    if (type === 'ai') return '#FFFFFF'; // White text on green
     if (type === 'document') return '#FFFFFF'; // White text on orange
-    if (alignment === 'flex-end') return '#374151'; // Dark text on gray (current user)
-    return '#FFFFFF'; // White text on blue (other user)
+    
+    // Current user's messages have dark text on gray background
+    if (isCurrentUserMessage()) return '#374151';
+    
+    // AI and other user messages have white text on colored backgrounds
+    return '#FFFFFF';
   };
 
   const formatTime = (timestamp: string) => {

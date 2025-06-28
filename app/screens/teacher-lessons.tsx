@@ -32,10 +32,10 @@ import { supabase, supabaseUrl, supabaseAnonKey } from '@/config/supabase';
 import { format } from 'date-fns';
 
 // PURPLE ACCENT IMPLEMENTATION GUIDE:
-// Primary Purple: #8B5CF6 - Active AI features, clickable elements
-// Light Purple: #EDE9FE - AI section backgrounds
-// Dark Purple: #6D28D9 - High-impact metrics
-// Purple Gradient: Processing animations (from #8B5CF6 to #6D28D9)
+// Primary Purple: #A78BFA - Active AI features, clickable elements (Gentle Purple)
+// Light Purple: #F3F4F6 - AI section backgrounds (Light Lavender)
+// Dark Purple: #7C3AED - High-impact metrics (Deep Purple)
+// Purple Gradient: Processing animations (from #A78BFA to #7C3AED)
 
 export default function TeacherLessons() {
   const router = useRouter();
@@ -543,7 +543,7 @@ export default function TeacherLessons() {
                   <GSIconButton
                     icon="brain"
                     size={20}
-                    color="#8B5CF6"
+                    color="#A78BFA"
                     onPress={() => {}}
                   />
                   <Text style={[styles.sectionTitle, styles.purpleText]}>
@@ -721,7 +721,7 @@ export default function TeacherLessons() {
                     </View>
                     <View style={[
                       styles.metricCard, 
-                      { backgroundColor: theme.colors.surfaceVariant, borderColor: '#8B5CF6', borderWidth: 1 }
+                      { backgroundColor: theme.colors.surfaceVariant, borderColor: '#A78BFA', borderWidth: 1 }
                     ]}>
                       <Text style={[styles.metricLabel, { color: theme.colors.onSurfaceVariant }]} numberOfLines={1}>
                         Top AI Resource
@@ -825,7 +825,7 @@ export default function TeacherLessons() {
                             <GSProgressIndicator
                               type="linear"
                               progress={processingProgress / 100}
-                              color="#8B5CF6"
+                              color="#A78BFA"
                             />
                             <Text style={[styles.progressLabel, styles.purpleText]}>
                               Preparing AI Knowledge...
@@ -1039,7 +1039,7 @@ const styles = StyleSheet.create({
   },
   purpleAccentBar: {
     height: 3,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#A78BFA',
     borderRadius: 1.5,
     marginTop: 4,
   },
@@ -1048,8 +1048,8 @@ const styles = StyleSheet.create({
     transition: 'box-shadow 0.2s ease',
   },
   aiKnowledgeBase: {
-    backgroundColor: '#EDE9FE',
-    borderColor: '#8B5CF6',
+    backgroundColor: '#F3F4F6',
+    borderColor: '#A78BFA',
     borderWidth: 1,
   },
   documentsHeader: {
@@ -1071,7 +1071,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   purpleText: {
-    color: '#8B5CF6',
+    color: '#A78BFA',
   },
   chipContainer: {
     flexDirection: 'row',
@@ -1090,7 +1090,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   purpleGradientButton: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#A78BFA',
     // Note: For full gradient support, this would need to be implemented in the GSButton component
   },
   listContainer: {
@@ -1164,7 +1164,7 @@ const styles = StyleSheet.create({
     transition: 'background-color 0.3s ease',
   },
   processingBackground: {
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#F3F4F6',
     padding: 12,
     borderRadius: 8,
   },
@@ -1216,14 +1216,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   glowEffect: {
-    shadowColor: '#8B5CF6',
+    shadowColor: '#A78BFA',
     shadowRadius: 8,
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 0 },
   },
   purpleFAB: {
-    backgroundColor: '#8B5CF6',
-    shadowColor: '#8B5CF6',
+    backgroundColor: '#A78BFA',
+    shadowColor: '#A78BFA',
     shadowRadius: 12,
     shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 4 },
