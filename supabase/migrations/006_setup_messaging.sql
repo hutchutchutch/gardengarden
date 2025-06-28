@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS message_threads (
 CREATE TABLE IF NOT EXISTS messages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     thread_id UUID NOT NULL REFERENCES message_threads(id) ON DELETE CASCADE,
-    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
     image_url TEXT,
     is_read BOOLEAN DEFAULT FALSE,
@@ -115,7 +115,7 @@ CREATE POLICY "Users can view messages in their threads" ON messages
 -- Users can create messages in threads they participate in
 CREATE POLICY "Users can create messages in their threads" ON messages
     FOR INSERT WITH CHECK (
-        sender_id = auth.uid() AND
+        (sender_id = auth.uid() OR sender_id IS NULL) AND
         EXISTS (
             SELECT 1 FROM message_threads 
             WHERE message_threads.id = messages.thread_id 

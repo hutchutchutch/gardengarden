@@ -297,7 +297,8 @@ export const useAIStore = create<AIState>()(
                   lesson_id: lessonId,
                   plant_id: plantId,
                   conversation_history: history,
-                  include_sources: true
+                  include_sources: true,
+                  mode: 'ai' // Explicitly set mode for AI messages
                 }
               });
 
@@ -322,8 +323,32 @@ export const useAIStore = create<AIState>()(
                   sources: data.relevant_chunks ? data.relevant_chunks.map((chunkId: string) => ({ chunk_id: chunkId })) : undefined
                 };
                 
+                // Build messages array with user message and AI response
+                const newMessages = [savedUserMessage, aiResponse];
+                
+                // If we have chunk details, add them as separate assistant messages
+                if (data.chunk_details && data.chunk_details.length > 0) {
+                  console.log(`Adding ${data.chunk_details.length} reference chunks as messages`);
+                  
+                  data.chunk_details.forEach((chunk: any, index: number) => {
+                    const chunkMessage: AIMessage = {
+                      id: data.chunk_message_ids?.[index] || `chunk-${Date.now()}-${index}`,
+                      role: 'assistant',
+                      content: `📚 **Reference ${index + 1}**\n\n${chunk.content}\n\n*Relevance: ${Math.round(chunk.similarity * 100)}%*`,
+                      timestamp: new Date(Date.now() + index + 1).toISOString(),
+                      sources: [{
+                        url: chunk.id, // Use chunk ID as URL for now
+                        title: `Lesson Reference ${index + 1}`,
+                        snippet: chunk.content.substring(0, 200) + '...',
+                        similarity: chunk.similarity
+                      }]
+                    };
+                    newMessages.push(chunkMessage);
+                  });
+                }
+                
                 set(state => ({
-                  messages: [...state.messages.slice(0, -1), savedUserMessage, aiResponse],
+                  messages: [...state.messages.slice(0, -1), ...newMessages],
                   isLoading: false
                 }));
               } else {
