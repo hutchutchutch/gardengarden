@@ -921,7 +921,7 @@ export default function StudentIndexScreen() {
         <GSFAB
           icon="message-text"
           onPress={() => router.push('/ai-chat')}
-          variant="primary"
+          variant="ai"
         />
       </View>
     </SafeAreaView>

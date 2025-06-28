@@ -61,6 +61,15 @@ const slides: OnboardingSlide[] = [
     color: '#388E3C',
     accentColor: '#A5D6A7',
   },
+  {
+    id: 4,
+    title: 'Garden Guru Demo',
+    subtitle: 'Example implementation',
+    description: 'This app is an example of how the teacher of a gardening class could implement this approach to enhance learning with AI assistance.',
+    icon: <Sparkles size={60} color="#2E7D32" />,
+    color: '#2E7D32',
+    accentColor: '#81C784',
+  },
 ];
 
 export default function OnboardingScreen() {

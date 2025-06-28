@@ -14,7 +14,7 @@ export interface FABAction {
 
 export type { FABVariant, FABSize, FABPosition };
 
-type FABVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
+type FABVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'ai';
 type FABSize = 'small' | 'medium' | 'large';
 type FABPosition = 'bottom-right' | 'bottom-left' | 'bottom-center';
 
@@ -83,6 +83,12 @@ export const GSFAB: React.FC<GSFABProps> = ({
         return {
           backgroundColor: theme.colors.error,
           iconColor: theme.colors.onError,
+          rippleColor: 'rgba(255, 255, 255, 0.32)',
+        };
+      case 'ai':
+        return {
+          backgroundColor: theme.colors.aiPrimary,
+          iconColor: theme.colors.onAiPrimary,
           rippleColor: 'rgba(255, 255, 255, 0.32)',
         };
     }

@@ -79,6 +79,11 @@ export interface AppTheme extends MD3Theme {
     backgroundLight: string;
     gray: string;
     grayLight: string;
+    // AI Chat Colors from design system
+    aiPrimary: string;
+    aiContainer: string;
+    onAiPrimary: string;
+    onAiContainer: string;
   };
   spacing: {
     xxs: number;
@@ -177,6 +182,11 @@ export const lightTheme: AppTheme = {
     backgroundLight: '#F5F7FA',
     gray: '#9E9E9E',
     grayLight: '#EEEEEE',
+    // AI Chat Colors from design system
+    aiPrimary: '#7C3AED', // Deep Purple for AI emphasized elements
+    aiContainer: '#A78BFA', // Gentle Purple for AI chat bubbles
+    onAiPrimary: '#FFFFFF',
+    onAiContainer: '#FFFFFF',
   },
   // Custom properties
   spacing: {
@@ -276,6 +286,11 @@ export const darkTheme: AppTheme = {
     backgroundLight: '#252525',
     gray: '#757575',
     grayLight: '#424242',
+    // AI Chat Colors from design system
+    aiPrimary: '#8B5CF6', // Active Purple for dark mode
+    aiContainer: '#6D28D9', // Bold Purple for dark mode
+    onAiPrimary: '#FFFFFF',
+    onAiContainer: '#FFFFFF',
   },
   // Custom properties (same as light theme)
   spacing: {

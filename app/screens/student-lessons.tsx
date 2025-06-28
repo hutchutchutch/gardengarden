@@ -17,6 +17,7 @@ import {
   GSIconButton,
   GSEmptyState,
   GSSearchBar,
+  GSFAB,
   Text,
   SectionHeader
 } from '@/components/ui';
@@ -320,6 +321,13 @@ export default function StudentLessons() {
             onAction={searchQuery ? () => setSearchQuery('') : undefined}
           />
         }
+      />
+      
+      {/* AI Chat FAB - Always visible in Student Mode */}
+      <GSFAB
+        icon="message-text"
+        onPress={() => router.push('/ai-chat')}
+        variant="ai"
       />
     </SafeAreaView>
   );

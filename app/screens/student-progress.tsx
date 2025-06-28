@@ -725,6 +725,14 @@ export default function StudentProgressScreen() {
       
       <GSFAB icon="camera" onPress={() => router.push('/(tabs)/camera')} />
       
+      {/* AI Chat FAB positioned to the left */}
+      <GSFAB
+        icon="message-text"
+        onPress={() => router.push('/ai-chat')}
+        variant="ai"
+        position="bottom-left"
+      />
+      
       <GSSnackbar
         visible={snackbar.visible}
         message={snackbar.message}
