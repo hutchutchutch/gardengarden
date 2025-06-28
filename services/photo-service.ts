@@ -496,9 +496,14 @@ export class PhotoService {
       // Compress image for chat (smaller size for faster processing)
       const compressedUri = await this.compressImage(convertedUri, SaveFormat.JPEG, 800, 0.6);
       
-      // Convert to blob for upload
-      const response = await fetch(compressedUri);
-      const blob = await response.blob();
+      // Read file directly as base64 instead of using fetch
+      const base64Data = await FileSystem.readAsStringAsync(compressedUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      
+      // Convert base64 to blob using decode
+      const arrayBuffer = decode(base64Data);
+      const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
       
       // Upload to Supabase Storage in chat folder
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -604,77 +609,50 @@ export class PhotoService {
       // Skip duplicate detection for now to simplify debugging
       console.log('⏭️ Skipping duplicate detection, proceeding with upload and analysis');
       
-      console.log('🌐 Fetching compressed image...');
+      console.log('📖 Reading compressed image file directly...');
       
-      // Add detailed request debugging
-      console.log('🔍 Fetch request details:', {
-        url: compressedUri,
-        isFileUri: compressedUri.startsWith('file://'),
-        isContentUri: compressedUri.startsWith('content://'),
-        isHttpUri: compressedUri.startsWith('http')
-      });
-      
-      const response = await fetch(compressedUri);
-      
-      console.log('📡 Fetch response:', {
-        ok: response.ok,
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      // Read the file as base64 directly - more reliable than fetch() for local files
+      let base64Data: string;
+      try {
+        base64Data = await FileSystem.readAsStringAsync(compressedUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        console.log('✅ File read successful:', {
+          base64Length: base64Data.length,
+          sampleData: base64Data.substring(0, 100) + '...',
+          estimatedSize: Math.round(base64Data.length * 0.75) // Approximate decoded size
+        });
+        
+        if (!base64Data || base64Data.length === 0) {
+          throw new Error('File read returned empty data');
+        }
+      } catch (readError) {
+        console.error('❌ Failed to read file:', readError);
+        throw new Error(`Failed to read image file: ${readError instanceof Error ? readError.message : 'Unknown error'}`);
       }
       
-            let blob = await response.blob();
-      console.log('📦 Blob created:', {
-        size: blob.size,
-        type: blob.type,
-        hasStream: blob.stream !== undefined,
-        hasArrayBuffer: blob.arrayBuffer !== undefined
-      });
-      
-      if (blob.size === 0) {
-        // Try to get more info about why blob is empty
-        console.error('❌ Empty blob - trying alternative approach...');
+      // Convert base64 to blob using decode from base64-arraybuffer
+      console.log('🔄 Converting base64 to blob...');
+      let blob: Blob;
+      try {
+        // Decode base64 to ArrayBuffer
+        const arrayBuffer = decode(base64Data);
+        console.log('📦 ArrayBuffer created, size:', arrayBuffer.byteLength);
         
-        // Try reading the file directly with FileSystem
-        try {
-          const base64Data = await FileSystem.readAsStringAsync(compressedUri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          console.log('📄 Direct file read result:', {
-            base64Length: base64Data.length,
-            first50Chars: base64Data.substring(0, 50)
-          });
-          
-          if (base64Data.length > 0) {
-            // Convert base64 to blob manually
-            const binaryString = atob(base64Data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-            const manualBlob = new Blob([bytes], { type: 'image/jpeg' });
-            console.log('🔧 Manual blob created:', {
-              size: manualBlob.size,
-              type: manualBlob.type
-            });
-            
-            if (manualBlob.size > 0) {
-              console.log('✅ Using manually created blob');
-              blob = manualBlob;
-            } else {
-              throw new Error('Even manual blob creation resulted in 0 bytes');
-            }
-          } else {
-            throw new Error('File exists but contains no data');
-          }
-        } catch (directReadError) {
-          console.error('❌ Direct file read also failed:', directReadError);
-          throw new Error('Image blob is empty and direct file read failed');
+        // Create blob from ArrayBuffer
+        blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+        console.log('✅ Blob created successfully:', {
+          size: blob.size,
+          type: blob.type
+        });
+        
+        if (blob.size === 0) {
+          throw new Error('Blob creation resulted in 0 bytes');
         }
+      } catch (blobError) {
+        console.error('❌ Failed to create blob:', blobError);
+        throw new Error(`Failed to create blob: ${blobError instanceof Error ? blobError.message : 'Unknown error'}`);
       }
       
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -736,8 +714,14 @@ export class PhotoService {
       // Optionally compress image
       const finalUri = compress ? await this.compressImage(convertedUri) : convertedUri;
       
-      const response = await fetch(finalUri);
-      const blob = await response.blob();
+      // Read file directly as base64 instead of using fetch
+      const base64Data = await FileSystem.readAsStringAsync(finalUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      
+      // Convert base64 to blob using decode
+      const arrayBuffer = decode(base64Data);
+      const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('plant-photos')
