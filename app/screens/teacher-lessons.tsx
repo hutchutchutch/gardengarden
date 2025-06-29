@@ -17,7 +17,6 @@ import {
   GSLoadingSpinner,
   GSButton,
   GSEmptyState,
-  GSFAB,
   GSProgressIndicator,
   GSCard,
   GSDocumentItem,
@@ -89,32 +88,19 @@ export default function TeacherLessons() {
 
   // Load lesson data
   const loadLessonData = async () => {
-    console.log('🔄 [LOAD DATA START] Loading lesson data...');
-    
     try {
       setLoading(true);
-      console.log('⏳ [LOAD DATA] Loading state set to true');
       
       if (!user?.id) {
-        console.error('❌ [LOAD DATA FAILED] No user ID available for loading lessons');
+        console.error('No user ID available for loading lessons');
         return;
       }
-
-      console.log('👤 [LOAD DATA] User info:', {
-        userId: user.id,
-        userRole: user.role,
-        userName: user.name
-      });
 
       // Only load teacher data if user is actually a teacher
       if (user.role !== 'teacher') {
-        console.log('⚠️ [LOAD DATA SKIP] User is not a teacher, skipping teacher lesson data load');
         setLoading(false);
         return;
       }
-
-      console.log('📚 [LOAD DATA] Fetching lesson data from service...');
-      const startTime = Date.now();
 
       const [current, completed, upcoming] = await Promise.all([
         LessonService.getCurrentLesson(user.id),
@@ -122,66 +108,23 @@ export default function TeacherLessons() {
         LessonService.getUpcomingLessons(user.id)
       ]);
 
-      const loadTime = Date.now() - startTime;
-      console.log(`⏱️ [LOAD DATA] Lesson data fetched in ${loadTime}ms`);
-
-      console.log('📊 [LOAD DATA] Lesson data results:', {
-        currentLesson: current ? { id: current.id, name: current.name, urlCount: current.lesson_urls?.length || 0 } : null,
-        completedCount: completed.length,
-        upcomingCount: upcoming.length
-      });
-
       setCurrentLesson(current);
       setCompletedLessons(completed);
       setUpcomingLessons(upcoming);
-      
-      console.log('✅ [LOAD DATA SUCCESS] All lesson data loaded and state updated');
     } catch (error) {
-      console.error('💥 [LOAD DATA ERROR] Error loading lesson data:', {
-        errorMessage: error instanceof Error ? error.message : String(error),
-        errorStack: error instanceof Error ? error.stack : undefined,
-        userId: user?.id
-      });
+      console.error('Error loading lesson data:', error);
     } finally {
       setLoading(false);
-      console.log('🏁 [LOAD DATA END] Loading state set to false');
     }
   };
 
   useEffect(() => {
-    console.log('🔄 [COMPONENT] useEffect triggered with:', {
-      isTeacherMode,
-      userId: user?.id,
-      userRole: user?.role
-    });
-
     if (!isTeacherMode) {
-      console.log('🔀 [NAVIGATION] Not in teacher mode, redirecting to student lessons');
       router.replace('/screens/student-lessons');
     } else if (user?.id) {
-      console.log('✅ [COMPONENT] Teacher mode confirmed, loading lesson data');
       loadLessonData();
-    } else {
-      console.log('⚠️ [COMPONENT] Teacher mode but no user ID yet');
     }
   }, [isTeacherMode, user?.id]);
-
-  // Track currentLesson changes for debugging
-  useEffect(() => {
-    console.log('📚 [CURRENT LESSON] Current lesson changed:', {
-      hasLesson: !!currentLesson,
-      lessonId: currentLesson?.id,
-      lessonName: currentLesson?.name,
-      urlCount: currentLesson?.lesson_urls?.length || 0,
-      urls: currentLesson?.lesson_urls?.map(url => ({
-        id: url.id,
-        url: url.url,
-        title: url.title || 'No title',
-        status: url.status,
-        progress: url.processing_progress
-      }))
-    });
-  }, [currentLesson]);
 
   const handleCreateLesson = () => {
     router.push({
@@ -191,17 +134,7 @@ export default function TeacherLessons() {
   };
 
   const handleAddResource = async () => {
-    console.log('🚀 [WORKFLOW START] handleAddResource triggered');
-    console.log('📝 [STEP 1] Validating inputs...');
-    
     if (!newResourceUrl.trim() || !currentLesson?.id) {
-      console.error('❌ [STEP 1 FAILED] Missing required data:', {
-        hasUrl: !!newResourceUrl.trim(),
-        hasLessonId: !!currentLesson?.id,
-        url: newResourceUrl.trim(),
-        lessonId: currentLesson?.id
-      });
-      
       if (!newResourceUrl.trim()) {
         showSnackbar('Please enter a URL to add as a resource', 'warning');
       } else {
@@ -209,12 +142,6 @@ export default function TeacherLessons() {
       }
       return;
     }
-
-    console.log('✅ [STEP 1 SUCCESS] Validation passed:', {
-      url: newResourceUrl.trim(),
-      lessonId: currentLesson.id,
-      lessonName: currentLesson.name
-    });
 
     // Generate temporary ID for loading state
     const tempId = `temp-${Date.now()}`;
@@ -234,9 +161,6 @@ export default function TeacherLessons() {
     setNewResourceUrl('');
 
     try {
-      console.log('📡 [STEP 2] Calling scrape-lesson-url edge function...');
-      const startTime = Date.now();
-      
       // Make direct fetch call to edge function for better error handling
       let data = null;
       const functionUrl = `${supabaseUrl}/functions/v1/scrape-lesson-url`;
@@ -255,26 +179,16 @@ export default function TeacherLessons() {
           })
         });
 
-        const processingTime = Date.now() - startTime;
-        console.log(`⏱️ [STEP 2] Edge function call completed in ${processingTime}ms`);
-        console.log('📡 [STEP 2] Response status:', response.status);
-
         // Always parse the response body regardless of status
         data = await response.json();
-        console.log('📦 [STEP 2] Response data:', data);
 
         // Check if it was an error response
         if (!response.ok || !data?.success) {
-          console.error('❌ [STEP 2 FAILED] Edge function returned error:', {
-            status: response.status,
-            data: data
-          });
+          console.error('Edge function returned error:', response.status, data);
           // Continue to error handling below with the parsed error data
         }
       } catch (error) {
-        const processingTime = Date.now() - startTime;
-        console.log(`⏱️ [STEP 2] Edge function call failed after ${processingTime}ms`);
-        console.error('💥 [STEP 2 ERROR] Network or parsing error:', error);
+        console.error('Network or parsing error:', error);
         
         // Remove loading resource and show error in snackbar
         setLoadingResources(prev => prev.filter(item => item.id !== tempId));
@@ -282,53 +196,22 @@ export default function TeacherLessons() {
         return;
       }
 
-      console.log('📦 [STEP 3] Processing edge function response...', {
-        hasData: !!data,
-        success: data?.success,
-        error: data?.error,
-        error_type: data?.error_type,
-        user_message: data?.user_message,
-        fullResponse: data
-      });
-
       // Remove loading resource from state
       setLoadingResources(prev => prev.filter(item => item.id !== tempId));
 
       if (data?.success) {
-        console.log('✅ [STEP 3 SUCCESS] Resource processing successful:', {
-          lessonUrlId: data.lesson_url_id,
-          chunksCreated: data.chunks_created,
-          title: data.title,
-          sections: data.sections
-        });
-
-        console.log('🔄 [STEP 4] Reloading lesson data...');
-        
         // Reload lesson data to show the new resource
         await loadLessonData();
-        console.log('✅ [STEP 4 SUCCESS] Lesson data reloaded');
         
         // Show success message
         showSnackbar(`Successfully added "${data.title || 'Resource'}" to lesson`, 'success');
-        
-        console.log('🎉 [WORKFLOW SUCCESS] Resource added and processed successfully!');
       } else {
-        console.error('❌ [STEP 3 FAILED] Resource processing failed:', {
-          error: data?.error,
-          error_type: data?.error_type,
-          user_message: data?.user_message,
-          fullResponse: data
-        });
-
         // Handle different types of errors with appropriate UI feedback
         const errorType = data?.error_type || 'unknown';
         const userMessage = data?.user_message || 'An error occurred while processing the URL';
 
-        console.log('🔍 [ERROR HANDLING] Categorizing error type:', errorType);
-
         switch (errorType) {
           case 'scrape_protected':
-            console.log('🛡️ [ERROR] Scrape protection detected');
             showSnackbar(
               userMessage,
               'error',
@@ -345,7 +228,6 @@ export default function TeacherLessons() {
             break;
 
           case 'timeout':
-            console.log('⏱️ [ERROR] Timeout error detected');
             showSnackbar(
               userMessage,
               'warning',
@@ -360,32 +242,23 @@ export default function TeacherLessons() {
             break;
 
           case 'network':
-            console.log('🌐 [ERROR] Network error detected');
             showSnackbar(userMessage, 'error');
             break;
 
           case 'invalid_url':
-            console.log('🔗 [ERROR] Invalid URL detected');
             showSnackbar(userMessage, 'warning');
             break;
 
           case 'api_auth':
-            console.log('🔑 [ERROR] API authentication error detected');
             showSnackbar(userMessage, 'error');
             break;
 
           default:
-            console.log('❓ [ERROR] Unknown error type detected');
             showSnackbar(userMessage, 'error');
         }
       }
     } catch (error) {
-      console.error('💥 [WORKFLOW ERROR] Unexpected error in handleAddResource:', {
-        errorMessage: error instanceof Error ? error.message : String(error),
-        errorStack: error instanceof Error ? error.stack : undefined,
-        url: urlToProcess,
-        lessonId: currentLesson?.id
-      });
+      console.error('Unexpected error in handleAddResource:', error);
 
       // Remove loading resource and show error
       setLoadingResources(prev => prev.filter(item => item.id !== tempId));
@@ -496,14 +369,15 @@ export default function TeacherLessons() {
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
         <View style={styles.contentContainer}>
           <GSCard variant="elevated" padding="large">
-            <View style={styles.cardHeader}>
-              <View style={styles.cardHeaderLeft}>
+            {/* Lesson Header */}
+            <View style={styles.lessonHeader}>
+              <View style={styles.lessonTitleSection}>
                 <Text style={[styles.lessonTitle, { color: theme.colors.onSurface }]}>
                   {currentLesson.name}
                 </Text>
-                <View style={styles.badgeContainer}>
-                  <GSBadge label="ACTIVE" variant="primary" />
-                </View>
+                <Text style={[styles.activeStatus, { color: colors.primary }]}>
+                  Active
+                </Text>
               </View>
               <GSIconButton
                 icon="dots-vertical"
@@ -512,69 +386,62 @@ export default function TeacherLessons() {
               />
             </View>
 
-            <View style={styles.statsGrid}>
-              <GSStatCard
-                label="Duration"
-                value={`Day ${daysSinceStart} of ${currentLesson.expected_duration_days}`}
-                icon="calendar"
-              />
-              <GSStatCard
-                label="Students"
-                value={`${7} active`}
-                icon="account-group"
-              />
-              <View style={styles.statCardWithAccent}>
-                <GSStatCard
-                  label="Avg Health"
-                  value={`${83}%`}
-                  icon="heart"
-                />
-                <View style={styles.purpleAccentBar} />
+            {/* Duration Progress */}
+            <View style={styles.durationSection}>
+              <Text style={[styles.durationLabel, { color: theme.colors.onSurfaceVariant }]}>
+                Day {daysSinceStart} out of {currentLesson.expected_duration_days}
+              </Text>
+              <View style={styles.progressBarContainer}>
+                <View style={[styles.progressBarTrack, { backgroundColor: theme.colors.surfaceVariant }]}>
+                  <View 
+                    style={[
+                      styles.progressBarFill, 
+                      { 
+                        backgroundColor: colors.primary,
+                        width: `${Math.min((daysSinceStart / currentLesson.expected_duration_days) * 100, 100)}%`
+                      }
+                    ]} 
+                  />
+                </View>
               </View>
             </View>
 
-            <GSCard 
-              variant="filled" 
-              padding="medium" 
-              margin="none" 
-              style={styles.aiKnowledgeBase}
-            >
-              <View style={styles.documentsHeader}>
-                <View style={styles.documentsHeaderLeft}>
+            {/* Stats Row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: theme.colors.onSurface }]}>7</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Students</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>83%</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Avg Health</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: theme.colors.onSurface }]}>42</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Questions</Text>
+              </View>
+            </View>
+
+            {/* AI Knowledge Base */}
+            <View style={styles.aiKnowledgeSection}>
+              <View style={styles.aiKnowledgeTitleRow}>
+                <View style={styles.aiKnowledgeIconContainer}>
                   <GSIconButton
-                    icon="brain"
+                    icon="database"
                     size={20}
-                    color={colors.secondaryLight}
+                    color={colors.secondary}
                     onPress={() => {}}
                   />
-                  <Text style={[styles.sectionTitle, styles.purpleText]}>
-                    AI Knowledge Base
-                  </Text>
                 </View>
-                <View style={styles.chipContainer}>
-                  {completed > 0 && (
-                    <GSChip
-                      label={`${completed} Ready`}
-                      variant="success"
-                      size="small"
-                    />
-                  )}
-                  {pending > 0 && (
-                    <GSChip
-                      label={`${pending} Processing`}
-                      variant="warning"
-                      size="small"
-                    />
-                  )}
-                  {failed > 0 && (
-                    <GSChip
-                      label={`${failed} Failed`}
-                      variant="destructive"
-                      size="small"
-                    />
-                  )}
-                </View>
+                <Text style={[styles.aiKnowledgeTitle, { color: colors.secondary }]}>
+                  Upload Vetted Information
+                </Text>
               </View>
+              <Text style={[styles.aiKnowledgeSubtitle, { color: theme.colors.onSurfaceVariant }]}>
+                Custom knowledge base for your student's chatbot
+              </Text>
 
               <View style={styles.urlInputContainer}>
                 <GSURLInput
@@ -630,24 +497,16 @@ export default function TeacherLessons() {
                         errorMessage={item.error_message}
                         ragReferences={item.rag_references}
                         chunkCount={item.chunk_count}
-                        onRetry={() => console.log('Retry document:', item.id)}
+                        onRetry={() => {/* TODO: Implement retry */}}
                       />
                     )}
                     scrollEnabled={false}
                   />
                 </View>
               </GSCollapsible>
-            </GSCard>
-
-            <View style={styles.actionContainer}>
-              <GSButton
-                variant="primary"
-                fullWidth
-                onPress={handleViewAnalytics}
-              >
-                View AI Analytics
-              </GSButton>
             </View>
+
+
           </GSCard>
         </View>
       </ScrollView>
@@ -737,14 +596,14 @@ export default function TeacherLessons() {
                     <GSButton
                       variant="secondary"
                       size="small"
-                      onPress={() => console.log('View Report')}
+                      onPress={() => {/* TODO: Implement view report */}}
                     >
                       View Report
                     </GSButton>
                     <GSButton
                       variant="secondary"
                       size="small"
-                      onPress={() => console.log('Duplicate')}
+                      onPress={() => {/* TODO: Implement duplicate */}}
                     >
                       Duplicate
                     </GSButton>
@@ -839,7 +698,7 @@ export default function TeacherLessons() {
                       <GSButton
                         variant="secondary"
                         size="small"
-                        onPress={() => console.log('Edit')}
+                        onPress={() => {/* TODO: Implement edit */}}
                       >
                         Edit
                       </GSButton>
@@ -861,7 +720,7 @@ export default function TeacherLessons() {
                       <GSIconButton
                         icon="delete"
                         size={20}
-                        onPress={() => console.log('Delete')}
+                        onPress={() => {/* TODO: Implement delete */}}
                         color={theme.colors.error}
                       />
                     </View>
@@ -927,18 +786,19 @@ export default function TeacherLessons() {
               { value: 'completed', label: 'Completed' },
               { value: 'upcoming', label: 'Upcoming' },
             ]}
+            theme={{
+              colors: {
+                secondaryContainer: colors.primary,
+                onSecondaryContainer: '#FFFFFF',
+              }
+            }}
           />
         </View>
       </View>
 
       {renderContent()}
 
-      <GSFAB
-        icon="plus"
-        label="New Lesson"
-        position="bottom-right"
-        onPress={handleCreateLesson}
-      />
+
 
       <GSBottomSheet
         visible={bottomSheetVisible}
@@ -1008,45 +868,99 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
   },
-  cardHeader: {
+  lessonHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 24,
   },
-  cardHeaderLeft: {
+  lessonTitleSection: {
     flex: 1,
   },
   lessonTitle: {
     fontSize: 20,
     fontWeight: '700',
+    marginBottom: 4,
   },
-  badgeContainer: {
-    marginTop: 8,
-    alignItems: 'flex-start',
+  activeStatus: {
+    fontSize: 14,
+    fontWeight: '600',
   },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
+  durationSection: {
     marginBottom: 24,
   },
-  statCardWithAccent: {
+  durationLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  progressBarContainer: {
+    width: '100%',
+  },
+  progressBarTrack: {
+    height: 8,
+    borderRadius: 4,
+    width: '100%',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  statItem: {
+    alignItems: 'center',
     flex: 1,
-    position: 'relative',
   },
-  purpleAccentBar: {
-    height: 3,
-    backgroundColor: colors.secondaryLight,
-    borderRadius: 1.5,
-    marginTop: 4,
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
   },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: colors.muted + '40', // 25% opacity
+    marginHorizontal: 16,
+  },
+
   documentsCard: {
     marginTop: 16,
   },
-  aiKnowledgeBase: {
-    backgroundColor: colors.background,
-    borderColor: colors.secondaryLight,
-    borderWidth: 1,
+  aiKnowledgeSection: {
+    marginTop: 24,
+  },
+  aiKnowledgeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  aiKnowledgeIconContainer: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    marginLeft: -4, // Compensate for icon button padding
+  },
+  aiKnowledgeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  aiKnowledgeSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 16,
+    marginLeft: 28, // Align with title text (icon width + margin adjustments)
   },
   documentsHeader: {
     flexDirection: 'row',
@@ -1211,17 +1125,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  glowEffect: {
-    shadowColor: colors.secondaryLight,
-    shadowRadius: 8,
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  purpleFAB: {
-    backgroundColor: colors.secondaryLight,
-    shadowColor: colors.secondaryLight,
-    shadowRadius: 12,
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 4 },
-  },
+
 });
