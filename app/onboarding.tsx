@@ -18,10 +18,221 @@ import {
   ChevronRight,
   Users,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  Send,
+  Plus
 } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
+
+// Demo Components
+const AIChatDemo: React.FC<{ showReferences?: boolean }> = ({ showReferences = false }) => {
+  const [studentMessage, setStudentMessage] = useState('');
+  const [aiMessage, setAIMessage] = useState('');
+  const [showStudentMessage, setShowStudentMessage] = useState(false);
+  const [showAIMessage, setShowAIMessage] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [showSources, setShowSources] = useState(false);
+  
+  const animationStep = useRef(0);
+
+  useEffect(() => {
+    const runAnimation = () => {
+      // Reset state
+      setStudentMessage('');
+      setAIMessage('');
+      setShowStudentMessage(false);
+      setShowAIMessage(false);
+      setIsTyping(false);
+      setShowSources(false);
+      animationStep.current = 0;
+
+      // Step 1: Show student typing
+      setTimeout(() => {
+        setStudentMessage('Help me identify this yellow leaf problem');
+        setShowStudentMessage(true);
+        animationStep.current = 1;
+      }, 1000);
+
+      // Step 2: Show AI thinking
+      setTimeout(() => {
+        setIsTyping(true);
+        animationStep.current = 2;
+      }, 3000);
+
+      // Step 3: Show AI response
+      setTimeout(() => {
+        setIsTyping(false);
+        setShowAIMessage(true);
+        
+        const response = showReferences 
+          ? "Based on the image and gardening resources, yellow leaves often indicate overwatering or nutrient deficiency. Check soil moisture and consider adding nitrogen fertilizer."
+          : "Yellow leaves often indicate overwatering or nutrient deficiency. Check soil moisture and consider adding nitrogen fertilizer.";
+        
+        setAIMessage(response);
+        
+        if (showReferences) {
+          // Show sources after a brief delay
+          setTimeout(() => {
+            setShowSources(true);
+          }, 1000);
+        }
+        animationStep.current = 3;
+      }, 5000);
+    };
+
+    runAnimation();
+    const interval = setInterval(runAnimation, 16000);
+    
+    return () => {
+      clearInterval(interval);
+    };
+  }, [showReferences]);
+
+  return (
+    <View style={demoStyles.chatContainer}>
+      {/* Messages */}
+      <View style={demoStyles.messagesContainer}>
+        {showStudentMessage && (
+          <View style={[demoStyles.messageBubble, demoStyles.studentBubble]}>
+            <Text style={demoStyles.studentMessageText}>{studentMessage}</Text>
+          </View>
+        )}
+        
+        {isTyping && (
+          <View style={[demoStyles.messageBubble, demoStyles.aiBubble]}>
+            <View style={demoStyles.typingIndicator}>
+              <View style={demoStyles.typingDot} />
+              <View style={demoStyles.typingDot} />
+              <View style={demoStyles.typingDot} />
+            </View>
+          </View>
+        )}
+        
+        {showAIMessage && (
+          <View style={[demoStyles.messageBubble, demoStyles.aiBubble]}>
+            <Text style={demoStyles.aiMessageText}>{aiMessage}</Text>
+            {showReferences && showSources && (
+              <View style={demoStyles.sourcesContainer}>
+                <Text style={demoStyles.sourcesTitle}>📚 Sources (2)</Text>
+                <Text style={demoStyles.sourceItem}>• Plant Disease Guide</Text>
+                <Text style={demoStyles.sourceItem}>• Nutrient Deficiency Manual</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+      
+      {/* Input Area */}
+      <View style={demoStyles.inputContainer}>
+        <View style={demoStyles.textInput}>
+          <Text style={demoStyles.placeholderText}>Ask about your plants...</Text>
+        </View>
+        <View style={demoStyles.sendButton}>
+          <Send size={16} color={colors.white} />
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const TeacherLessonDemo: React.FC = () => {
+  const [urlText, setUrlText] = useState('');
+  const [showProcessing, setShowProcessing] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [chunkCount, setChunkCount] = useState(0);
+  
+  useEffect(() => {
+    const runAnimation = () => {
+      // Reset state
+      setUrlText('');
+      setShowProcessing(false);
+      setShowCompleted(false);
+      setChunkCount(0);
+
+      // Step 1: Type URL
+      setTimeout(() => {
+        const url = 'https://extension.umn.edu/plant-diseases';
+        let i = 0;
+        const typeUrl = () => {
+          if (i <= url.length) {
+            setUrlText(url.slice(0, i));
+            i++;
+            setTimeout(typeUrl, 160);
+          }
+        };
+        typeUrl();
+      }, 1000);
+
+      // Step 2: Show processing
+      setTimeout(() => {
+        setShowProcessing(true);
+      }, 6000);
+
+      // Step 3: Show completed with chunks
+      setTimeout(() => {
+        setShowProcessing(false);
+        setShowCompleted(true);
+        
+        // Animate chunk count
+        let chunks = 0;
+        const animateChunks = () => {
+          if (chunks <= 24) {
+            setChunkCount(chunks);
+            chunks++;
+            setTimeout(animateChunks, 100);
+          }
+        };
+        animateChunks();
+      }, 10000);
+    };
+
+    runAnimation();
+    const interval = setInterval(runAnimation, 20000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <View style={demoStyles.lessonContainer}>
+      {/* Header */}
+      <View style={demoStyles.lessonHeader}>
+        <Text style={demoStyles.lessonHeaderText}>Add Learning Resource</Text>
+      </View>
+      
+      {/* URL Input */}
+      <View style={demoStyles.urlInputContainer}>
+        <Text style={demoStyles.urlLabel}>Resource URL</Text>
+        <View style={demoStyles.urlInputBox}>
+          <Text style={demoStyles.urlText}>{urlText}</Text>
+          <View style={demoStyles.addButton}>
+            <Plus size={16} color={colors.white} />
+          </View>
+        </View>
+      </View>
+      
+      {/* Document Item */}
+      {(showProcessing || showCompleted) && (
+        <View style={demoStyles.documentItem}>
+          <View style={demoStyles.documentIcon}>
+            {showProcessing ? (
+              <View style={demoStyles.spinningIcon} />
+            ) : (
+              <CheckCircle size={16} color={colors.success} />
+            )}
+          </View>
+          <View style={demoStyles.documentInfo}>
+            <Text style={demoStyles.documentTitle}>Plant Disease Guide</Text>
+            <Text style={demoStyles.documentUrl}>extension.umn.edu</Text>
+            <Text style={demoStyles.documentStatus}>
+              {showProcessing ? 'Processing...' : `Chunks: ${chunkCount}`}
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+};
 
 interface OnboardingSlide {
   id: number;
@@ -31,41 +242,45 @@ interface OnboardingSlide {
   icon: React.ReactElement;
   color: string;
   accentColor: string;
+  demo?: React.ReactElement;
 }
 
 const slides: OnboardingSlide[] = [
   {
     id: 1,
-    title: 'Your students will be using AI',
-    subtitle: 'The future of learning is here',
-    description: 'AI tools are becoming essential in education. Students are already using chatbots for homework, research, and learning support.',
+    title: 'Students use AI',
+    subtitle: 'It\'s happening now',
+    description: 'Students are already using AI for homework and research.',
     icon: <Brain size={60} color="#4CAF50" />,
     color: '#4CAF50',
     accentColor: '#E8F5E9',
+    demo: <AIChatDemo showReferences={false} />,
   },
   {
     id: 2,
-    title: 'So give them one that you trust',
-    subtitle: 'Quality education requires quality tools',
-    description: 'Not all AI is created equal. Your students deserve an AI assistant that provides accurate, educational, and age-appropriate responses.',
+    title: 'Give the AI trusted information',
+    subtitle: 'Quality content in',
+    description: 'Add your curriculum resources to the AI\'s knowledge.',
     icon: <Shield size={60} color="#43A047" />,
     color: '#43A047',
     accentColor: '#C8E6C9',
+    demo: <TeacherLessonDemo />,
   },
   {
     id: 3,
-    title: 'By choosing the knowledge that goes into their Chatbot',
-    subtitle: 'Curated content for better learning',
-    description: 'Take control of your students\' AI experience. Customize the knowledge base with curriculum-aligned content you trust.',
+    title: 'Advanced Cheating Detection',
+    subtitle: 'Teaching, not copying',
+    description: 'Help students learn and understand, not just copy and paste.',
     icon: <BookOpen size={60} color="#388E3C" />,
     color: '#388E3C',
     accentColor: '#A5D6A7',
+    demo: <AIChatDemo showReferences={true} />,
   },
   {
     id: 4,
     title: 'Garden Guru Demo',
-    subtitle: 'Example implementation',
-    description: 'This app is an example of how the teacher of a gardening class could implement this approach to enhance learning with AI assistance.',
+    subtitle: 'See it in action',
+    description: 'Example: A gardening teacher\'s custom AI assistant.',
     icon: <Sparkles size={60} color="#2E7D32" />,
     color: '#2E7D32',
     accentColor: '#81C784',
@@ -88,7 +303,7 @@ export default function OnboardingScreen() {
     if (currentIndex < slides.length - 1) {
       const timer = setTimeout(() => {
         goToNext();
-      }, 4000); // 4 seconds per slide
+      }, 8000); // 8 seconds per slide
 
       return () => clearTimeout(timer);
     }
@@ -162,28 +377,38 @@ export default function OnboardingScreen() {
         },
       ]}
     >
-             {/* Background decoration */}
-       <View style={[styles.backgroundCircle, { backgroundColor: slide.accentColor }]} />
-       <View style={[styles.backgroundCircle2, { backgroundColor: slide.accentColor }]} />
+      {/* Background decoration */}
+      <View style={[styles.backgroundCircle, { backgroundColor: slide.accentColor }]} />
+      <View style={[styles.backgroundCircle2, { backgroundColor: slide.accentColor }]} />
       
       {/* Content */}
       <View style={styles.content}>
-        <View style={[styles.iconContainer, { backgroundColor: slide.accentColor }]}>
-          {slide.icon}
-          <View style={[styles.iconGlow, { backgroundColor: slide.color + '30' }]} />
-        </View>
+        {/* Demo Component */}
+        {slide.demo && (
+          <View style={styles.demoContainer}>
+            {slide.demo}
+          </View>
+        )}
         
-                 <Text style={styles.title}>
-           {slide.title}
-         </Text>
-         
-         <Text style={styles.subtitle}>
-           {slide.subtitle}
-         </Text>
-         
-         <Text style={styles.description}>
-           {slide.description}
-         </Text>
+        {/* Icon - only show if no demo */}
+        {!slide.demo && (
+          <View style={[styles.iconContainer, { backgroundColor: slide.accentColor }]}>
+            {slide.icon}
+            <View style={[styles.iconGlow, { backgroundColor: slide.color + '30' }]} />
+          </View>
+        )}
+        
+        <Text style={styles.title}>
+          {slide.title}
+        </Text>
+        
+        <Text style={styles.subtitle}>
+          {slide.subtitle}
+        </Text>
+        
+        <Text style={styles.description}>
+          {slide.description}
+        </Text>
       </View>
     </Animated.View>
   );
@@ -248,16 +473,216 @@ export default function OnboardingScreen() {
           </Pressable>
         )}
         
-                 {/* Progress indicator */}
-         <View style={styles.progressContainer}>
-           <Text style={styles.progressText}>
-             {currentIndex + 1} of {slides.length}
-           </Text>
-         </View>
+        {/* Progress indicator */}
+        <View style={styles.progressContainer}>
+          <Text style={styles.progressText}>
+            {currentIndex + 1} of {slides.length}
+          </Text>
+        </View>
       </View>
     </View>
   );
 }
+
+// Demo Styles
+const demoStyles = StyleSheet.create({
+  // AI Chat Demo Styles
+  chatContainer: {
+    width: 280,
+    height: 220,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  messagesContainer: {
+    flex: 1,
+    padding: 8,
+    paddingTop: 12,
+  },
+  messageBubble: {
+    marginVertical: 4,
+    maxWidth: '80%',
+    padding: 8,
+    borderRadius: 12,
+  },
+  studentBubble: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.grayLight,
+  },
+  aiBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.secondaryLight,
+  },
+  studentMessageText: {
+    fontSize: 12,
+    color: colors.black,
+  },
+  aiMessageText: {
+    fontSize: 12,
+    color: colors.white,
+  },
+  typingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  typingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.white,
+    marginHorizontal: 2,
+    opacity: 0.7,
+  },
+  sourcesContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  sourcesTitle: {
+    fontSize: 10,
+    color: colors.white,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  sourceItem: {
+    fontSize: 9,
+    color: colors.white,
+    opacity: 0.9,
+    marginBottom: 2,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 8,
+    alignItems: 'center',
+    backgroundColor: colors.backgroundLight,
+    borderTopWidth: 1,
+    borderTopColor: colors.grayLight,
+  },
+  textInput: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+  },
+  placeholderText: {
+    fontSize: 12,
+    color: colors.muted,
+  },
+  sendButton: {
+    backgroundColor: colors.primary,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Teacher Lesson Demo Styles
+  lessonContainer: {
+    width: 280,
+    height: 220,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  lessonHeader: {
+    marginBottom: 16,
+  },
+  lessonHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  urlInputContainer: {
+    marginBottom: 16,
+  },
+  urlLabel: {
+    fontSize: 12,
+    color: colors.text,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  urlInputBox: {
+    flexDirection: 'row',
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.grayLight,
+  },
+  urlText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.text,
+  },
+  addButton: {
+    backgroundColor: colors.primary,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  documentItem: {
+    flexDirection: 'row',
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.grayLight,
+  },
+  documentIcon: {
+    marginRight: 12,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spinningIcon: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderTopColor: 'transparent',
+  },
+  documentInfo: {
+    flex: 1,
+  },
+  documentTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  documentUrl: {
+    fontSize: 10,
+    color: colors.muted,
+    marginBottom: 2,
+  },
+  documentStatus: {
+    fontSize: 10,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -311,6 +736,9 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     zIndex: 1,
+  },
+  demoContainer: {
+    marginBottom: 24,
   },
   iconContainer: {
     width: 120,

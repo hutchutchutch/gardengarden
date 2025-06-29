@@ -22,7 +22,7 @@ export default function SignInScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const { signIn, setShowFAB } = useAuth();
+  const { signIn, setShowFAB, resetOnboarding } = useAuth();
   const { setIsTeacherMode } = useMode();
 
   useEffect(() => {
@@ -68,7 +68,12 @@ export default function SignInScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.header}>
-        <CheckCircle size={48} color={colors.primary} />
+        <Pressable onPress={() => {
+          resetOnboarding();
+          router.push('/onboarding');
+        }}>
+          <CheckCircle size={48} color={colors.primary} />
+        </Pressable>
         <Text style={styles.title}>GardenSnap</Text>
         <Text style={styles.subtitle}>Welcome back!</Text>
       </View>

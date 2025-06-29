@@ -10,6 +10,7 @@ export interface AuthContextType {
   isInitializing: boolean;
   hasSeenOnboarding: boolean;
   completeOnboarding: () => void;
+  resetOnboarding: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   showFAB: boolean;
@@ -301,12 +302,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     storage.setItem('hasSeenOnboarding', 'true');
   };
 
+  const resetOnboarding = () => {
+    setHasSeenOnboarding(false);
+    storage.removeItem('hasSeenOnboarding');
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
     isInitializing,
     hasSeenOnboarding,
     completeOnboarding,
+    resetOnboarding,
     signIn,
     signOut,
     showFAB,
