@@ -164,8 +164,71 @@ export const useAIStore = create<AIState>()(
             };
           });
           
-          console.log(`Converted to ${aiMessages.length} AI messages`);
-          set({ messages: aiMessages, isLoading: false, error: null });
+          // Enrich AI messages with full source information
+          const enrichedMessages: AIMessage[] = [];
+          for (const msg of aiMessages) {
+            if (msg.role === 'assistant' && msg.sources && msg.sources.length > 0) {
+              // Get all chunk_ids from the sources
+              const chunkIds = msg.sources
+                .map((s: any) => s.chunk_id)
+                .filter(Boolean);
+              
+              if (chunkIds.length > 0) {
+                try {
+                  // Fetch full chunk and lesson_url information
+                  const { data: chunkData, error: chunkError } = await supabase
+                    .from('url_chunks')
+                    .select(`
+                      id,
+                      content,
+                      lesson_url_id,
+                      lesson_urls!inner(
+                        url,
+                        title
+                      )
+                    `)
+                    .in('id', chunkIds);
+
+                  if (!chunkError && chunkData) {
+                    // Transform sources with full information
+                    const enrichedSources = msg.sources.map((source: any) => {
+                      const chunkInfo = chunkData.find((chunk: any) => chunk.id === source.chunk_id);
+                      if (chunkInfo) {
+                        return {
+                          chunk_id: source.chunk_id,
+                          lesson_url_id: chunkInfo.lesson_url_id,
+                          url: (chunkInfo.lesson_urls as any)?.url || '',
+                          title: (chunkInfo.lesson_urls as any)?.title || 'Lesson Reference',
+                          snippet: chunkInfo.content.substring(0, 200) + '...',
+                          content: chunkInfo.content,
+                          similarity: source.similarity
+                        };
+                      }
+                      return source;
+                    });
+                    
+                    enrichedMessages.push({
+                      ...msg,
+                      sources: enrichedSources
+                    });
+                  } else {
+                    console.error('Error fetching chunk data for sources:', chunkError);
+                    enrichedMessages.push(msg);
+                  }
+                } catch (error) {
+                  console.error('Error enriching sources:', error);
+                  enrichedMessages.push(msg);
+                }
+              } else {
+                enrichedMessages.push(msg);
+              }
+            } else {
+              enrichedMessages.push(msg);
+            }
+          }
+          
+          console.log(`Converted to ${enrichedMessages.length} AI messages with enriched sources`);
+          set({ messages: enrichedMessages, isLoading: false, error: null });
           console.log('=== AI Store fetchMessages SUCCESS ===');
         } catch (error: any) {
           console.error('=== AI Store fetchMessages ERROR ===');

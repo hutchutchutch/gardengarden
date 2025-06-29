@@ -36,12 +36,14 @@ export { GSStudentCard } from './GSStudentCard';
 export { GSPlantCard } from './GSPlantCard';
 export { GSGuidanceCard } from './GSGuidanceCard';
 export { GSDocumentItem } from './GSDocumentItem';
+export { GSDocumentDetailsModal } from './GSDocumentDetailsModal';
 export type { DocumentItemProps } from './GSDocumentItem';
 
 // Chat Components
 export { GSChatBubble } from './GSChatBubble';
 export { GSChatInput } from './GSChatInput';
 export { GSReferenceDocuments } from './GSReferenceDocuments';
+export { GSSourcesDropdown } from './GSSourcesDropdown';
 
 // UI Components
 export { GSModeToggle } from './GSModeToggle';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, FlatList, StyleSheet } from 'react-native';
+import { View, ScrollView, FlatList, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
@@ -24,7 +24,8 @@ import {
   GSURLInput,
   GSSnackbar,
   Text,
-  MenuItem
+  MenuItem,
+  SectionHeader,
 } from '@/components/ui';
 import { ShimmerPlaceholder } from '@/components/ui/ShimmerPlaceholder';
 import { LessonService, Lesson, LessonDocument } from '@/services/lesson-service';
@@ -71,6 +72,11 @@ export default function TeacherLessons() {
     message: '',
     variant: 'info'
   });
+
+  // Document expansion state
+  const [expandedDocumentId, setExpandedDocumentId] = useState<string | null>(null);
+  const [documentChunks, setDocumentChunks] = useState<{ [key: string]: any[] }>({});
+  const [loadingChunks, setLoadingChunks] = useState<{ [key: string]: boolean }>({});
 
   // Helper function to show snackbar notifications
   const showSnackbar = (message: string, variant: 'info' | 'success' | 'warning' | 'error' = 'info', action?: { label: string; onPress: () => void }) => {
@@ -307,6 +313,141 @@ export default function TeacherLessons() {
     }
   };
 
+  const handleEditDocumentTitle = async (documentId: string, newTitle: string) => {
+    try {
+      const success = await LessonService.updateDocumentTitle(documentId, newTitle);
+      if (success) {
+        showSnackbar('Document title updated successfully', 'success');
+        // Refresh lesson data to show the updated title
+        await loadLessonData();
+      } else {
+        showSnackbar('Failed to update document title', 'error');
+      }
+    } catch (error) {
+      console.error('Error updating document title:', error);
+      showSnackbar('An error occurred while updating the title', 'error');
+    }
+  };
+
+  // Handle document tap to toggle expansion
+  const handleDocumentTap = async (documentId: string) => {
+    if (expandedDocumentId === documentId) {
+      // Collapse if already expanded
+      setExpandedDocumentId(null);
+    } else {
+      // Expand and load chunks if not already loaded
+      setExpandedDocumentId(documentId);
+      
+      if (!documentChunks[documentId]) {
+        setLoadingChunks(prev => ({ ...prev, [documentId]: true }));
+        try {
+          const chunks = await LessonService.getDocumentChunks(documentId);
+          setDocumentChunks(prev => ({ ...prev, [documentId]: chunks }));
+        } catch (error) {
+          console.error('Error loading document chunks:', error);
+          showSnackbar('Failed to load document details', 'error');
+        } finally {
+          setLoadingChunks(prev => ({ ...prev, [documentId]: false }));
+        }
+      }
+    }
+  };
+
+  // Handle document retry
+  const handleDocumentRetry = async (documentId: string) => {
+    try {
+      const success = await LessonService.retryDocumentProcessing(documentId);
+      if (success) {
+        showSnackbar('Document processing restarted successfully', 'success');
+        await loadLessonData(); // Refresh the lessons data
+      } else {
+        showSnackbar('Failed to retry document processing', 'error');
+      }
+    } catch (error) {
+      console.error('Error retrying document:', error);
+      showSnackbar('Failed to retry document processing', 'error');
+    }
+  };
+
+  // Handle document delete
+  const handleDocumentDelete = async (documentId: string) => {
+    Alert.alert(
+      'Delete Document',
+      'Are you sure you want to delete this document? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await LessonService.deleteDocument(documentId);
+              if (success) {
+                showSnackbar('Document deleted successfully', 'success');
+                // Close expansion if this document was expanded
+                if (expandedDocumentId === documentId) {
+                  setExpandedDocumentId(null);
+                }
+                await loadLessonData(); // Refresh the lessons data
+              } else {
+                showSnackbar('Failed to delete document', 'error');
+              }
+            } catch (error) {
+              console.error('Error deleting document:', error);
+              showSnackbar('Failed to delete document', 'error');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  // Handle chunk delete
+  const handleDeleteChunk = async (chunkId: string) => {
+    Alert.alert(
+      'Delete Chunk',
+      'Are you sure you want to delete this content chunk? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await LessonService.deleteChunk(chunkId);
+              if (success) {
+                showSnackbar('Chunk deleted successfully', 'success');
+                
+                // Update the local chunks state to remove the deleted chunk
+                setDocumentChunks(prev => {
+                  const updated = { ...prev };
+                  Object.keys(updated).forEach(docId => {
+                    updated[docId] = updated[docId].filter(chunk => chunk.id !== chunkId);
+                  });
+                  return updated;
+                });
+                
+                // Refresh lesson data to update reference counts
+                await loadLessonData();
+              } else {
+                showSnackbar('Failed to delete chunk', 'error');
+              }
+            } catch (error) {
+              console.error('Error deleting chunk:', error);
+              showSnackbar('Failed to delete chunk', 'error');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const menuOptions: MenuItem[] = [
     {
       label: 'Edit Lesson',
@@ -497,7 +638,14 @@ export default function TeacherLessons() {
                         errorMessage={item.error_message}
                         ragReferences={item.rag_references}
                         chunkCount={item.chunk_count}
-                        onRetry={() => {/* TODO: Implement retry */}}
+                        onRetry={() => handleDocumentRetry(item.id)}
+                        onEditTitle={(newTitle) => handleEditDocumentTitle(item.id, newTitle)}
+                        onTap={() => handleDocumentTap(item.id)}
+                        onDelete={() => handleDocumentDelete(item.id)}
+                        onDeleteChunk={handleDeleteChunk}
+                        expanded={expandedDocumentId === item.id}
+                        chunks={documentChunks[item.id] || []}
+                        loadingChunks={loadingChunks[item.id] || false}
                       />
                     )}
                     scrollEnabled={false}
@@ -798,8 +946,6 @@ export default function TeacherLessons() {
 
       {renderContent()}
 
-
-
       <GSBottomSheet
         visible={bottomSheetVisible}
         onClose={() => setBottomSheetVisible(false)}
@@ -814,6 +960,8 @@ export default function TeacherLessons() {
         action={snackbar.action}
         duration={snackbar.variant === 'error' ? 10000 : 7000}
       />
+
+
     </GSafeScreen>
   );
 }

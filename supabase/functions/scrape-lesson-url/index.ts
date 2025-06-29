@@ -42,7 +42,7 @@ if (!OPENAI_API_KEY) {
 console.log('[STARTUP] ✅ Environment variables loaded');
 
 // Configuration constants
-const FIRECRAWL_TIMEOUT = 25000; // 25 seconds max for Firecrawl
+const FIRECRAWL_TIMEOUT = 30000; // 30 seconds max for Firecrawl (increased from 25s)
 const EMBEDDING_TIMEOUT = 15000; // 15 seconds per embedding
 const MAX_CHUNKS = 20; // Reduced from 30
 const MAX_CONTENT_SIZE = 200000; // Reduced from 300KB to 200KB
@@ -93,9 +93,9 @@ function cleanTextForEmbedding(text: string): string {
   return text;
 }
 
-// Simple chunking function
-function chunkTextBySections(text: string, maxChunkLength = 2000): string[] {
-  console.log('[CHUNKING] Starting chunking, content length:', text.length);
+// Word-based chunking function that cuts off after periods
+function chunkTextBySections(text: string, targetWords = 250): string[] {
+  console.log('[CHUNKING] Starting word-based chunking, content length:', text.length);
   
   if (text.length > MAX_CONTENT_SIZE) {
     console.log('[CHUNKING] Content too large, truncating');
@@ -103,24 +103,68 @@ function chunkTextBySections(text: string, maxChunkLength = 2000): string[] {
   }
   
   const chunks: string[] = [];
-  const sections = text.split(/\n\s*\n/); // Split by double newlines
+  const words = text.split(/\s+/);
+  
+  console.log('[CHUNKING] Total words:', words.length, 'Target words per chunk:', targetWords);
   
   let currentChunk = '';
+  let wordCount = 0;
   
-  for (const section of sections) {
-    if ((currentChunk + section).length > maxChunkLength && currentChunk) {
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    currentChunk += (wordCount > 0 ? ' ' : '') + word;
+    wordCount++;
+    
+    // Check if we've reached our target word count
+    if (wordCount >= targetWords) {
+      // Look for the next sentence ending (period, exclamation, question mark)
+      let foundSentenceEnd = false;
+      let lookAheadIndex = i + 1;
+      
+      // Check if current word already ends with sentence punctuation
+      if (/[.!?]$/.test(word)) {
+        foundSentenceEnd = true;
+      } else {
+        // Look ahead for next sentence ending, but don't go too far
+        const maxLookAhead = Math.min(50, words.length - i - 1); // Max 50 words ahead
+        
+        for (let j = 0; j < maxLookAhead; j++) {
+          const nextWord = words[lookAheadIndex + j];
+          currentChunk += ' ' + nextWord;
+          
+          if (/[.!?]$/.test(nextWord)) {
+            foundSentenceEnd = true;
+            i = lookAheadIndex + j; // Skip these words in main loop
+            break;
+          }
+        }
+      }
+      
+      // Add the chunk and reset
       chunks.push(currentChunk.trim());
-      currentChunk = section;
-    } else {
-      currentChunk += (currentChunk ? '\n\n' : '') + section;
+      currentChunk = '';
+      wordCount = 0;
+      
+      // If we couldn't find a sentence end, just continue with next chunk
+      if (!foundSentenceEnd && chunks.length % 10 === 0) {
+        console.log('[CHUNKING] Warning: No sentence end found for chunk', chunks.length);
+      }
     }
   }
   
-  if (currentChunk) {
+  // Add any remaining content as the final chunk
+  if (currentChunk.trim()) {
     chunks.push(currentChunk.trim());
   }
   
-  console.log('[CHUNKING] Created', chunks.length, 'chunks');
+  console.log('[CHUNKING] Created', chunks.length, 'chunks, average words per chunk:', Math.round(words.length / chunks.length));
+  
+  // Log chunk sizes for debugging
+  chunks.slice(0, 3).forEach((chunk, index) => {
+    const chunkWords = chunk.split(/\s+/).length;
+    console.log(`[CHUNKING] Chunk ${index + 1} has ${chunkWords} words`);
+  });
+  
   return chunks.slice(0, MAX_CHUNKS);
 }
 
@@ -171,6 +215,7 @@ try {
     }
     
     const startTime = Date.now();
+    let lessonUrlRecord: any = null;
     
     try {
       const { url, lesson_id, lesson_url_id } = await req.json();
@@ -183,7 +228,6 @@ try {
       }
       
       // Create or get lesson_url record
-      let lessonUrlRecord;
       if (lesson_url_id) {
         const { data, error } = await supabase
           .from('lesson_urls')
@@ -233,22 +277,61 @@ try {
           body: JSON.stringify({
             url: url.trim(),
             formats: ['markdown'],
-            waitFor: 3000,
-            timeout: 20000
+            waitFor: 5000,  // Increased wait time
+            timeout: 25000   // Increased timeout to better handle slow sites
           }),
           signal: controller.signal
         });
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        console.error('[FIRECRAWL] Request error:', error);
+        
+        // Update lesson URL with error status for timeout or network errors
+        if (lessonUrlRecord?.id) {
+          await supabase
+            .from('lesson_urls')
+            .update({
+              processing_status: 'failed',
+              error_message: error.name === 'AbortError' ? 'Request timeout - website took too long to respond' : 'Network error while fetching website',
+              processing_progress: 0
+            })
+            .eq('id', lessonUrlRecord.id);
+        }
+        
+        throw error;
       } finally {
         clearTimeout(timeoutId);
       }
       
       if (!firecrawlResponse.ok) {
         const errorText = await firecrawlResponse.text();
+        console.error('[FIRECRAWL] API error response:', errorText);
+        
+        // Update lesson URL with error status
+        await supabase
+          .from('lesson_urls')
+          .update({
+            processing_status: 'failed',
+            error_message: `Firecrawl API error: ${firecrawlResponse.status}`,
+            processing_progress: 0
+          })
+          .eq('id', lessonUrlRecord.id);
+        
         throw new Error(`Firecrawl API error: ${firecrawlResponse.status} - ${errorText}`);
       }
       
       const firecrawlData = await firecrawlResponse.json();
       if (!firecrawlData.success || !firecrawlData.data) {
+        // Update lesson URL with error status
+        await supabase
+          .from('lesson_urls')
+          .update({
+            processing_status: 'failed',
+            error_message: firecrawlData.error || 'Failed to scrape URL',
+            processing_progress: 0
+          })
+          .eq('id', lessonUrlRecord.id);
+        
         throw new Error(firecrawlData.error || 'Failed to scrape URL');
       }
       
@@ -387,6 +470,22 @@ try {
         userMessage = 'This website cannot be scraped. Please try a different URL.';
       } else if (errorMessage.includes('network')) {
         userMessage = 'Network error occurred. Please check your connection.';
+      }
+      
+      // Update lesson_url record with error status if we have the record
+      if (lessonUrlRecord?.id) {
+        try {
+          await supabase
+            .from('lesson_urls')
+            .update({
+              processing_status: 'failed',
+              error_message: userMessage,
+              processing_progress: 0
+            })
+            .eq('id', lessonUrlRecord.id);
+        } catch (updateError) {
+          console.error('[ERROR] Failed to update lesson_url status:', updateError);
+        }
       }
       
       return new Response(JSON.stringify({

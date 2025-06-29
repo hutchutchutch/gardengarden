@@ -9,10 +9,11 @@ import { usePlantStore } from '@/store/plant-store';
 import { useTaskStore } from '@/store/task-store';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
-import { AIPlantAnalysis } from '@/types';
+import { AIPlantAnalysis, AIMessage } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { GSChatBubble } from './ui/GSChatBubble';
 import { GSReferenceDocuments } from './ui/GSReferenceDocuments';
+import { GSSourcesDropdown } from './ui/GSSourcesDropdown';
 import { PhotoService } from '@/services/photo-service';
 import { supabase } from '@/config/supabase';
 import { useMode } from '@/contexts/ModeContext';
@@ -433,6 +434,58 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
 
   const canSend = message.trim() !== '' || imageUri !== null;
 
+  // Helper functions for message positioning and colors
+  const getMessagePosition = (message: AIMessage) => {
+    const currentUserId = user?.id;
+    
+    // Determine sender_id and recipient_id from the message
+    // For AIMessage type, we need to infer based on role
+    const isCurrentUserMessage = message.role === 'user' && user?.role === 'student';
+    const isCurrentTeacherMessage = message.role === 'teacher' && user?.role === 'teacher';
+    
+    // If current user sent the message, it goes on the right
+    if (isCurrentUserMessage || isCurrentTeacherMessage) {
+      return 'right';
+    }
+    
+    // If message is from AI (role === 'assistant')
+    if (message.role === 'assistant') {
+      // AI messages: right side for teachers, left side for students
+      return isTeacherMode ? 'right' : 'left';
+    }
+    
+    // All other messages (from the other person) go on the left
+    return 'left';
+  };
+
+  // Determine message bubble color based on sender role and position
+  const getMessageBubbleColor = (message: AIMessage) => {
+    const currentUserId = user?.id;
+    
+    // Check if current user sent the message
+    const isCurrentUserMessage = message.role === 'user' && user?.role === 'student';
+    const isCurrentTeacherMessage = message.role === 'teacher' && user?.role === 'teacher';
+    
+    // Current user's messages are always gray
+    if (isCurrentUserMessage || isCurrentTeacherMessage) {
+      return '#E5E7EB'; // gray-200
+    }
+    
+    // AI messages are always purple
+    if (message.role === 'assistant') {
+      return '#8B5CF6'; // purple-500
+    }
+    
+    // Other user's messages are always blue
+    return '#3B82F6'; // blue-500
+  };
+
+  // Get text color based on bubble color
+  const getMessageTextColor = (bubbleColor: string) => {
+    // White text for colored bubbles, dark text for gray
+    return bubbleColor === '#E5E7EB' ? '#1F2937' : '#FFFFFF';
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -465,16 +518,10 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
             </Text>
           </View>
         ) : (
-          filteredMessages.map((msg) => {
-            // Determine bubble type based on actual message role/sender
-            let bubbleType: 'student' | 'ai' | 'teacher' = 'student';
-            if (msg.role === 'user') {
-              bubbleType = 'student';
-            } else if (msg.role === 'assistant') {
-              bubbleType = 'ai';
-            } else if (msg.role === 'teacher') {
-              bubbleType = 'teacher';
-            }
+          filteredMessages.map((msg, index) => {
+            const position = getMessagePosition(msg);
+            const bubbleColor = getMessageBubbleColor(msg);
+            const textColor = getMessageTextColor(bubbleColor);
             
             // Check if this is a document reference message and format it properly
             let messageContent = safeMessageContent(msg.content);
@@ -486,36 +533,81 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
               documentUrl = parts[1];
               const documentTitle = parts.slice(2).join(':');
               messageContent = `📄 Reference Document: ${documentTitle}`;
-              // Document references should always be treated as teacher messages
-              bubbleType = 'teacher';
             }
             
             return (
-              <GSChatBubble
-                key={msg.id}
-                type={bubbleType}
-                message={messageContent}
-                timestamp={msg.timestamp}
-                currentUserRole={user?.role || 'student'}
-                showSources={bubbleType === 'ai' && msg.sources && msg.sources.length > 0}
-                sources={msg.sources}
-                isRead={true}
-                isLoading={false}
-                documentUrl={documentUrl}
-                onDocumentPress={documentUrl ? () => handleDocumentPress(documentUrl) : undefined}
-              />
+              <View
+                key={msg.id || index}
+                style={[
+                  styles.messageWrapper,
+                  position === 'right' ? styles.messageWrapperRight : styles.messageWrapperLeft
+                ]}
+              >
+                <View
+                  style={[
+                    styles.messageBubble,
+                    { backgroundColor: bubbleColor },
+                    position === 'right' ? styles.bubbleRight : styles.bubbleLeft
+                  ]}
+                >
+                  <Text style={[styles.messageText, { color: textColor }]}>
+                    {messageContent}
+                  </Text>
+                  {documentUrl && (
+                    <Pressable onPress={() => handleDocumentPress(documentUrl)}>
+                      <Text style={[styles.documentLink, { color: textColor, opacity: 0.8 }]}>
+                        View Document
+                      </Text>
+                    </Pressable>
+                  )}
+                  {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
+                    <GSSourcesDropdown 
+                      sources={msg.sources}
+                      textColor={textColor}
+                    />
+                  )}
+                  <Text style={[styles.timestamp, { color: textColor, opacity: 0.7 }]}>
+                    {formatTime(msg.timestamp)}
+                  </Text>
+                </View>
+              </View>
             );
           })
         )}
-        {isAIThinking && mode === 'ai' && (
-          <GSChatBubble
-            type="ai"
-            message="Thinking..."
-            timestamp={new Date().toISOString()}
-            currentUserRole={user?.role || 'student'}
-            isLoading={true}
-          />
-        )}
+        {isAIThinking && mode === 'ai' && (() => {
+          const thinkingMessage: AIMessage = {
+            id: 'thinking',
+            role: 'assistant',
+            content: 'Thinking...',
+            timestamp: new Date().toISOString()
+          };
+          const position = getMessagePosition(thinkingMessage);
+          const bubbleColor = getMessageBubbleColor(thinkingMessage);
+          const textColor = getMessageTextColor(bubbleColor);
+
+          return (
+            <View
+              style={[
+                styles.messageWrapper,
+                position === 'right' ? styles.messageWrapperRight : styles.messageWrapperLeft
+              ]}
+            >
+              <View
+                style={[
+                  styles.messageBubble,
+                  { backgroundColor: bubbleColor },
+                  position === 'right' ? styles.bubbleRight : styles.bubbleLeft
+                ]}
+              >
+                <View style={styles.loadingDots}>
+                  <View style={[styles.dot, { backgroundColor: textColor }]} />
+                  <View style={[styles.dot, { backgroundColor: textColor }]} />
+                  <View style={[styles.dot, { backgroundColor: textColor }]} />
+                </View>
+              </View>
+            </View>
+          );
+        })()}
       </ScrollView>
 
       {imageUri && (
@@ -544,14 +636,26 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
               {
                 value: 'ai',
                 label: 'AI Assistant',
-                style: mode === 'ai' ? styles.segmentedButtonActiveAI : styles.segmentedButtonInactive,
-                labelStyle: mode === 'ai' ? styles.segmentedButtonActiveLabelAI : styles.segmentedButtonInactiveLabel,
+                style: {
+                  backgroundColor: mode === 'ai' ? '#8B5CF6' : 'transparent',
+                  borderColor: '#8B5CF6',
+                },
+                labelStyle: {
+                  color: mode === 'ai' ? '#FFFFFF' : '#8B5CF6',
+                  fontWeight: mode === 'ai' ? '600' : '400',
+                },
               },
               {
                 value: 'teacher',
                 label: 'Teacher',
-                style: mode === 'teacher' ? styles.segmentedButtonActiveTeacher : styles.segmentedButtonInactive,
-                labelStyle: mode === 'teacher' ? styles.segmentedButtonActiveLabelTeacher : styles.segmentedButtonInactiveLabel,
+                style: {
+                  backgroundColor: mode === 'teacher' ? '#3B82F6' : 'transparent',
+                  borderColor: '#3B82F6',
+                },
+                labelStyle: {
+                  color: mode === 'teacher' ? '#FFFFFF' : '#3B82F6',
+                  fontWeight: mode === 'teacher' ? '600' : '400',
+                },
               },
             ]}
             style={styles.segmentedButtons}
@@ -629,6 +733,55 @@ const styles = StyleSheet.create({
   },
   messageContainer: {
     marginBottom: 8,
+  },
+  messageWrapper: {
+    paddingVertical: 4,
+    width: '100%',
+  },
+  messageWrapperLeft: {
+    alignItems: 'flex-start',
+  },
+  messageWrapperRight: {
+    alignItems: 'flex-end',
+  },
+  messageBubble: {
+    maxWidth: '75%',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginVertical: 2,
+  },
+  bubbleLeft: {
+    borderBottomLeftRadius: 4,
+    marginRight: 40,
+  },
+  bubbleRight: {
+    borderBottomRightRadius: 4,
+    marginLeft: 40,
+  },
+  messageText: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  timestamp: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  documentLink: {
+    fontSize: 14,
+    marginTop: 4,
+    textDecorationLine: 'underline',
+  },
+  loadingDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    opacity: 0.8,
   },
   loadingContainer: {
     flex: 1,
