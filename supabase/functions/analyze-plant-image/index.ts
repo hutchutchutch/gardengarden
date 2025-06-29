@@ -97,13 +97,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { imageUrl, studentId } = requestBody;
+    const { imageUrl, studentId, expectedFingerCount } = requestBody;
     
     console.log('DEBUG: Extracted parameters:');
     console.log('DEBUG: - studentId:', studentId);
     console.log('DEBUG: - imageUrl:', imageUrl);
     console.log('DEBUG: - imageUrl type:', typeof imageUrl);
     console.log('DEBUG: - imageUrl length:', imageUrl?.length);
+    console.log('DEBUG: - expectedFingerCount:', expectedFingerCount);
 
     if (!imageUrl || !studentId) {
       console.error('DEBUG: Missing required parameters');
@@ -270,9 +271,25 @@ Deno.serve(async (req) => {
       }
 
       const analysisPrompt = `
-Analyze this plant image and provide a detailed assessment in the following JSON format. Be specific and educational, as this is for a student learning about plant growth:
+Analyze this plant image with two objectives:
+
+1. VERIFICATION (CRITICAL): Check if the image shows a person holding up fingers:
+   - Look for any visible human hands or fingers in the image
+   - Count the number of fingers being held up (if any)
+   - Determine if a person is visible in the frame with the plant
+   - Be very accurate with finger counting - this is for anti-cheat verification
+
+2. PLANT ANALYSIS: Provide a detailed assessment of the plant
+
+Provide your response in the following JSON format:
 
 {
+  "verification": {
+    "has_visible_person": [true/false],
+    "detected_finger_count": [number or null if no fingers visible],
+    "confidence": [0.0-1.0 confidence in finger count],
+    "notes": "[Brief description of what you see regarding human presence/fingers]"
+  },
   "current_stage": {
     "name": "[Stage name like 'Seedling', 'Vegetative Growth', 'Flowering', 'Fruiting', etc.]",
     "description": "[Detailed description of what you observe about the current growth stage, including specific visual indicators]"
@@ -301,6 +318,7 @@ Analyze this plant image and provide a detailed assessment in the following JSON
 }
 
 Focus on:
+- ACCURATELY counting any visible fingers (this is critical for verification)
 - Identifying the specific growth stage with clear visual evidence
 - Providing educational value for students learning about plant biology
 - Giving actionable, specific advice rather than generic tips
@@ -401,6 +419,23 @@ Please respond with only the JSON object, no additional text.`;
         throw new Error('Analysis data is missing');
       }
       
+      // Determine verification status based on finger count match
+      let verificationStatus = 'pending';
+      if (expectedFingerCount && analysisData.verification) {
+        const detectedCount = analysisData.verification.detected_finger_count;
+        const confidence = analysisData.verification.confidence || 0;
+        
+        if (detectedCount === expectedFingerCount && confidence > 0.7) {
+          verificationStatus = 'verified';
+        } else if (!analysisData.verification.has_visible_person || detectedCount === null) {
+          verificationStatus = 'unverified';
+        } else if (Math.abs(detectedCount - expectedFingerCount) > 1 || confidence < 0.5) {
+          verificationStatus = 'suspicious';
+        } else {
+          verificationStatus = 'unverified';
+        }
+      }
+      
       const { error: updateError } = await supabase
         .from('image_analysis')
         .update({
@@ -410,6 +445,13 @@ Please respond with only the JSON object, no additional text.`;
           positive_signs: analysisData.overall_health?.positive_signs,
           areas_for_improvement: analysisData.overall_health?.areas_for_improvement,
           tips: analysisData.tips,
+          // Verification fields
+          verification_status: verificationStatus,
+          expected_finger_count: expectedFingerCount || null,
+          detected_finger_count: analysisData.verification?.detected_finger_count || null,
+          verification_confidence: analysisData.verification?.confidence || null,
+          verification_notes: analysisData.verification?.notes || null,
+          has_visible_person: analysisData.verification?.has_visible_person || false,
           processing_status: 'completed',
           updated_at: new Date().toISOString()
         })

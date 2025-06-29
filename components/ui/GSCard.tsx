@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, ViewStyle, Pressable } from 'react-native';
+import { Text } from 'react-native-paper';
 import { useAppTheme } from '../../config/theme';
 import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 
@@ -27,6 +28,16 @@ export const GSCard: React.FC<GSCardProps> = ({
   testID = 'gs-card',
 }) => {
   const theme = useAppTheme();
+
+  // Safely render children, wrapping strings in Text components
+  const renderSafeChildren = (children: React.ReactNode): React.ReactNode => {
+    return React.Children.map(children, (child) => {
+      if (typeof child === 'string') {
+        return <Text>{child}</Text>;
+      }
+      return child;
+    });
+  };
 
   const getPadding = () => {
     switch (padding) {
@@ -123,14 +134,14 @@ export const GSCard: React.FC<GSCardProps> = ({
         ]}
         testID={testID}
       >
-        {children}
+        {renderSafeChildren(children)}
       </Pressable>
     );
   }
 
   return (
     <View style={cardStyle} testID={testID}>
-      {children}
+      {renderSafeChildren(children)}
     </View>
   );
 }; 

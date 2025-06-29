@@ -131,4 +131,67 @@ node scripts/validate-text-rendering.js
 
 ## ✨ Result
 
-**We have eliminated the "text strings must be rendered within a <Text> component" error** and created a robust system to prevent it from recurring. The codebase now has comprehensive safeguards and clear patterns for safe text rendering. 
+**We have eliminated the "text strings must be rendered within a <Text> component" error** and created a robust system to prevent it from recurring. The codebase now has comprehensive safeguards and clear patterns for safe text rendering.
+
+## Issue
+Getting "Text strings must be rendered within a <Text> component" error when using GSCard component:
+
+```
+ERROR  Warning: Text strings must be rendered within a <Text> component.
+  at GSCard (components/ui/GSCard.tsx:19:11)
+  at TeacherMessagesScreen (app/screens/teacher-messages.tsx:20:27)
+```
+
+## Root Cause
+The GSCard component was receiving string children directly without wrapping them in Text components. React Native requires all text content to be wrapped in `<Text>` components.
+
+## Solution Applied
+
+### ✅ Updated GSCard Component
+**File**: `components/ui/GSCard.tsx`
+
+**Changes**:
+1. **Added Text import**: `import { Text } from 'react-native-paper';`
+
+2. **Added safe children renderer**:
+```typescript
+// Safely render children, wrapping strings in Text components
+const renderSafeChildren = (children: React.ReactNode): React.ReactNode => {
+  return React.Children.map(children, (child) => {
+    if (typeof child === 'string') {
+      return <Text>{child}</Text>;
+    }
+    return child;
+  });
+};
+```
+
+3. **Updated children rendering**:
+```typescript
+// Before
+{children}
+
+// After  
+{renderSafeChildren(children)}
+```
+
+## How It Works
+- The `renderSafeChildren` function checks each child element
+- If a child is a string, it automatically wraps it in a `<Text>` component
+- If a child is already a React element, it passes through unchanged
+- This prevents the "Text strings must be rendered within a <Text> component" error
+
+## Benefits
+- **Automatic text wrapping**: No need to manually wrap every string in Text components
+- **Backward compatible**: Existing code continues to work
+- **Error prevention**: Eliminates text rendering warnings
+- **Developer friendly**: Makes GSCard more forgiving to use
+
+## Testing
+This fix should resolve the error when:
+- Using GSCard in teacher-messages.tsx
+- Passing string content as children to GSCard
+- Any other component that might accidentally pass strings to GSCard
+
+## Related
+This follows the same pattern established in the ai-chat-debugging-fix.md for handling text rendering issues throughout the application. 

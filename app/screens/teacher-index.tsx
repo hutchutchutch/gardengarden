@@ -55,6 +55,7 @@ interface StudentData {
   lastPhotoUrl?: string;
   missedTasks?: number;
   timeAgo?: string;
+  verificationStatus?: 'verified' | 'unverified' | 'suspicious' | 'pending';
 }
 
 interface ClassStats {
@@ -136,11 +137,9 @@ export default function TeacherIndex() {
     try {
       // Get current active lesson using the LessonService
       const activeLesson = await LessonService.getCurrentLesson(user.id);
-      console.log('Active lesson from service:', activeLesson);
       setCurrentLesson(activeLesson);
       
       if (!activeLesson) {
-        console.log('No active lesson found for teacher');
         setIsLoading(false);
         return;
       }
@@ -185,7 +184,7 @@ export default function TeacherIndex() {
       let overdueTasksCount = 0;
       
       if (activeLesson) {
-        // Get today's submissions
+        // Get today's submissions with image analysis data
         const { data: submissions } = await supabase
           .from('daily_submissions')
           .select(`
@@ -193,6 +192,12 @@ export default function TeacherIndex() {
             plant:plants!inner(
               *,
               student:users!plants_student_id_fkey(*)
+            ),
+            image_analysis!daily_submissions_analysis_id_fkey(
+              verification_status,
+              expected_finger_count,
+              detected_finger_count,
+              verification_confidence
             )
           `)
           .gte('created_at', today.toISOString())
@@ -297,7 +302,8 @@ export default function TeacherIndex() {
         plantStage: sub.growth_stage as any || 'growing',
         needsAttention: false,
         lastPhotoUrl: sub.photo_url,
-        timeAgo: getTimeAgo(new Date(sub.created_at))
+        timeAgo: getTimeAgo(new Date(sub.created_at)),
+        verificationStatus: sub.image_analysis?.verification_status
       } as StudentData)) || [];
       
       // Count unread messages using MessageService
@@ -720,6 +726,7 @@ export default function TeacherIndex() {
                         plantName="Tomato"
                         dayNumber={23}
                         healthScore={submission.healthScore}
+                        verificationStatus={submission.verificationStatus}
                         onExpand={() => router.push('/modal')}
                       />
                     </View>

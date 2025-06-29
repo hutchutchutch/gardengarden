@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Image, ActivityIndicator, Text } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import AIChat from '@/components/AIChat';
-import colors from '@/constants/colors';
+import colors, { DESIGN_TOKENS } from '@/constants/colors';
 import { analyzePhoto } from '@/services/ai-service';
 import { AIPlantAnalysis } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -97,10 +97,10 @@ export default function AIChatScreen() {
             backgroundColor: colors.white,
           },
           headerTitleStyle: {
-            color: colors.text,
+            color: DESIGN_TOKENS.primaryDark,
             fontWeight: '600',
           },
-          headerTintColor: colors.primary,
+          headerTintColor: DESIGN_TOKENS.primary,
         }} 
       />
       {photoUri && mode !== 'teacher' && (
@@ -129,7 +129,7 @@ export default function AIChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: DESIGN_TOKENS.background,
   },
   photoContainer: {
     height: 200,

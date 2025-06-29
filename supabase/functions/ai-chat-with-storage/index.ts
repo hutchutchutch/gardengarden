@@ -88,7 +88,7 @@ serve(async (req) => {
   try {
     console.log('[1] Parsing request body...')
     const requestBody = await req.json()
-    console.log('[1.1] Raw request body:', JSON.stringify(requestBody, null, 2))
+          console.log('[1.1] Request received with message length:', requestBody.message?.length || 0)
     
     const { 
       message, 
@@ -184,16 +184,15 @@ serve(async (req) => {
         console.log(`[3.2.1] Calling search_lesson_content with lesson_id: ${effectiveLessonId}`)
         
         const { data: searchResults, error: searchError } = await supabase
-          .rpc('search_lesson_content', {
+          .rpc('search_all_lesson_content', {
             query_embedding: queryEmbedding,
-            p_lesson_id: effectiveLessonId,
+            p_lesson_ids: effectiveLessonId ? [effectiveLessonId] : null,
             match_count: 3
           })
 
         const retrieveTime = Date.now() - retrieveStartTime
         console.log(`[3.3] Content retrieval completed in ${retrieveTime}ms`)
         console.log(`[3.3.1] Search error: ${searchError?.message || 'none'}`)
-        console.log(`[3.3.2] Search results: ${JSON.stringify(searchResults, null, 2)}`)
 
         if (!searchError && searchResults && searchResults.length > 0) {
           console.log(`[3.4] Retrieved ${searchResults.length} relevant chunks`)
@@ -338,7 +337,7 @@ ${plantContext}`
 
     if (studentMessageError) {
       console.error('[7.ERROR] Error storing student message:', studentMessageError)
-      console.error('[7.ERROR.1] Error details:', JSON.stringify(studentMessageError, null, 2))
+      console.error('[7.ERROR.1] Error details:', studentMessageError.message)
     } else {
       console.log('[7.4] Student message stored successfully with ID:', studentMessageData.id)
     }
@@ -369,7 +368,7 @@ ${plantContext}`
     if (aiMessageError) {
       console.error('[8.ERROR] Error storing AI response:', aiMessageError)
       console.error('[8.ERROR.1] Error code:', aiMessageError.code)
-      console.error('[8.ERROR.2] Error details:', JSON.stringify(aiMessageError, null, 2))
+      console.error('[8.ERROR.2] Error details:', aiMessageError.message)
       console.error('[8.ERROR.3] Attempted to store content of length:', safeAiMessage.length)
     } else {
       console.log('[8.2] AI response stored successfully with ID:', aiMessageData.id)

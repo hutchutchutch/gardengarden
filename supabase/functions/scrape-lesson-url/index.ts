@@ -47,6 +47,52 @@ const EMBEDDING_TIMEOUT = 15000; // 15 seconds per embedding
 const MAX_CHUNKS = 20; // Reduced from 30
 const MAX_CONTENT_SIZE = 200000; // Reduced from 300KB to 200KB
 
+// Clean text for embedding by removing URLs and long strings
+function cleanTextForEmbedding(text: string): string {
+  console.log('[CLEANING] Starting text cleaning, original length:', text.length);
+  
+  // Remove URLs (anything starting with http:// or https:// or www.)
+  text = text.replace(/https?:\/\/[^\s]+/gi, '');
+  text = text.replace(/www\.[^\s]+/gi, '');
+  
+  // Remove email addresses
+  text = text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '');
+  
+  // Split into words and filter out long strings
+  const words = text.split(/\s+/);
+  const filteredWords = words.filter(word => {
+    // Remove words over 30 characters (likely to be IDs, hashes, or other non-meaningful content)
+    if (word.length > 30) return false;
+    
+    // Remove words that look like file paths
+    if (word.includes('/') && word.split('/').length > 2) return false;
+    
+    // Remove words that look like base64 or hex strings (consecutive alphanumeric without meaningful structure)
+    if (word.length > 20 && /^[a-zA-Z0-9]+$/.test(word)) return false;
+    
+    // Remove words with excessive special characters
+    const specialCharCount = (word.match(/[^a-zA-Z0-9\s]/g) || []).length;
+    if (specialCharCount > word.length * 0.5) return false;
+    
+    return true;
+  });
+  
+  // Rejoin the filtered words
+  text = filteredWords.join(' ');
+  
+  // Clean up excessive whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  // Remove any remaining very long continuous strings without spaces
+  text = text.replace(/[^\s]{50,}/g, '');
+  
+  const originalLength = arguments[0].length;
+  const reduction = originalLength > 0 ? Math.round((1 - text.length / originalLength) * 100) : 0;
+  console.log('[CLEANING] Cleaned text length:', text.length, 'reduction:', reduction + '%');
+  
+  return text;
+}
+
 // Simple chunking function
 function chunkTextBySections(text: string, maxChunkLength = 2000): string[] {
   console.log('[CHUNKING] Starting chunking, content length:', text.length);
@@ -211,19 +257,32 @@ try {
       
       console.log('[FIRECRAWL] Success, content length:', markdown.length);
       
+      // Clean the content before chunking
+      const cleanedContent = cleanTextForEmbedding(markdown);
+      console.log('[PROCESSING] Content cleaned, original:', markdown.length, 'cleaned:', cleanedContent.length);
+      
       // Update with content
+      const updateData: any = {
+        processing_progress: 40,
+        title,
+        scraped_content: markdown,
+        metadata
+      };
+      
+      // Try to update with cleaned_content, but handle if column doesn't exist
+      try {
+        updateData.cleaned_content = cleanedContent;
+      } catch (e) {
+        console.log('[WARNING] cleaned_content column may not exist yet');
+      }
+      
       await supabase
         .from('lesson_urls')
-        .update({
-          processing_progress: 40,
-          title,
-          scraped_content: markdown,
-          metadata
-        })
+        .update(updateData)
         .eq('id', lessonUrlRecord.id);
       
-      // Chunk the content
-      const chunks = chunkTextBySections(markdown);
+      // Chunk the cleaned content
+      const chunks = chunkTextBySections(cleanedContent);
       
       // Update progress
       await supabase

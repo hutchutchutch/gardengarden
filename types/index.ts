@@ -73,6 +73,9 @@ export interface Source {
   title: string;
   snippet: string;
   similarity?: number;
+  lesson_url_id?: string;
+  content?: string;
+  chunk_id?: string;
 }
 
 export interface AIMessage {

@@ -40,6 +40,8 @@ export default function CameraScreen() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [facing, setFacing] = useState<CameraType>('back');
+  const [requiredFingerCount, setRequiredFingerCount] = useState<number | null>(null);
+  const [showFingerInstruction, setShowFingerInstruction] = useState(true);
   
   // Snackbar state
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -86,6 +88,9 @@ export default function CameraScreen() {
 
   useEffect(() => {
     handlePermissions();
+    // Generate random finger count (1-4) when component mounts
+    const fingerCount = Math.floor(Math.random() * 4) + 1;
+    setRequiredFingerCount(fingerCount);
   }, []);
 
   const takePicture = async () => {
@@ -197,8 +202,12 @@ export default function CameraScreen() {
     
     setIsAnalyzing(true);
     try {
-      // Upload photo and trigger AI analysis (compression is handled automatically)
-      const result = await PhotoService.uploadAndAnalyze(capturedImage, user.id);
+      // Upload photo and trigger AI analysis with finger count verification
+      const result = await PhotoService.uploadAndAnalyze(
+        capturedImage, 
+        user.id,
+        requiredFingerCount // Pass the required finger count for verification
+      );
       
       if (result.success && result.analysisId) {
         // Navigate back to student index immediately after starting analysis
@@ -373,6 +382,20 @@ export default function CameraScreen() {
           <View style={styles.helperTextBadge}>
             <Text style={styles.helperText}>Align your plant with yesterday's photo</Text>
           </View>
+          {showFingerInstruction && requiredFingerCount && (
+            <View style={[styles.fingerInstructionBadge, { marginTop: 8 }]}>
+              <Text style={styles.fingerInstructionTitle}>✋ Verification Required</Text>
+              <Text style={styles.fingerInstructionText}>
+                Hold up {requiredFingerCount} finger{requiredFingerCount > 1 ? 's' : ''} next to your plant
+              </Text>
+              <TouchableOpacity 
+                onPress={() => setShowFingerInstruction(false)}
+                style={styles.dismissButton}
+              >
+                <Text style={styles.dismissButtonText}>Got it</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
         
         {/* Bottom Controls */}
@@ -587,6 +610,38 @@ const styles = StyleSheet.create({
   helperText: {
     color: 'white',
     fontSize: 14,
+  },
+  fingerInstructionBadge: {
+    backgroundColor: 'rgba(255, 193, 7, 0.9)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    maxWidth: 280,
+    alignItems: 'center',
+  },
+  fingerInstructionTitle: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  fingerInstructionText: {
+    color: '#333',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  dismissButton: {
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  },
+  dismissButtonText: {
+    color: '#333',
+    fontSize: 14,
+    fontWeight: '500',
   },
   cameraControls: {
     position: 'absolute',

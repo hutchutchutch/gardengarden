@@ -57,14 +57,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setHasSeenOnboarding(onboardingStatus === 'true');
         
         if (!hasCleared) {
-          console.log('🔄 App load - clearing session to force fresh sign-in');
           // Add small delay to allow navigation to settle
           await new Promise(resolve => setTimeout(resolve, 100));
           await supabase.auth.signOut();
           setUser(null);
           hasCleared = true;
         } else {
-          console.log('🔄 Session already cleared, checking existing session');
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
             await loadUserFromSession(session);
@@ -82,13 +80,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
-      
       if (session?.user) {
-        console.log('🔄 Session exists, calling loadUserFromSession...');
         await loadUserFromSession(session);
       } else {
-        console.log('🔄 No session, setting user to null and isLoading to false');
         setUser(null);
         setIsLoading(false); // Only set loading false when no session
       }
@@ -100,17 +94,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loadUserFromSession = async (session: Session) => {
-    console.log('🔄 loadUserFromSession called for:', session.user.email);
     try {
-      setIsLoading(true); // Ensure loading state during profile fetch
-      console.log('🔄 Set isLoading = true, querying database for user profile...');
+      setIsLoading(true);
       
       // Get user profile from database by email (since auth IDs may not match users table IDs)
-      console.log('🔄 About to query users table for email:', session.user.email);
-      
-      // Check Supabase configuration
-      console.log('🔄 Supabase URL configured:', !!process.env.EXPO_PUBLIC_SUPABASE_URL);
-      console.log('🔄 Supabase Anon Key configured:', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
       
       // Add timeout to prevent hanging
       let profile: any = null;
@@ -133,16 +120,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           error = (result as any).error;
         }
       } catch (timeoutError) {
-        console.error('🚨 Database query timed out:', timeoutError);
+        console.error('Database query timed out:', timeoutError);
         error = timeoutError;
       }
-
-      console.log('🔄 Database query completed. Profile:', profile, 'Error:', error);
-
-      console.log('🔄 Processing query result...');
       
       if (profile && !error) {
-        console.log('🔄 Profile found, creating user data...');
         const userData: User = {
           id: session.user.id, // Use auth.uid() instead of public.users.id for RLS compatibility
           email: profile.email,
@@ -155,10 +137,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         
         setUser(userData);
-        console.log('✅ Loaded user from session:', userData.email, userData.role, 'auth_id:', session.user.id);
       } else {
-        console.error('❌ Failed to load user profile:', error);
-        console.log('🔄 Setting user to null and signing out...');
+        console.error('Failed to load user profile:', error);
         setUser(null);
         // Skip sign out for timeout errors to prevent infinite loops
         if (error && !error.message?.includes('timeout')) {
@@ -171,7 +151,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.auth.signOut();
       setUser(null);
     } finally {
-      console.log('🔄 loadUserFromSession finally block - setting isLoading = false');
       setIsLoading(false); // Always clear loading state
     }
   };
@@ -188,7 +167,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
 
       // REMOVED: setIsLoading(false) - let onAuthStateChange handle this
-      console.log('✅ Signed in successfully:', email);
     } catch (error) {
       console.error('Sign in error:', error);
       setIsLoading(false); // Only set false on error

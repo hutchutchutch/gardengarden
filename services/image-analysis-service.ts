@@ -34,13 +34,24 @@ export interface ImageAnalysisRecord {
   error_message?: string;
   created_at: string;
   updated_at: string;
+  // Verification fields
+  verification_status?: 'verified' | 'unverified' | 'suspicious' | 'pending';
+  expected_finger_count?: number;
+  detected_finger_count?: number;
+  verification_confidence?: number;
+  verification_notes?: string;
+  has_visible_person?: boolean;
 }
 
 export class ImageAnalysisService {
   /**
    * Trigger image analysis for a student's plant photo
    */
-  static async analyzeImage(imageUrl: string, studentId: string): Promise<{
+  static async analyzeImage(
+    imageUrl: string, 
+    studentId: string,
+    expectedFingerCount?: number
+  ): Promise<{
     success: boolean;
     analysisId?: string;
     analysis?: ImageAnalysisResult;
@@ -50,7 +61,8 @@ export class ImageAnalysisService {
       const { data, error } = await supabase.functions.invoke('analyze-plant-image', {
         body: {
           imageUrl,
-          studentId
+          studentId,
+          expectedFingerCount
         }
       });
 

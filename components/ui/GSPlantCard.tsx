@@ -17,6 +17,7 @@ interface GSPlantCardProps {
   currentStage?: string;
   positiveSigns?: string[];
   areasForImprovement?: string[];
+  verificationStatus?: 'verified' | 'unverified' | 'suspicious' | 'pending';
   onExpand?: () => void;
   isLoading?: boolean;
   testID?: string;
@@ -34,6 +35,7 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
   currentStage,
   positiveSigns = [],
   areasForImprovement = [],
+  verificationStatus,
   onExpand,
   isLoading = false,
   testID = 'gs-plant-card',
@@ -93,6 +95,33 @@ export const GSPlantCard: React.FC<GSPlantCardProps> = ({
         <Card.Content style={styles.content}>
           <View style={styles.header}>
             <View style={styles.info}>
+              <View style={styles.studentInfoRow}>
+                <Text 
+                  variant="labelLarge" 
+                  style={[styles.studentName, { color: colors.text }]}
+                  numberOfLines={1}
+                >
+                  {studentName}
+                </Text>
+                {verificationStatus && verificationStatus !== 'pending' && (
+                  <View style={styles.verificationBadge}>
+                    <GSIconButton 
+                      icon={
+                        verificationStatus === 'verified' ? 'check-circle' : 
+                        verificationStatus === 'suspicious' ? 'alert-circle' : 
+                        'help-circle'
+                      } 
+                      onPress={() => {}} 
+                      size={16} 
+                      color={
+                        verificationStatus === 'verified' ? colors.success : 
+                        verificationStatus === 'suspicious' ? colors.error : 
+                        colors.warning
+                      } 
+                    />
+                  </View>
+                )}
+              </View>
               <View style={styles.titleRow}>
                 <Text 
                   variant="titleMedium" 
@@ -219,6 +248,15 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
+  },
+  studentInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  verificationBadge: {
+    marginLeft: 8,
   },
   titleRow: {
     flexDirection: 'row',

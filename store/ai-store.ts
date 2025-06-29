@@ -301,38 +301,50 @@ export const useAIStore = create<AIState>()(
                   timestamp: new Date().toISOString()
                 };
 
+                // Transform chunk_details into proper Source objects with lesson_url_id
+                let transformedSources: any[] | undefined = undefined;
+                if (data.chunk_details && data.chunk_details.length > 0) {
+                  try {
+                    // Since chunk_details now includes lesson_url_id, get unique lesson_url_ids
+                    const lessonUrlIds = [...new Set(data.chunk_details.map((chunk: any) => chunk.lesson_url_id))];
+                    
+                    // Fetch lesson_url information
+                    const { data: lessonUrls, error: urlError } = await supabase
+                      .from('lesson_urls')
+                      .select('id, url, title')
+                      .in('id', lessonUrlIds);
+
+                    if (!urlError && lessonUrls) {
+                      transformedSources = data.chunk_details.map((chunk: any) => {
+                        const lessonUrl = lessonUrls.find((lu: any) => lu.id === chunk.lesson_url_id);
+                        
+                        return {
+                          chunk_id: chunk.id,
+                          lesson_url_id: chunk.lesson_url_id,
+                          url: lessonUrl?.url || '',
+                          title: lessonUrl?.title || 'Lesson Reference',
+                          snippet: chunk.content.substring(0, 200) + '...',
+                          content: chunk.content,
+                          similarity: chunk.similarity
+                        };
+                      });
+                    }
+                  } catch (error) {
+                    console.error('Error fetching lesson URL data for sources:', error);
+                  }
+                }
+
                 // Add AI response (already saved to database)
                 const aiResponse: AIMessage = {
                   id: data.ai_message_id,
                   role: 'assistant',
                   content: data.message || '',
                   timestamp: new Date().toISOString(),
-                  sources: data.relevant_chunks ? data.relevant_chunks.map((chunkId: string) => ({ chunk_id: chunkId })) : undefined
+                  sources: transformedSources
                 };
                 
                 // Build messages array with user message and AI response
                 const newMessages = [savedUserMessage, aiResponse];
-                
-                // If we have chunk details, add them as separate assistant messages
-                if (data.chunk_details && data.chunk_details.length > 0) {
-                  console.log(`Adding ${data.chunk_details.length} reference chunks as messages`);
-                  
-                  data.chunk_details.forEach((chunk: any, index: number) => {
-                    const chunkMessage: AIMessage = {
-                      id: data.chunk_message_ids?.[index] || `chunk-${Date.now()}-${index}`,
-                      role: 'assistant',
-                      content: `📚 **Reference ${index + 1}**\n\n${chunk.content}\n\n*Relevance: ${Math.round(chunk.similarity * 100)}%*`,
-                      timestamp: new Date(Date.now() + index + 1).toISOString(),
-                      sources: [{
-                        url: chunk.id, // Use chunk ID as URL for now
-                        title: `Lesson Reference ${index + 1}`,
-                        snippet: chunk.content.substring(0, 200) + '...',
-                        similarity: chunk.similarity
-                      }]
-                    };
-                    newMessages.push(chunkMessage);
-                  });
-                }
                 
                 set(state => ({
                   messages: [...state.messages.slice(0, -1), ...newMessages],

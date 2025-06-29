@@ -25,6 +25,7 @@ import {
   GSPlantCard,
   GSCard,
   GSFAB,
+  GSSnackbar,
   Text
 } from '@/components/ui';
 import { ShimmerPlaceholder } from '@/components/ui/ShimmerPlaceholder';
@@ -47,6 +48,15 @@ export default function StudentIndexScreen() {
   const [pendingPhotoTaskId, setPendingPhotoTaskId] = React.useState<string | null>(null);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = React.useState(false);
   const [analysisError, setAnalysisError] = React.useState(false);
+  const [verificationSnackbar, setVerificationSnackbar] = React.useState<{
+    visible: boolean;
+    message: string;
+    variant: 'success' | 'warning' | 'error' | 'info';
+  }>({
+    visible: false,
+    message: '',
+    variant: 'info'
+  });
 
   // Create skeleton components for student view
   const ClassGardensSkeleton = () => (
@@ -352,7 +362,16 @@ export default function StudentIndexScreen() {
       
       const { data: recentSubmissions } = await supabase
         .from('daily_submissions')
-        .select('id, processing_status, error_message')
+        .select(`
+          id, 
+          processing_status, 
+          error_message,
+          image_analysis!daily_submissions_analysis_id_fkey(
+            verification_status,
+            expected_finger_count,
+            detected_finger_count
+          )
+        `)
         .eq('student_id', user.id)
         .eq('plant_id', activePlant.id)
         .gte('created_at', fiveMinutesAgo.toISOString())
@@ -371,6 +390,34 @@ export default function StudentIndexScreen() {
         } else if (submission.processing_status === 'completed') {
           setIsAnalyzingPhoto(false);
           setAnalysisError(false);
+          
+          // Check verification status and show feedback
+          if (submission.image_analysis?.verification_status) {
+            const verificationStatus = submission.image_analysis.verification_status;
+            const expectedCount = submission.image_analysis.expected_finger_count;
+            const detectedCount = submission.image_analysis.detected_finger_count;
+            
+            if (verificationStatus === 'verified') {
+              setVerificationSnackbar({
+                visible: true,
+                message: '✅ Photo verified! Great job showing the correct number of fingers.',
+                variant: 'success'
+              });
+            } else if (verificationStatus === 'unverified') {
+              setVerificationSnackbar({
+                visible: true,
+                message: `⚠️ Verification failed. Expected ${expectedCount} finger${expectedCount > 1 ? 's' : ''} but detected ${detectedCount || 'none'}.`,
+                variant: 'warning'
+              });
+            } else if (verificationStatus === 'suspicious') {
+              setVerificationSnackbar({
+                visible: true,
+                message: '❌ Photo could not be verified. Please ensure your fingers are clearly visible.',
+                variant: 'error'
+              });
+            }
+          }
+          
           // Refresh the data to show updated plant info
           fetchStudentData();
         }
@@ -933,6 +980,15 @@ export default function StudentIndexScreen() {
           icon="message-text"
           onPress={() => router.push('/ai-chat')}
           variant="ai"
+        />
+        
+        {/* Verification Feedback Snackbar */}
+        <GSSnackbar
+          visible={verificationSnackbar.visible}
+          onDismiss={() => setVerificationSnackbar(prev => ({ ...prev, visible: false }))}
+          message={verificationSnackbar.message}
+          variant={verificationSnackbar.variant}
+          duration={5000}
         />
       </View>
     </SafeAreaView>

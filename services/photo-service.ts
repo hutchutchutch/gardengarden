@@ -576,7 +576,8 @@ export class PhotoService {
   static async uploadAndAnalyze(
     imageUri: string, 
     studentId: string, 
-    fileName?: string
+    fileName?: string,
+    expectedFingerCount?: number
   ): Promise<PhotoUploadResult> {
     try {
       console.log('📸 Starting uploadAndAnalyze with URI:', imageUri);
@@ -653,8 +654,12 @@ export class PhotoService {
 
       const photoUrl = publicUrlData.publicUrl;
 
-      // Trigger image analysis for original images
-      const analysisResult = await ImageAnalysisService.analyzeImage(photoUrl, studentId);
+      // Trigger image analysis for original images with finger count verification
+      const analysisResult = await ImageAnalysisService.analyzeImage(
+        photoUrl, 
+        studentId, 
+        expectedFingerCount
+      );
 
       return {
         success: true,

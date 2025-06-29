@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Surface, Text, Icon } from 'react-native-paper';
 import { View, StyleSheet, Pressable, Linking, ViewStyle } from 'react-native';
-import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, ExternalLink, BookOpen } from 'lucide-react-native';
 import { useAppTheme } from '../../config/theme';
 import { ShimmerPlaceholder } from './ShimmerPlaceholder';
 import { Source } from '@/types';
+import { DESIGN_TOKENS } from '@/constants/colors';
 
-type ChatBubbleType = 'ai' | 'teacher' | 'student' | 'document';
+type ChatBubbleType = 'ai' | 'teacher' | 'student' | 'document' | 'source';
 type UserRole = 'student' | 'teacher';
 
 interface GSChatBubbleProps {
@@ -22,6 +23,132 @@ interface GSChatBubbleProps {
   documentUrl?: string; // For document type bubbles
   onDocumentPress?: () => void; // For document type bubbles
 }
+
+// Helper component for source lesson URL bubbles
+interface SourceLessonBubbleProps {
+  lessonUrl: {
+    id: string;
+    title: string;
+    url: string;
+    chunks: Array<{
+      content: string;
+      similarity: number;
+      chunk_id: string;
+    }>;
+  };
+  timestamp: string;
+}
+
+const SourceLessonBubble: React.FC<SourceLessonBubbleProps> = ({
+  lessonUrl,
+  timestamp,
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const theme = useAppTheme();
+
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleOpenURL = async (url: string) => {
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    }
+  };
+
+  // Get first 2 lines of content from the most relevant chunk
+  const mostRelevantChunk = lessonUrl.chunks && lessonUrl.chunks.length > 0 
+    ? lessonUrl.chunks.sort((a, b) => b.similarity - a.similarity)[0]
+    : null;
+  
+  if (!mostRelevantChunk) {
+    console.warn('No relevant chunk found for lesson URL:', lessonUrl.title);
+    return null;
+  }
+  
+  const contentLines = mostRelevantChunk.content?.split('\n').filter(line => line.trim()) || [];
+  const previewLines = contentLines.slice(0, 2).join('\n');
+  const hasMoreContent = contentLines.length > 2;
+
+  return (
+    <View style={styles.sourceContainer}>
+      <Pressable onPress={() => handleOpenURL(lessonUrl.url)} style={styles.sourcePressable}>
+        <Surface
+          style={styles.sourceBubble}
+          elevation={1}
+        >
+          {/* Header with title and relevance */}
+          <View style={styles.sourceHeaderNew}>
+            <View style={styles.sourceTitleRow}>
+              <BookOpen size={16} color={DESIGN_TOKENS.primary} style={styles.bookIcon} />
+              <Text 
+                variant="bodyMedium" 
+                style={[styles.sourceTitleNew, { color: DESIGN_TOKENS.primaryDark }]}
+                numberOfLines={2}
+              >
+                {lessonUrl.title}
+              </Text>
+              <ExternalLink size={14} color={DESIGN_TOKENS.muted} />
+            </View>
+            <Text 
+              variant="labelSmall" 
+              style={[styles.relevanceTextNew, { color: DESIGN_TOKENS.primary }]}
+            >
+              {Math.round(mostRelevantChunk.similarity * 100)}% relevant
+            </Text>
+          </View>
+
+          {/* Content preview */}
+          <Text 
+            variant="bodySmall" 
+            style={[styles.sourceContentNew, { color: DESIGN_TOKENS.primaryDark }]}
+          >
+            {previewLines}
+          </Text>
+
+          {/* Expand button */}
+          {hasMoreContent && (
+            <Pressable
+              style={styles.expandButtonNew}
+              onPress={() => setIsExpanded(!isExpanded)}
+            >
+              <Text style={[styles.expandTextNew, { color: DESIGN_TOKENS.primary }]}>
+                See more
+              </Text>
+              {isExpanded ? (
+                <ChevronUp size={16} color={DESIGN_TOKENS.primary} />
+              ) : (
+                <ChevronDown size={16} color={DESIGN_TOKENS.primary} />
+              )}
+            </Pressable>
+          )}
+
+          {/* Expanded content */}
+          {isExpanded && (
+            <Text 
+              variant="bodySmall" 
+              style={[styles.sourceContentNew, { color: DESIGN_TOKENS.primaryDark, marginTop: 8 }]}
+            >
+              {contentLines.slice(2).join('\n')}
+            </Text>
+          )}
+
+          {/* Footer with timestamp */}
+          <View style={styles.sourceFooterNew}>
+            <Text 
+              variant="labelSmall" 
+              style={[styles.timestampNew, { color: DESIGN_TOKENS.muted }]}
+            >
+              {formatTime(timestamp)}
+            </Text>
+          </View>
+        </Surface>
+      </Pressable>
+    </View>
+  );
+};
 
 export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
   type,
@@ -66,20 +193,20 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
     if (type === 'document') return '#F59E0B'; // Orange for document references
     
     // Current user's messages are always muted gray
-    if (isCurrentUserMessage()) return theme.colors.muted + '20'; // 12% opacity
+    if (isCurrentUserMessage()) return DESIGN_TOKENS.muted + '20'; // 12% opacity
     
     // AI messages use secondary colors (purple)
-    if (type === 'ai') return theme.colors.secondaryLight;
+    if (type === 'ai') return DESIGN_TOKENS.secondaryLight;
     
     // Other user's messages use primary colors (green) 
-    return theme.colors.primary;
+    return DESIGN_TOKENS.primary;
   };
 
   const getTextColor = () => {
     if (type === 'document') return '#FFFFFF'; // White text on orange
     
     // Current user's messages have dark text on light gray background
-    if (isCurrentUserMessage()) return theme.colors.primaryDark;
+    if (isCurrentUserMessage()) return DESIGN_TOKENS.primaryDark;
     
     // AI and other user messages have white text on colored backgrounds
     return '#FFFFFF';
@@ -115,6 +242,42 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
     };
   };
 
+  // Group sources by lesson_url_id
+  const groupSourcesByLessonUrl = (sources: Source[]) => {
+    const grouped: { [key: string]: { 
+      id: string; 
+      title: string; 
+      url: string; 
+      chunks: Array<{
+        content: string;
+        similarity: number;
+        chunk_id: string;
+      }>;
+    } } = {};
+
+    sources.forEach(source => {
+      const lessonUrlId = source.lesson_url_id || 'unknown';
+      if (!grouped[lessonUrlId]) {
+        grouped[lessonUrlId] = {
+          id: lessonUrlId,
+          title: source.title,
+          url: source.url,
+          chunks: []
+        };
+      }
+      
+      if (source.content && source.chunk_id) {
+        grouped[lessonUrlId].chunks.push({
+          content: source.content,
+          similarity: source.similarity || 0,
+          chunk_id: source.chunk_id
+        });
+      }
+    });
+
+    return Object.values(grouped);
+  };
+
   if (isLoading) {
     return (
       <View 
@@ -134,30 +297,77 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
     );
   }
 
+  const sourceLessonUrls = groupSourcesByLessonUrl(sources);
+
   return (
-    <View 
-      style={[
-        styles.container,
-        { alignItems: getAlignment() },
-      ]}
-      testID={testID}
-    >
-      {type === 'document' && onDocumentPress ? (
-        <Pressable onPress={onDocumentPress}>
+    <>
+      <View 
+        style={[
+          styles.container,
+          { alignItems: getAlignment() },
+        ]}
+        testID={testID}
+      >
+        {type === 'document' && onDocumentPress ? (
+          <Pressable onPress={onDocumentPress}>
+            <Surface
+              style={getBubbleStyle()}
+              elevation={2}
+            >
+              <Text 
+                variant="bodyMedium" 
+                style={[
+                  styles.message,
+                  { color: getTextColor() },
+                  styles.documentTitle,
+                ]}
+              >
+                📄 {message}
+              </Text>
+              <View style={styles.footer}>
+                <Text 
+                  variant="labelSmall" 
+                  style={[
+                    styles.timestamp,
+                    { color: getTextColor(), opacity: 0.7 },
+                  ]}
+                >
+                  {formatTime(timestamp)}
+                </Text>
+              </View>
+            </Surface>
+          </Pressable>
+        ) : (
           <Surface
             style={getBubbleStyle()}
-            elevation={2}
+            elevation={type === 'student' ? 1 : 2}
           >
             <Text 
               variant="bodyMedium" 
               style={[
                 styles.message,
                 { color: getTextColor() },
-                styles.documentTitle,
               ]}
             >
-              📄 {message}
+              {message}
             </Text>
+
+            {showSources && sources.length > 0 && type === 'ai' && (
+              <Pressable
+                style={[styles.sourcesToggle, { borderTopColor: 'rgba(255, 255, 255, 0.2)' }]}
+                onPress={() => setShowExpandedSources(!showExpandedSources)}
+              >
+                <Text style={[styles.sourcesToggleText, { color: getTextColor(), opacity: 0.9 }]}>
+                  See sources ({sourceLessonUrls.length})
+                </Text>
+                {showExpandedSources ? (
+                  <ChevronUp size={16} color={getTextColor()} style={{ opacity: 0.9 }} />
+                ) : (
+                  <ChevronDown size={16} color={getTextColor()} style={{ opacity: 0.9 }} />
+                )}
+              </Pressable>
+            )}
+
             <View style={styles.footer}>
               <Text 
                 variant="labelSmall" 
@@ -168,98 +378,32 @@ export const GSChatBubble: React.FC<GSChatBubbleProps> = ({
               >
                 {formatTime(timestamp)}
               </Text>
+              
+              {type === 'student' && (
+                <Icon
+                  source={isRead ? 'check-all' : 'check'}
+                  size={16}
+                  color={isRead ? theme.colors.primary : theme.colors.muted}
+                />
+              )}
             </View>
           </Surface>
-        </Pressable>
-      ) : (
-        <Surface
-          style={getBubbleStyle()}
-          elevation={type === 'student' ? 1 : 2}
-        >
-          <Text 
-            variant="bodyMedium" 
-            style={[
-              styles.message,
-              { color: getTextColor() },
-            ]}
-          >
-            {message}
-          </Text>
+        )}
+      </View>
 
-          {showSources && sources.length > 0 && type === 'ai' && (
-            <Pressable
-              style={[styles.sourcesToggle, { borderTopColor: 'rgba(255, 255, 255, 0.2)' }]}
-              onPress={() => setShowExpandedSources(!showExpandedSources)}
-            >
-              <Text style={[styles.sourcesToggleText, { color: getTextColor(), opacity: 0.9 }]}>
-                See sources ({sources.length})
-              </Text>
-              {showExpandedSources ? (
-                <ChevronUp size={16} color={getTextColor()} style={{ opacity: 0.9 }} />
-              ) : (
-                <ChevronDown size={16} color={getTextColor()} style={{ opacity: 0.9 }} />
-              )}
-            </Pressable>
-          )}
-
-          {showExpandedSources && sources && (
-            <View style={styles.sourcesContainer}>
-              {sources.map((source, index) => (
-                <Pressable
-                  key={index}
-                  style={[
-                    styles.sourceItem,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      shadowColor: theme.colors.shadow,
-                    },
-                  ]}
-                  onPress={() => handleOpenURL(source.url)}
-                >
-                  <View style={styles.sourceContent}>
-                    <Text style={[styles.sourceTitle, { color: theme.colors.onSurface }]}>
-                      {source.title}
-                    </Text>
-                    <Text 
-                      style={[styles.sourceSnippet, { color: theme.colors.onSurfaceVariant }]}
-                      numberOfLines={2}
-                    >
-                      {source.snippet}
-                    </Text>
-                    {source.similarity && (
-                      <Text style={[styles.sourceSimilarity, { color: theme.colors.primary }]}>
-                        {Math.round(source.similarity * 100)}% relevant
-                      </Text>
-                    )}
-                  </View>
-                  <ExternalLink size={16} color={theme.colors.primary} />
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          <View style={styles.footer}>
-            <Text 
-              variant="labelSmall" 
-              style={[
-                styles.timestamp,
-                { color: getTextColor(), opacity: 0.7 },
-              ]}
-            >
-              {formatTime(timestamp)}
-            </Text>
-            
-            {type === 'student' && (
-              <Icon
-                source={isRead ? 'check-all' : 'check'}
-                size={16}
-                color={isRead ? theme.colors.primary : theme.colors.muted}
-              />
-            )}
-          </View>
-        </Surface>
+      {/* Render source lesson URL bubbles below the main message */}
+      {showExpandedSources && sourceLessonUrls.length > 0 && type === 'ai' && (
+        <>
+          {sourceLessonUrls.map((lessonUrl) => (
+            <SourceLessonBubble
+              key={lessonUrl.id}
+              lessonUrl={lessonUrl}
+              timestamp={timestamp}
+            />
+          ))}
+        </>
       )}
-    </View>
+    </>
   );
 };
 
@@ -298,38 +442,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  sourcesContainer: {
-    marginTop: 8,
-    gap: 8,
-  },
-  sourceItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    elevation: 1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-  },
-  sourceContent: {
-    flex: 1,
-    marginRight: 8,
-  },
-  sourceTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  sourceSnippet: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  sourceSimilarity: {
-    fontSize: 11,
-    marginTop: 4,
-    fontWeight: '500',
-  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -338,5 +450,101 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     marginRight: 4,
+  },
+  // Source bubble styles
+  sourceContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    alignItems: 'flex-start',
+  },
+  sourcePressable: {
+    width: '100%',
+  },
+  sourceBubble: {
+    width: '100%',
+    maxWidth: '85%',
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: DESIGN_TOKENS.background,
+    borderWidth: 1,
+    borderColor: DESIGN_TOKENS.muted + '40',
+  },
+  sourceHeaderNew: {
+    marginBottom: 12,
+  },
+  sourceTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  bookIcon: {
+    marginRight: 8,
+    marginTop: 2,
+  },
+  sourceTitleNew: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
+    marginRight: 8,
+  },
+  relevanceTextNew: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 24, // Align with text content below icon
+  },
+  sourceContentNew: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  expandButtonNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  expandTextNew: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  sourceFooterNew: {
+    alignItems: 'flex-end',
+  },
+  timestampNew: {
+    fontSize: 11,
+  },
+  // Legacy source bubble styles (keeping for compatibility)
+  sourceHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    gap: 8,
+  },
+  sourceTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  sourceContent: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  expandText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  relevanceText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

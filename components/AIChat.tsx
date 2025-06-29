@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { Send, ImageIcon } from 'lucide-react-native';
 import { SegmentedButtons } from 'react-native-paper';
-import colors from '@/constants/colors';
+import colors, { DESIGN_TOKENS } from '@/constants/colors';
 import { useAIStore } from '@/store/ai-store';
 import { useColorScheme } from 'react-native';
 import { usePlantStore } from '@/store/plant-store';
@@ -53,6 +53,24 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
     clearError();
   }, [clearError]);
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages]);
+
+  // Also scroll to bottom when AI is thinking changes
+  useEffect(() => {
+    if (isAIThinking) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [isAIThinking]);
+
   // Fetch the teacher's active lesson ID
   useEffect(() => {
     const fetchTeacherActiveLesson = async () => {
@@ -89,35 +107,23 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
 
   useEffect(() => {
     const initializeChat = async () => {
-      console.log('=== AIChat initializeChat START ===');
-      console.log('User object:', user);
-      console.log('Props:', { threadId, studentId, mode, initialMode });
-      
       if (user) {
         // If threadId is provided (from teacher interface), use existing thread
         if (threadId) {
-          console.log('Using existing thread:', threadId);
           try {
             await initializeExistingThread(threadId);
-            console.log('✅ Existing thread initialized successfully');
           } catch (error: any) {
-            console.error('❌ Failed to initialize existing thread:', {
-              threadId,
-              error,
-              errorMessage: error?.message,
-              errorCode: error?.code
-            });
+            console.error('Failed to initialize thread:', threadId, error?.message);
           }
           return;
         }
 
         // Use the database user ID from the auth context (not the auth user ID)
-        const currentUserId = user.id; // This is already the database user ID
+        const currentUserId = user.id;
         
         // Otherwise, get the teacher for this student's active lesson
         if (user.role === 'student') {
           try {
-            console.log('Student user - looking for teacher...');
             // First try to get teacher from active lesson
             const { data: studentLessonData, error } = await supabase
               .from('plants')
@@ -136,26 +142,14 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
               .eq('lessons.status', 'active')
               .single();
 
-            console.log('Student lesson query result:', { data: studentLessonData, error });
-
             if (studentLessonData && !error) {
               const teacherId = (studentLessonData.lessons as any).classes.teacher_id;
-              console.log('Found teacher from lesson:', teacherId);
-              // Initialize thread with the actual teacher using database IDs
               try {
                 await initializeThread(currentUserId, teacherId);
-                console.log('✅ Thread initialized successfully');
               } catch (threadError: any) {
-                console.error('❌ Thread initialization failed:', {
-                  threadError,
-                  currentUserId,
-                  teacherId,
-                  errorMessage: threadError?.message,
-                  errorCode: threadError?.code
-                });
+                console.error('Thread initialization failed:', threadError?.message);
               }
             } else {
-              console.log('No active lesson found, checking class directly...');
               // If no active lesson, try to get the student's class teacher directly
               const { data: userData, error: userError } = await supabase
                 .from('users')
@@ -168,91 +162,29 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
                 .eq('id', currentUserId)
                 .single();
 
-              console.log('User class query result:', { data: userData, error: userError });
-
               if (userData?.class_id && userData.classes && !userError) {
                 const teacherId = (userData.classes as any).teacher_id;
-                console.log('Found teacher from class:', teacherId);
                 try {
                   await initializeThread(currentUserId, teacherId);
-                  console.log('✅ Thread initialized successfully');
                 } catch (threadError: any) {
-                  console.error('❌ Thread initialization failed:', {
-                    threadError,
-                    currentUserId,
-                    teacherId,
-                    errorMessage: threadError?.message,
-                    errorCode: threadError?.code
-                  });
+                  console.error('Thread initialization failed:', threadError?.message);
                 }
               } else {
-                // No teacher found - show appropriate message
-                console.log('No teacher assigned to student, using default thread');
-                // For now, use default thread for testing
-                try {
-                  await initializeDefaultThread();
-                  console.log('✅ Default thread initialized');
-                } catch (defaultError: any) {
-                  console.error('❌ Default thread initialization failed:', {
-                    defaultError,
-                    errorMessage: defaultError?.message
-                  });
-                }
+                console.error('No teacher found for student');
               }
             }
           } catch (error) {
-            console.error('Error getting teacher for student:', error);
-            // Fallback to default thread
-            try {
-              await initializeDefaultThread();
-              console.log('✅ Fallback to default thread successful');
-            } catch (fallbackError: any) {
-              console.error('❌ Fallback to default thread failed:', fallbackError);
-            }
+            console.error('Error in student initialization:', error);
           }
-        } else if (user.role === 'teacher' && studentId) {
-          console.log('Teacher viewing student chat:', { teacherId: currentUserId, studentId });
-          // Teacher viewing a specific student's chat - use database IDs
-          try {
-            await initializeThread(studentId, currentUserId);
-            console.log('✅ Teacher-student thread initialized');
-          } catch (teacherError: any) {
-            console.error('❌ Teacher thread initialization failed:', {
-              teacherError,
-              studentId,
-              teacherId: currentUserId,
-              errorMessage: teacherError?.message
-            });
-          }
-        } else {
-          console.log('Other case - using default thread');
-          // For other cases, use default thread
-          try {
-            await initializeDefaultThread();
-            console.log('✅ Default thread initialized for other case');
-          } catch (otherError: any) {
-            console.error('❌ Default thread failed for other case:', otherError);
-          }
+        } else if (user.role === 'teacher') {
+          // For teachers, we don't need to initialize a thread here
+          // Thread will be initialized when opening specific student conversations
         }
-      } else {
-        console.log('No user object available');
       }
-      console.log('=== AIChat initializeChat END ===');
     };
 
     initializeChat();
-    
-    // If we have analysis results, show them
-    if (analysis && mode === 'ai') {
-      const analysisMessage = `🌱 Plant Analysis Complete!\n\nHealth Score: ${analysis.healthScore}/100\nGrowth Stage: ${analysis.growthStage}\n\n${
-        analysis.issues.length > 0 
-          ? `Issues Found:\n${analysis.issues.map(i => `• ${i}`).join('\n')}\n\n` 
-          : 'No issues detected! Your plant looks healthy.\n\n'
-      }Recommendations:\n${analysis.recommendations.map(r => `• ${r}`).join('\n')}`;
-      
-      sendMessage(analysisMessage, photoUri, 'ai', lessonId, plantId);
-    }
-  }, [user, mode]);
+  }, [user, threadId]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -494,9 +426,10 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // For now, show all messages in the current thread
-  // In the future, we might want to filter by message type or have separate threads for AI vs teacher
-  const filteredMessages = messages;
+  // Filter out old chunk messages to show the new source bubble format
+  const filteredMessages = messages.filter(msg => 
+    !msg.content?.startsWith('📚 **Reference')
+  );
 
   const canSend = message.trim() !== '' || imageUri !== null;
 
@@ -520,6 +453,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
         ref={scrollViewRef}
         style={styles.messagesContainer}
         contentContainerStyle={styles.messagesList}
+        showsVerticalScrollIndicator={false}
       >
         {filteredMessages.length === 0 ? (
           <View style={styles.loadingContainer}>
@@ -664,7 +598,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA', // Use background token
+    backgroundColor: DESIGN_TOKENS.background,
   },
   errorContainer: {
     backgroundColor: colors.error,
@@ -684,43 +618,52 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   messagesContainer: {
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: '#6B728040', // Use muted with opacity
+    flex: 1,
+    backgroundColor: DESIGN_TOKENS.background,
   },
   messagesList: {
-    flex: 1,
     paddingVertical: 8,
+    paddingHorizontal: 16,
+    flexGrow: 1,
+    justifyContent: 'flex-end',
   },
   messageContainer: {
     marginBottom: 8,
   },
   loadingContainer: {
-    paddingVertical: 16,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 24,
   },
   loadingText: {
     marginTop: 8,
-    color: '#6B7280', // Use muted token
+    color: DESIGN_TOKENS.muted,
+    textAlign: 'center',
+    fontSize: 16,
+    lineHeight: 24,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 16,
-    backgroundColor: colors.background,
+    backgroundColor: DESIGN_TOKENS.background,
     borderTopWidth: 1,
-    borderTopColor: '#6B728040', // Use muted with opacity
+    borderTopColor: DESIGN_TOKENS.muted + '40',
   },
   textInput: {
     flex: 1,
     minHeight: 40,
     maxHeight: 120,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: DESIGN_TOKENS.muted + '40',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    marginRight: 8,
+    marginHorizontal: 8,
     fontSize: 16,
+    color: DESIGN_TOKENS.primaryDark,
   },
   sendButton: {
     width: 40,
@@ -730,67 +673,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   imageButton: {
-    backgroundColor: '#6B7280', // Use muted token
-    marginRight: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: DESIGN_TOKENS.background,
+    borderWidth: 1,
+    borderColor: DESIGN_TOKENS.muted + '40',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   imagePreview: {
     width: 60,
     height: 60,
     borderRadius: 8,
-    marginRight: 8,
   },
   segmentedButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    backgroundColor: DESIGN_TOKENS.background,
+    borderTopWidth: 1,
+    borderTopColor: DESIGN_TOKENS.muted + '20',
   },
   segmentedButtons: {
-    maxWidth: 200,
+    flex: 1,
+    maxWidth: 280,
   },
   segmentedButtonActiveAI: {
-    backgroundColor: '#A78BFA', // Purple to match AI chat bubble
+    backgroundColor: DESIGN_TOKENS.secondaryLight,
   },
   segmentedButtonActiveTeacher: {
-    backgroundColor: '#2196F3', // Blue to match teacher chat bubble
+    backgroundColor: DESIGN_TOKENS.primary,
   },
   segmentedButtonInactive: {
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: DESIGN_TOKENS.background,
+    borderColor: DESIGN_TOKENS.muted + '40',
   },
   segmentedButtonActiveLabelAI: {
-    color: 'white',
+    color: colors.white,
     fontWeight: '600',
   },
   segmentedButtonActiveLabelTeacher: {
-    color: 'white',
+    color: colors.white,
     fontWeight: '600',
   },
   segmentedButtonInactiveLabel: {
-    color: colors.textLight,
+    color: DESIGN_TOKENS.muted,
   },
   chatWithLabel: {
     fontSize: 16,
-    color: colors.text,
+    color: DESIGN_TOKENS.primaryDark,
     fontWeight: '500',
     marginRight: 12,
   },
   imagePreviewContainer: {
-    padding: 8,
-    backgroundColor: colors.white,
+    padding: 16,
+    backgroundColor: DESIGN_TOKENS.background,
     borderTopWidth: 1,
-    borderTopColor: colors.grayLight,
+    borderTopColor: DESIGN_TOKENS.muted + '20',
+    position: 'relative',
   },
   placeholderImage: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: DESIGN_TOKENS.muted + '20',
     justifyContent: 'center',
     alignItems: 'center',
   },
   placeholderText: {
-    color: '#9CA3AF',
+    color: DESIGN_TOKENS.muted,
     fontSize: 14,
   },
   removeImageButton: {
     position: 'absolute',
-    top: 0,
-    right: 0,
+    top: 8,
+    right: 8,
     zIndex: 1,
     backgroundColor: colors.error,
     width: 24,
@@ -801,8 +757,9 @@ const styles = StyleSheet.create({
   },
   removeImageText: {
     color: colors.white,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
+    lineHeight: 18,
   },
   retryButton: {
     backgroundColor: colors.error,
@@ -810,6 +767,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     marginTop: 8,
+    alignSelf: 'center',
   },
   retryButtonText: {
     color: colors.white,
