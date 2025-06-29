@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
+import colors from '@/constants/colors';
 import {
   GSCard,
   GSButton,
@@ -15,6 +16,7 @@ import {
   GSBadge,
   Text,
   GSModeToggle,
+  GSScreenLayout,
 } from '@/components/ui';
 
 // Mock class data
@@ -224,7 +226,7 @@ export default function TeacherProgressScreen() {
                   <View key={assignment.id}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                       <Text style={{ fontWeight: '500' }}>{assignment.title}</Text>
-                      <Text style={{ fontSize: 12, color: '#6B7280' }}>
+                      <Text style={{ fontSize: 12, color: colors.muted }}>
                         Due {new Date(assignment.dueDate).toLocaleDateString()}
                       </Text>
                     </View>
@@ -233,7 +235,7 @@ export default function TeacherProgressScreen() {
                       showPercentage={false}
                     />
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                      <Text style={{ fontSize: 12, color: '#6B7280' }}>
+                      <Text style={{ fontSize: 12, color: colors.muted }}>
                         {assignment.completed}/{assignment.total} completed
                       </Text>
                       <GSBadge label={assignment.type} variant="outline" size="small" />

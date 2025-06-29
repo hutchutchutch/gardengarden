@@ -55,14 +55,8 @@ export class PlantStoriesService {
           health_rating,
           current_stage_name,
           processing_status,
-          created_at,
-          users!inner (
-            id,
-            name,
-            class_id
-          )
+          created_at
         `)
-        .eq('users.class_id', currentUser.class_id)
         .eq('processing_status', 'completed')
         .gte('created_at', yesterday.toISOString())
         .order('created_at', { ascending: false });
@@ -71,33 +65,51 @@ export class PlantStoriesService {
         throw analysisError;
       }
 
+      // Get all student IDs from the analyses
+      const studentIds = analysisData?.map(a => a.student_id) || [];
+      
+      // Fetch user details for these students in the same class
+      const { data: classmates, error: classmatesError } = await supabase
+        .from('users')
+        .select('id, name, class_id')
+        .in('id', studentIds)
+        .eq('class_id', currentUser.class_id);
+
+      if (classmatesError) {
+        throw classmatesError;
+      }
+
+      // Create a map for quick user lookup
+      const userMap = new Map(classmates?.map(u => [u.id, u]) || []);
+
       // Transform the data
       const stories: PlantStoryData[] = [];
 
       if (analysisData) {
         for (const analysis of analysisData) {
-          const user = Array.isArray(analysis.users) ? analysis.users[0] : analysis.users;
+          const user = userMap.get(analysis.student_id);
+          
+          // Only include if user is in the same class
+          if (!user) continue;
           
           // Convert health rating to numeric score
           const healthScore = this.getHealthScoreFromRating(analysis.health_rating);
           
-          if (user) {
-            stories.push({
-              id: analysis.id,
-              student_id: analysis.student_id,
-              student_name: user.name,
-              photo_url: analysis.image_url,
-              thumbnail_url: undefined,
-              health_score: healthScore,
-              health_badge: this.getHealthBadge(healthScore),
-              reaction_count: 0,
-              reactions: {},
-              submission_date: analysis.created_at,
-              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-              isCurrentUser: analysis.student_id === currentUserId,
-              hasSubmittedToday: true
-            });
-          }
+          stories.push({
+            id: analysis.id,
+            student_id: analysis.student_id,
+            student_name: user.name,
+            photo_url: analysis.image_url,
+            thumbnail_url: undefined,
+            health_score: healthScore,
+            health_badge: this.getHealthBadge(healthScore),
+            reaction_count: 0,
+            reactions: {},
+            submission_date: analysis.created_at,
+            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            isCurrentUser: analysis.student_id === currentUserId,
+            hasSubmittedToday: true
+          });
         }
       }
 

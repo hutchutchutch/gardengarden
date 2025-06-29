@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
 import { useAppTheme } from '@/config/theme';
 import { SegmentedButtons as PaperSegmentedButtons } from 'react-native-paper';
+import colors from '@/constants/colors';
 import { 
   GSafeScreen,
   GSModeToggle,
@@ -543,7 +544,7 @@ export default function TeacherLessons() {
                   <GSIconButton
                     icon="brain"
                     size={20}
-                    color="#A78BFA"
+                    color={colors.secondaryLight}
                     onPress={() => {}}
                   />
                   <Text style={[styles.sectionTitle, styles.purpleText]}>
@@ -721,7 +722,7 @@ export default function TeacherLessons() {
                     </View>
                     <View style={[
                       styles.metricCard, 
-                      { backgroundColor: theme.colors.surfaceVariant, borderColor: '#A78BFA', borderWidth: 1 }
+                      { backgroundColor: theme.colors.surfaceVariant, borderColor: colors.secondaryLight, borderWidth: 1 }
                     ]}>
                       <Text style={[styles.metricLabel, { color: theme.colors.onSurfaceVariant }]} numberOfLines={1}>
                         Top AI Resource
@@ -818,14 +819,13 @@ export default function TeacherLessons() {
                           <GSBadge 
                             label="AI Ready"
                             variant="primary"
-                            icon="check"
                           />
                         ) : (
                           <View style={styles.progressContainer}>
                             <GSProgressIndicator
                               type="linear"
                               progress={processingProgress / 100}
-                              color="#A78BFA"
+                              color={colors.secondaryLight}
                             />
                             <Text style={[styles.progressLabel, styles.purpleText]}>
                               Preparing AI Knowledge...
@@ -914,7 +914,6 @@ export default function TeacherLessons() {
               icon="plus"
               size={24}
               onPress={handleCreateLesson}
-              style={!currentLesson && styles.glowEffect}
             />
           </View>
         </View>
@@ -938,8 +937,6 @@ export default function TeacherLessons() {
         icon="plus"
         label="New Lesson"
         position="bottom-right"
-        style={styles.purpleFAB}
-        tooltip="Create AI-powered lesson"
         onPress={handleCreateLesson}
       />
 
@@ -1039,17 +1036,16 @@ const styles = StyleSheet.create({
   },
   purpleAccentBar: {
     height: 3,
-    backgroundColor: '#A78BFA',
+    backgroundColor: colors.secondaryLight,
     borderRadius: 1.5,
     marginTop: 4,
   },
   documentsCard: {
     marginTop: 16,
-    transition: 'box-shadow 0.2s ease',
   },
   aiKnowledgeBase: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#A78BFA',
+    backgroundColor: colors.background,
+    borderColor: colors.secondaryLight,
     borderWidth: 1,
   },
   documentsHeader: {
@@ -1071,7 +1067,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   purpleText: {
-    color: '#A78BFA',
+    color: colors.secondaryLight,
   },
   chipContainer: {
     flexDirection: 'row',
@@ -1127,7 +1123,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: '48%',
     alignItems: 'center',
-    transition: 'border-color 0.2s ease',
+
   },
   metricLabel: {
     fontSize: 12,
@@ -1161,10 +1157,10 @@ const styles = StyleSheet.create({
   },
   resourceRow: {
     marginBottom: 12,
-    transition: 'background-color 0.3s ease',
+
   },
   processingBackground: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.background,
     padding: 12,
     borderRadius: 8,
   },
@@ -1216,14 +1212,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   glowEffect: {
-    shadowColor: '#A78BFA',
+    shadowColor: colors.secondaryLight,
     shadowRadius: 8,
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 0 },
   },
   purpleFAB: {
-    backgroundColor: '#A78BFA',
-    shadowColor: '#A78BFA',
+    backgroundColor: colors.secondaryLight,
+    shadowColor: colors.secondaryLight,
     shadowRadius: 12,
     shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 4 },

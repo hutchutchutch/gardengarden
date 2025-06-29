@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { supabase } from '@/config/supabase';
 import { LessonService } from '@/services/lesson-service';
 import { MessageService } from '@/services/message-service';
+import colors from '@/constants/colors';
 import {
   GSModeToggle,
   GSProgressIndicator,
@@ -375,9 +376,9 @@ export default function TeacherIndex() {
             backgroundColor: color 
           }}
         />
-        <Text style={{ fontSize: 14, color: '#000' }}>{label}</Text>
+        <Text style={{ fontSize: 14, color: colors.primaryDark }}>{label}</Text>
       </View>
-      <Text style={{ fontSize: 14, fontWeight: '500', color: '#000' }}>{count}</Text>
+      <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primaryDark }}>{count}</Text>
     </View>
   );
 
@@ -405,7 +406,7 @@ export default function TeacherIndex() {
           <ShimmerPlaceholder width="60%" height={14} borderRadius={4} />
         </View>
         
-        <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 12, gap: 8 }}>
+                          <View style={{ borderTopWidth: 1, borderTopColor: colors.muted + '40', paddingTop: 12, gap: 8 }}>
           {[1, 2, 3, 4].map((i) => (
             <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -499,10 +500,10 @@ export default function TeacherIndex() {
   const todayDate = format(new Date(), 'EEEE, MMMM d');
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flex: 1 }}>
         {/* Fixed Mode Toggle at the top - standardized across all screens */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: colors.background }}>
           <GSModeToggle />
         </View>
         
@@ -521,22 +522,22 @@ export default function TeacherIndex() {
             <>
               {/* Show skeleton loading while switching modes */}
               <View style={{ marginBottom: 24 }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Current Lesson</Text>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.primaryDark }}>Current Lesson</Text>
                 <CurrentLessonSkeleton />
               </View>
 
               <View style={{ marginBottom: 24 }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Task Completion</Text>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.primaryDark }}>Task Completion</Text>
                 <TaskCompletionSkeleton />
               </View>
 
               <View style={{ marginBottom: 24 }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Today's Gardens</Text>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.primaryDark }}>Today's Gardens</Text>
                 <PhotoSubmissionsSkeleton />
               </View>
 
               <View style={{ marginBottom: 24 }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Quick Actions</Text>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.primaryDark }}>Quick Actions</Text>
                 <QuickActionsSkeleton />
               </View>
             </>
@@ -544,17 +545,17 @@ export default function TeacherIndex() {
             <>
               {/* Current Lesson Progress Section */}
               <View style={{ marginBottom: 24 }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Current Lesson Progress</Text>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.primaryDark }}>Current Lesson Progress</Text>
                 {isLoading ? (
                   <CurrentLessonSkeleton />
                 ) : currentLesson ? (
               <GSCard variant="elevated" padding="large">
                 <View style={{ marginBottom: 12 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 18, fontWeight: '600', color: '#000', flex: 1 }}>{currentLesson.name}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '600', color: colors.primaryDark, flex: 1 }}>{currentLesson.name}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Feather name="users" size={16} color="#666" style={{ marginRight: 4 }} />
-                      <Text style={{ fontSize: 14, fontWeight: '500', color: '#666' }}>{classStats.totalStudents}</Text>
+                      <Feather name="users" size={16} color={colors.muted} style={{ marginRight: 4 }} />
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: colors.muted }}>{classStats.totalStudents}</Text>
                     </View>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
@@ -566,25 +567,25 @@ export default function TeacherIndex() {
                 <View style={{ marginBottom: 12 }}>
                   <GSProgressIndicator type="linear" progress={Math.min(1, Math.max(0, (Date.now() - new Date(currentLesson.start_date).getTime()) / (new Date(currentLesson.end_date).getTime() - new Date(currentLesson.start_date).getTime())))} />
                 </View>
-                <Text style={{ fontSize: 14, color: '#666', marginBottom: 16 }}>
+                <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 16 }}>
                   {Math.max(0, Math.floor((new Date(currentLesson.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days remaining
                 </Text>
                 
                 {/* Health Stats */}
                 <GSCard variant="filled" padding="medium" margin="none">
                   <View style={{ marginBottom: 12 }}>
-                    <Text style={{ fontSize: 14, color: '#666' }}>Average Health</Text>
-                    <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#000' }}>
+                    <Text style={{ fontSize: 14, color: colors.muted }}>Average Health</Text>
+                    <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.primaryDark }}>
                       {classStats.averageHealthScore}%
                     </Text>
-                    <Text style={{ fontSize: 14, color: '#22c55e' }}>↑ +5% from yesterday</Text>
+                    <Text style={{ fontSize: 14, color: colors.primary }}>↑ +5% from yesterday</Text>
                   </View>
                   
-                  <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 12 }}>
-                    {renderHealthRow('Excellent', classStats.healthDistribution.excellent, '#4CAF50')}
-                    {renderHealthRow('Good', classStats.healthDistribution.good, '#8BC34A')}
-                    {renderHealthRow('Fair', classStats.healthDistribution.fair, '#FFB74D')}
-                    {renderHealthRow('Poor', classStats.healthDistribution.poor, '#F44336')}
+                                      <View style={{ borderTopWidth: 1, borderTopColor: colors.muted + '40', paddingTop: 12 }}>
+                      {renderHealthRow('Excellent', classStats.healthDistribution.excellent, colors.excellent)}
+                      {renderHealthRow('Good', classStats.healthDistribution.good, colors.good)}
+                      {renderHealthRow('Fair', classStats.healthDistribution.fair, colors.fair)}
+                      {renderHealthRow('Poor', classStats.healthDistribution.poor, colors.poor)}
                   </View>
                 </GSCard>
                 
@@ -600,11 +601,11 @@ export default function TeacherIndex() {
             ) : (
               <GSCard variant="filled" padding="large">
                 <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-                  <Feather name="book-open" size={48} color="#666" style={{ marginBottom: 16 }} />
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: '#000', marginBottom: 8 }}>
+                  <Feather name="book-open" size={48} color={colors.muted} style={{ marginBottom: 16 }} />
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primaryDark, marginBottom: 8 }}>
                     No Active Lesson
                   </Text>
-                  <Text style={{ fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, color: colors.muted, textAlign: 'center', marginBottom: 16 }}>
                     Start a new lesson to track your class progress
                   </Text>
                   <GSButton
@@ -621,8 +622,8 @@ export default function TeacherIndex() {
           {/* Task Completion Section */}
           <View style={{ marginBottom: 24 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Task Completion</Text>
-              <Text style={{ fontSize: 14, color: '#666' }}>{todayDate}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: colors.primaryDark }}>Task Completion</Text>
+              <Text style={{ fontSize: 14, color: colors.muted }}>{todayDate}</Text>
             </View>
             {isLoading ? (
               <TaskCompletionSkeleton />
@@ -648,7 +649,7 @@ export default function TeacherIndex() {
                 {/* Pending Students List */}
                 {pendingStudents.length > 0 && (
                   <View>
-                    <Text style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 12 }}>
                       Students who need encouragement
                     </Text>
                     <View style={{ gap: 8 }}>
@@ -682,7 +683,7 @@ export default function TeacherIndex() {
           {/* Photo Submissions Section */}
           <View style={{ marginBottom: 24 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Today's Gardens</Text>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: colors.primaryDark }}>Today's Gardens</Text>
               <GSIconButton
                 icon="refresh"
                 size={20}
@@ -704,7 +705,7 @@ export default function TeacherIndex() {
                       showPercentage
                     />
                   </View>
-                  <Text style={{ fontSize: 16, color: '#666' }}>
+                  <Text style={{ fontSize: 16, color: colors.muted }}>
                     {classStats.submissionsToday} of {classStats.totalStudents} submitted
                   </Text>
                 </View>
@@ -738,7 +739,7 @@ export default function TeacherIndex() {
 
           {/* Quick Actions Section */}
           <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: '#000' }}>Quick Actions</Text>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.primaryDark }}>Quick Actions</Text>
             {isLoading ? (
               <QuickActionsSkeleton />
             ) : (
@@ -759,7 +760,7 @@ export default function TeacherIndex() {
                         position: 'absolute', 
                         top: -8, 
                         right: -8, 
-                        backgroundColor: '#ef4444', 
+                        backgroundColor: colors.error, 
                         borderRadius: 12, 
                         width: 24, 
                         height: 24, 

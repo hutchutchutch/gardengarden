@@ -8,6 +8,7 @@ import { useMode } from '@/contexts/ModeContext';
 import { useAppTheme } from '@/config/theme';
 import { supabase } from '@/config/supabase';
 import { SegmentedButtons as PaperSegmentedButtons } from 'react-native-paper';
+import colors from '@/constants/colors';
 import {
   GSModeToggle,
   GSCard,
@@ -341,7 +342,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 8,
-    backgroundColor: 'white',
   },
   listContent: {
     paddingBottom: 100,

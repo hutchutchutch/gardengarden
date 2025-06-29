@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMode } from '@/contexts/ModeContext';
 import { useAppTheme } from '@/config/theme';
 import { supabase } from '@/config/supabase';
+import colors from '@/constants/colors';
 import {
   GSScreenLayout,
   GSCard,
@@ -400,7 +401,7 @@ export default function StudentProgressScreen() {
         <Text style={{ 
           fontSize: 14, 
           fontWeight: '600', 
-          color: '#666', 
+          color: colors.muted, 
           marginBottom: 8,
           marginLeft: 4
         }}>
@@ -527,7 +528,7 @@ export default function StudentProgressScreen() {
   return (
     <GSScreenLayout>
       {/* Fixed Mode Toggle at the top */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: 'white' }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: colors.background }}>
         <GSModeToggle />
       </View>
       
@@ -604,13 +605,13 @@ export default function StudentProgressScreen() {
         {/* Today's Tasks Section */}
         <View style={styles.section}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#000' }}>Today's Tasks</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '600', color: colors.primaryDark }}>Today's Tasks</Text>
             {dailyTasks.length > 0 && (
               <View style={{ alignItems: 'flex-end' }}>
                 <GSProgressIndicator progress={dailyTasks.filter(t => t.completed).length / dailyTasks.length} size="small" />
-                <Text style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                  {dailyTasks.filter(t => t.completed).reduce((sum, task) => sum + (task.points || 0), 0)}/{dailyTasks.reduce((sum, task) => sum + (task.points || 0), 0)} points
-                </Text>
+                                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>
+                    {dailyTasks.filter(t => t.completed).reduce((sum, task) => sum + (task.points || 0), 0)}/{dailyTasks.reduce((sum, task) => sum + (task.points || 0), 0)} points
+                  </Text>
               </View>
             )}
           </View>
@@ -626,83 +627,85 @@ export default function StudentProgressScreen() {
                       <View style={{ 
                         flexDirection: 'row', 
                         alignItems: 'center', 
-                        paddingHorizontal: 16, 
-                        paddingVertical: 12,
-                        borderBottomWidth: index < dailyTasks.length - 1 || isExpanded ? 1 : 0,
-                        borderBottomColor: '#f0f0f0'
+                                                  paddingHorizontal: 16, 
+                          paddingVertical: 12,
+                          borderBottomWidth: index < dailyTasks.length - 1 || isExpanded ? 1 : 0,
+                          borderBottomColor: colors.muted + '40'
                       }}>
                         {/* Checkbox */}
-                        <View style={{
-                          borderWidth: 1,
-                          borderColor: task.completed ? '#4CAF50' : '#d0d0d0',
-                          borderRadius: 3,
-                          padding: 1,
-                          backgroundColor: task.completed ? '#4CAF5008' : 'transparent'
-                        }}>
-                          <Checkbox
-                            status={task.completed ? 'checked' : 'unchecked'}
-                            onPress={() => handleTaskToggle(task.id)}
-                            color="#4CAF50"
-                            uncheckedColor="#757575"
-                          />
-                        </View>
+                                                  <View style={{
+                            borderWidth: 1,
+                            borderColor: task.completed ? colors.primary : colors.muted,
+                            borderRadius: 3,
+                            padding: 1,
+                            backgroundColor: task.completed ? colors.primary + '08' : 'transparent'
+                          }}>
+                            <Checkbox
+                              status={task.completed ? 'checked' : 'unchecked'}
+                              onPress={() => handleTaskToggle(task.id)}
+                              color={colors.primary}
+                              uncheckedColor={colors.muted}
+                            />
+                          </View>
                         
                         {/* Task Title - Clickable */}
                         <Pressable 
                           style={{ flex: 1, marginLeft: 8 }}
                           onPress={() => setExpandedTaskIndex(isExpanded ? null : index)}
                         >
-                          <Text style={{ 
-                            fontSize: 15, 
-                            fontWeight: '500', 
-                            color: '#000',
-                            textDecorationLine: task.completed ? 'line-through' : 'none',
-                            opacity: task.completed ? 0.6 : 1
-                          }}>
-                            {task.task_name}
-                          </Text>
+                                                      <Text style={{ 
+                              fontSize: 15, 
+                              fontWeight: '500', 
+                              color: colors.primaryDark,
+                              textDecorationLine: task.completed ? 'line-through' : 'none',
+                              opacity: task.completed ? 0.6 : 1
+                            }}>
+                              {task.task_name}
+                            </Text>
                         </Pressable>
                         
                         {/* Task Points - Clickable */}
                         <Pressable 
                           onPress={() => setExpandedTaskIndex(isExpanded ? null : index)}
                           style={{ 
-                            backgroundColor: task.completed ? '#4CAF50' : '#f5f5f5',
+                            backgroundColor: task.completed ? colors.primary : colors.background,
                             paddingHorizontal: 8,
                             paddingVertical: 4,
                             borderRadius: 12,
-                            marginLeft: 8
+                            marginLeft: 8,
+                            borderWidth: task.completed ? 0 : 1,
+                            borderColor: colors.muted + '40'
                           }}
                         >
-                          <Text style={{ 
-                            fontSize: 12, 
-                            fontWeight: '600',
-                            color: task.completed ? 'white' : '#666'
-                          }}>
-                            {task.points || 0}pts
-                          </Text>
+                                                      <Text style={{ 
+                              fontSize: 12, 
+                              fontWeight: '600',
+                              color: task.completed ? colors.white : colors.muted
+                            }}>
+                              {task.points || 0}pts
+                            </Text>
                         </Pressable>
                       </View>
                       
                       {/* Task Description - Expandable */}
                       {isExpanded && (
                         <View style={{ 
-                          paddingHorizontal: 16, 
-                          paddingVertical: 12, 
-                          backgroundColor: '#f9f9f9',
-                          borderBottomWidth: index < dailyTasks.length - 1 ? 1 : 0,
-                          borderBottomColor: '#f0f0f0'
+                                                      paddingHorizontal: 16, 
+                            paddingVertical: 12, 
+                            backgroundColor: colors.background,
+                            borderBottomWidth: index < dailyTasks.length - 1 ? 1 : 0,
+                            borderBottomColor: colors.muted + '40'
                         }}>
-                          <Text style={{ fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 8 }}>
-                            Click the task to complete it. Photo tasks will take you to the camera.
-                          </Text>
-                          <View>
-                            <Text style={{ fontSize: 13, fontWeight: '500', color: '#333', marginBottom: 4 }}>
-                              Task Type: {task.task_type}
+                                                      <Text style={{ fontSize: 14, color: colors.muted, lineHeight: 20, marginBottom: 8 }}>
+                              Click the task to complete it. Photo tasks will take you to the camera.
                             </Text>
-                            <Text style={{ fontSize: 13, color: '#666', lineHeight: 18 }}>
-                              Day {task.day_number} • {task.points} points
-                            </Text>
+                            <View>
+                              <Text style={{ fontSize: 13, fontWeight: '500', color: colors.primaryDark, marginBottom: 4 }}>
+                                Task Type: {task.task_type}
+                              </Text>
+                              <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 18 }}>
+                                Day {task.day_number} • {task.points} points
+                              </Text>
                           </View>
                         </View>
                       )}
@@ -712,10 +715,10 @@ export default function StudentProgressScreen() {
               </GSCard>
             ) : (
               <GSCard variant="elevated" padding="large" style={{ alignItems: 'center' }}>
-                <Text style={{ fontSize: 16, fontWeight: '500', color: '#333' }}>No tasks for today</Text>
-                <Text style={{ textAlign: 'center', marginTop: 8, color: '#666' }}>
-                  Check back tomorrow for new tasks or contact your teacher.
-                </Text>
+                                  <Text style={{ fontSize: 16, fontWeight: '500', color: colors.primaryDark }}>No tasks for today</Text>
+                  <Text style={{ textAlign: 'center', marginTop: 8, color: colors.muted }}>
+                    Check back tomorrow for new tasks or contact your teacher.
+                  </Text>
               </GSCard>
             )}
           </View>
