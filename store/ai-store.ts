@@ -135,24 +135,57 @@ export const useAIStore = create<AIState>()(
           const { data: { user } } = await supabase.auth.getUser();
           console.log('Current auth user:', user?.email);
           
-          // Simple role detection - no complex queries needed
-          const uniqueSenderIds = [...new Set(messages.map(m => m.sender_id))];
+          // Get sender roles from database for proper role detection
+          const uniqueSenderIds = [...new Set(messages.map(m => m.sender_id).filter(Boolean))];
           console.log('Unique sender IDs:', uniqueSenderIds);
+          
+          // Fetch user roles for all senders to properly determine message roles
+          const senderRoleMap = new Map<string, 'student' | 'teacher'>();
+          if (uniqueSenderIds.length > 0) {
+            const { data: senderData } = await supabase
+              .from('users')
+              .select('id, role')
+              .in('id', uniqueSenderIds);
+            
+            if (senderData) {
+              senderData.forEach(sender => {
+                senderRoleMap.set(sender.id, sender.role);
+              });
+            }
+          }
+          
+          // Get current user's role from database
+          const { data: currentUserData } = await supabase
+            .from('users')
+            .select('id, role')
+            .eq('email', user?.email)
+            .single();
+          
+          const currentUserDbId = currentUserData?.id;
+          const currentUserRole = currentUserData?.role;
           
           // Convert database messages to AIMessage format
           const aiMessages: AIMessage[] = messages.map(msg => {
-            // Determine role based on sender - simplified logic
+            // Determine role based on actual sender role from database
             let role: 'user' | 'assistant' | 'teacher' = 'user';
             
             if (msg.sender_id === null) {
               // AI messages have null sender_id
               role = 'assistant';
-            } else if (msg.sender_id === user?.id) {
-              // Current user's messages
-              role = 'user';
             } else {
-              // Anyone else is a teacher (in student context)
-              role = 'teacher';
+              // Get the actual role of the sender
+              const senderRole = senderRoleMap.get(msg.sender_id);
+              
+              // Map database role to message role
+              if (senderRole === 'teacher') {
+                role = 'teacher';
+              } else if (senderRole === 'student') {
+                role = 'user';
+              }
+              // If sender role not found, fallback to checking if it's current user
+              else if (msg.sender_id === currentUserDbId) {
+                role = 'user';
+              }
             }
             
             return {
@@ -160,7 +193,8 @@ export const useAIStore = create<AIState>()(
               role,
               content: msg.content || '',
               timestamp: msg.created_at,
-              sources: msg.ai_sources || undefined
+              sources: msg.ai_sources || undefined,
+              sender_id: msg.sender_id || undefined
             };
           });
           
@@ -341,7 +375,8 @@ export const useAIStore = create<AIState>()(
               id: teacherMessage.id,
               role: 'teacher',
               content: teacherMessage.content || '',
-              timestamp: teacherMessage.created_at
+              timestamp: teacherMessage.created_at,
+              sender_id: userDbId
             };
             
             set(state => ({
@@ -359,7 +394,8 @@ export const useAIStore = create<AIState>()(
             id: Date.now().toString(),
             role: 'user',
             content,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            sender_id: userDbId
           };
           
           set(state => ({
@@ -387,7 +423,8 @@ export const useAIStore = create<AIState>()(
                   id: fallbackMessage.id,
                   role: 'user',
                   content: fallbackMessage.content || '',
-                  timestamp: fallbackMessage.created_at
+                  timestamp: fallbackMessage.created_at,
+                  sender_id: userDbId
                 };
                 
                 set(state => ({
@@ -433,7 +470,8 @@ export const useAIStore = create<AIState>()(
                   role: 'user',
                   content: content,
                   timestamp: new Date().toISOString(),
-                  sources: sources
+                  sources: sources,
+                  sender_id: userDbId
                 };
                 
                 set(state => ({
@@ -451,7 +489,8 @@ export const useAIStore = create<AIState>()(
                 id: fallbackMessage.id,
                 role: 'user',
                 content: fallbackMessage.content || '',
-                timestamp: fallbackMessage.created_at
+                timestamp: fallbackMessage.created_at,
+                sender_id: userDbId
               };
               
               set(state => ({
@@ -493,7 +532,8 @@ export const useAIStore = create<AIState>()(
                   id: data.student_message_id,
                   role: 'user',
                   content,
-                  timestamp: new Date().toISOString()
+                  timestamp: new Date().toISOString(),
+                  sender_id: userDbId
                 };
 
                 // Transform chunk_details into proper Source objects with lesson_url_id

@@ -37,6 +37,7 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [documentsData, setDocumentsData] = useState<{[key: string]: {title: string, url: string}}>({});
   const [teacherLessonId, setTeacherLessonId] = useState<string | null>(null);
+  const [inputHeight, setInputHeight] = useState(40);
   const { messages, isLoading, error, sendMessage, fetchMessages, initializeThread, initializeDefaultThread, initializeExistingThread, clearError } = useAIStore();
   const { user } = useAuth();
   const { plants } = usePlantStore();
@@ -436,38 +437,26 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
 
   // Helper functions for message positioning and colors
   const getMessagePosition = (message: AIMessage) => {
-    const currentUserId = user?.id;
-    
-    // Determine sender_id and recipient_id from the message
-    // For AIMessage type, we need to infer based on role
-    const isCurrentUserMessage = message.role === 'user' && user?.role === 'student';
-    const isCurrentTeacherMessage = message.role === 'teacher' && user?.role === 'teacher';
-    
-    // If current user sent the message, it goes on the right
-    if (isCurrentUserMessage || isCurrentTeacherMessage) {
+    // Use sender_id for accurate positioning
+    if (message.sender_id === user?.id) {
+      // Current user's messages always go on the right
       return 'right';
     }
     
-    // If message is from AI (role === 'assistant')
+    // If message is from AI (role === 'assistant' or sender_id is null)
     if (message.role === 'assistant') {
       // AI messages: right side for teachers, left side for students
       return isTeacherMode ? 'right' : 'left';
     }
     
-    // All other messages (from the other person) go on the left
+    // All other messages (from other users) go on the left
     return 'left';
   };
 
   // Determine message bubble color based on sender role and position
   const getMessageBubbleColor = (message: AIMessage) => {
-    const currentUserId = user?.id;
-    
-    // Check if current user sent the message
-    const isCurrentUserMessage = message.role === 'user' && user?.role === 'student';
-    const isCurrentTeacherMessage = message.role === 'teacher' && user?.role === 'teacher';
-    
     // Current user's messages are always gray
-    if (isCurrentUserMessage || isCurrentTeacherMessage) {
+    if (message.sender_id === user?.id) {
       return '#E5E7EB'; // gray-200
     }
     
@@ -681,11 +670,14 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
           <ImageIcon size={24} color={colors.primary} />
         </Pressable>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { height: Math.max(40, Math.min(120, inputHeight)) }]}
           placeholder={mode === 'ai' ? "Ask about your plants..." : "Message your teacher..."}
           value={message}
           onChangeText={setMessage}
           multiline
+          onContentSizeChange={(event) => {
+            setInputHeight(event.nativeEvent.contentSize.height);
+          }}
         />
         <Pressable 
           style={[
@@ -813,8 +805,6 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    minHeight: 40,
-    maxHeight: 120,
     backgroundColor: colors.white,
     borderRadius: 20,
     borderWidth: 1,
@@ -824,6 +814,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     fontSize: 16,
     color: DESIGN_TOKENS.primaryDark,
+    textAlignVertical: 'top',
   },
   sendButton: {
     width: 40,

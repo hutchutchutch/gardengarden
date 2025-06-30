@@ -84,6 +84,7 @@ export interface AIMessage {
   content: string;
   timestamp: string;
   sources?: Source[]; // For AI responses that reference lesson materials
+  sender_id?: string; // Added to properly track who sent the message
 }
 
 // User authentication types
