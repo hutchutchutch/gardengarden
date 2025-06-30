@@ -23,7 +23,8 @@ import {
   Plus,
   MessageCircle,
   Link,
-  FileText
+  FileText,
+  ChevronDown,
 } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -235,7 +236,8 @@ const StudentChatDemo: React.FC = () => {
   const [showStudentMessage, setShowStudentMessage] = useState(false);
   const [showAIMessage, setShowAIMessage] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [showSources, setShowSources] = useState(false);
+  const [showSourcesToggle, setShowSourcesToggle] = useState(false);
+  const [showSourcesBubbles, setShowSourcesBubbles] = useState(false);
   
   useEffect(() => {
     const runAnimation = () => {
@@ -245,7 +247,8 @@ const StudentChatDemo: React.FC = () => {
       setShowStudentMessage(false);
       setShowAIMessage(false);
       setIsTyping(false);
-      setShowSources(false);
+      setShowSourcesToggle(false);
+      setShowSourcesBubbles(false);
 
       // Step 1: Show student typing
       setTimeout(() => {
@@ -258,20 +261,25 @@ const StudentChatDemo: React.FC = () => {
         setIsTyping(true);
       }, 2500);
 
-      // Step 3: Show AI response with sources
-              setTimeout(() => {
-          setIsTyping(false);
-          setShowAIMessage(true);
-          setAIMessage('Yellow leaves often indicate overwatering, nutrient deficiency, or disease. Check soil moisture and consider adding nitrogen fertilizer.');
-          
-          setTimeout(() => {
-            setShowSources(true);
-          }, 800);
-        }, 4500);
+      // Step 3: Show AI response with sources toggle
+      setTimeout(() => {
+        setIsTyping(false);
+        setShowAIMessage(true);
+        setAIMessage('Yellow leaves often indicate overwatering, nutrient deficiency, or disease. Check soil moisture and consider adding nitrogen fertilizer.');
+        
+        setTimeout(() => {
+          setShowSourcesToggle(true);
+        }, 800);
+      }, 4500);
+
+      // Step 4: Show expanded sources as separate bubbles
+      setTimeout(() => {
+        setShowSourcesBubbles(true);
+      }, 6000);
     };
 
     runAnimation();
-    const interval = setInterval(runAnimation, 10000);
+    const interval = setInterval(runAnimation, 12000);
     
     return () => clearInterval(interval);
   }, []);
@@ -280,7 +288,7 @@ const StudentChatDemo: React.FC = () => {
     <View style={demoStyles.studentChatContainer}>
       <View style={demoStyles.chatHeader}>
         <Brain size={16} color={colors.primary} />
-        <Text style={demoStyles.chatHeaderText}>Chat with: Chatbot</Text>
+        <Text style={demoStyles.chatHeaderText}>Chat with: Garden Mentor AI</Text>
       </View>
       
       <View style={demoStyles.messagesContainer}>
@@ -303,14 +311,51 @@ const StudentChatDemo: React.FC = () => {
         {showAIMessage && (
           <View style={[demoStyles.messageBubble, demoStyles.aiBubble]}>
             <Text style={demoStyles.aiMessageText}>{aiMessage}</Text>
-            {showSources && (
-              <View style={demoStyles.sourcesContainer}>
-                <Text style={demoStyles.sourcesTitle}>📚 Sources (2)</Text>
-                <Text style={demoStyles.sourceItem}>• Plant Disease Guide</Text>
-                <Text style={demoStyles.sourceItem}>• Nutrient Deficiency Manual</Text>
+            
+            {showSourcesToggle && (
+              <View style={demoStyles.sourcesToggle}>
+                <Text style={demoStyles.sourcesToggleText}>See sources (2)</Text>
+                <ChevronDown size={14} color={colors.white} />
               </View>
             )}
+            
+            <Text style={demoStyles.timestampText}>2:34 PM</Text>
           </View>
+        )}
+        
+        {/* Source lesson bubbles */}
+        {showSourcesBubbles && (
+          <>
+            <View style={demoStyles.sourceBubble}>
+              <View style={demoStyles.sourceHeader}>
+                <View style={demoStyles.sourceTitleRow}>
+                  <BookOpen size={14} color={colors.primary} />
+                  <Text style={demoStyles.sourceTitle}>Tomato Disease Identification</Text>
+                  <Text style={demoStyles.externalLinkText}>🔗</Text>
+                </View>
+                <Text style={demoStyles.relevanceText}>95% relevant</Text>
+              </View>
+              <Text style={demoStyles.sourceContent}>
+                Yellow leaves in tomatoes are commonly caused by{'\n'}overwatering or nitrogen deficiency...
+              </Text>
+              <Text style={demoStyles.seeMoreText}>See more ↓</Text>
+            </View>
+            
+            <View style={demoStyles.sourceBubble}>
+              <View style={demoStyles.sourceHeader}>
+                <View style={demoStyles.sourceTitleRow}>
+                  <BookOpen size={14} color={colors.primary} />
+                  <Text style={demoStyles.sourceTitle}>Nutrient Deficiency Guide</Text>
+                  <Text style={demoStyles.externalLinkText}>🔗</Text>
+                </View>
+                <Text style={demoStyles.relevanceText}>87% relevant</Text>
+              </View>
+              <Text style={demoStyles.sourceContent}>
+                Nitrogen deficiency manifests as yellowing of{'\n'}older leaves first, progressing upward...
+              </Text>
+              <Text style={demoStyles.seeMoreText}>See more ↓</Text>
+            </View>
+          </>
         )}
       </View>
       
@@ -328,28 +373,19 @@ const StudentChatDemo: React.FC = () => {
 
 const TeacherAssistanceDemo: React.FC = () => {
   const [expandedThread, setExpandedThread] = useState(false);
-  const [showStudentMessage, setShowStudentMessage] = useState(false);
-  const [showRelevantSources, setShowRelevantSources] = useState(false);
+  const [showExpandedMessage, setShowExpandedMessage] = useState(false);
   
-  const threadPositions = useRef([
-    new Animated.Value(0),
-    new Animated.Value(0),
-    new Animated.Value(0),
-  ]).current;
-  
-  const threadOpacities = useRef([
-    new Animated.Value(1),
-    new Animated.Value(1),
-    new Animated.Value(1),
-  ]).current;
-  
-  const containerHeight = useRef(new Animated.Value(240)).current;
-  const contentOpacity = useRef(new Animated.Value(0)).current;
-  const sourceOpacity = useRef([
-    new Animated.Value(0),
-    new Animated.Value(0),
-    new Animated.Value(0),
-  ]).current;
+  useEffect(() => {
+    // Step 1: Show message threads for 2 seconds
+    setTimeout(() => {
+      setExpandedThread(true);
+    }, 2000);
+    
+    // Step 2: Show expanded message with sources
+    setTimeout(() => {
+      setShowExpandedMessage(true);
+    }, 3500);
+  }, []);
 
   const messageThreads = [
     { name: 'Sarah M.', message: 'My tomato plant leaves are turning...', time: '2m', unread: true },
@@ -357,175 +393,112 @@ const TeacherAssistanceDemo: React.FC = () => {
     { name: 'Emma L.', message: 'Question about fertilizer types', time: '3h', unread: false },
   ];
 
-  useEffect(() => {
-    const runAnimation = () => {
-      // Reset
-      setExpandedThread(false);
-      setShowStudentMessage(false);
-      setShowRelevantSources(false);
-      threadPositions.forEach(anim => anim.setValue(0));
-      threadOpacities.forEach(anim => anim.setValue(1));
-      containerHeight.setValue(240);
-      contentOpacity.setValue(0);
-      sourceOpacity.forEach(anim => anim.setValue(0));
-
-      // Step 1: Show thread list for 2 seconds
-      setTimeout(() => {
-        setExpandedThread(true);
-        
-        // Step 2: Push other threads down and fade them out
-        Animated.parallel([
-          // Push second thread down and fade out
-          Animated.timing(threadPositions[1], {
-            toValue: 100,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(threadOpacities[1], {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          // Push third thread further down and fade out
-          Animated.timing(threadPositions[2], {
-            toValue: 140,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(threadOpacities[2], {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          // Show content inside expanded thread
-          setShowStudentMessage(true);
-          Animated.timing(contentOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }).start();
-        });
-      }, 2000);
-
-      // Step 3: Show relevant sources and expand container
-      setTimeout(() => {
-        setShowRelevantSources(true);
-        
-        // Expand container to accommodate sources
-        Animated.timing(containerHeight, {
-          toValue: 320,
-          duration: 400,
-          useNativeDriver: false,
-        }).start();
-        
-        // Animate sources one by one
-        sourceOpacity.forEach((anim, index) => {
-          setTimeout(() => {
-            Animated.timing(anim, {
-              toValue: 1,
-              duration: 400,
-              useNativeDriver: true,
-            }).start();
-          }, index * 200);
-        });
-      }, 3500);
-    };
-
-    runAnimation();
-    const interval = setInterval(runAnimation, 10000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-    return (
-    <Animated.View style={[demoStyles.teacherAssistanceContainer, { height: containerHeight }]}>
-      <View style={demoStyles.threadListContainer}>
-        <Text style={demoStyles.messagesTitle}>Messages</Text>
-        
-        {messageThreads.map((thread, index) => (
-          <Animated.View
-            key={index}
-            style={[
-              demoStyles.messageThread,
-              index === 0 && expandedThread ? demoStyles.expandedMessageThread : { height: 60 },
-              {
-                opacity: threadOpacities[index],
-                transform: [{ translateY: threadPositions[index] }],
-                overflow: 'hidden',
-              },
-            ]}
-          >
-            {/* Thread Header - Always visible */}
-            <View style={demoStyles.threadHeaderRow}>
-              <View style={demoStyles.avatarCircle}>
-                <Text style={demoStyles.avatarText}>
+  return (
+    <View style={demoStyles.messageThreadContainer}>
+      {/* Header */}
+      <View style={demoStyles.messagesHeader}>
+        <Text style={demoStyles.messagesHeaderTitle}>Messages</Text>
+      </View>
+      
+      {/* Message Threads - Only show when not expanded */}
+      {!expandedThread && (
+        <View style={demoStyles.threadsContainer}>
+          {messageThreads.map((thread, index) => (
+            <View key={index} style={demoStyles.messageThreadItem}>
+              {/* Avatar */}
+              <View style={demoStyles.studentAvatar}>
+                <Text style={demoStyles.avatarInitials}>
                   {thread.name.split(' ').map(n => n[0]).join('')}
                 </Text>
               </View>
-              <View style={demoStyles.threadContent}>
-                <View style={demoStyles.threadHeader}>
-                  <Text style={demoStyles.threadName}>{thread.name}</Text>
-                  <View style={demoStyles.threadMeta}>
-                    <Text style={demoStyles.threadTime}>{thread.time}</Text>
-                    {thread.unread && <View style={demoStyles.unreadDot} />}
+              
+              {/* Message Content */}
+              <View style={demoStyles.messageContent}>
+                <View style={demoStyles.messageHeader}>
+                  <Text style={demoStyles.studentName}>{thread.name}</Text>
+                  <View style={demoStyles.messageMeta}>
+                    <Text style={demoStyles.messageTime}>{thread.time}</Text>
+                    {thread.unread && <View style={demoStyles.unreadIndicator} />}
                   </View>
                 </View>
-                <Text style={demoStyles.threadPreview} numberOfLines={1}>
+                <Text style={demoStyles.messagePreview} numberOfLines={1}>
                   {thread.message}
                 </Text>
               </View>
             </View>
+          ))}
+        </View>
+      )}
+      
+      {/* Expanded Thread */}
+      {expandedThread && (
+        <View style={demoStyles.expandedThreadContainer}>
+          <View style={demoStyles.expandedThreadHeader}>
+            <Text style={demoStyles.expandedThreadTitle}>Chat with Sarah M.</Text>
+          </View>
+          
+          {/* Student message with expanded sources */}
+          <View style={demoStyles.expandedStudentMessage}>
+            <Text style={demoStyles.expandedMessageText}>
+              My tomato plant leaves are turning yellow and I'm not sure what's wrong. Can you help?
+            </Text>
             
-            {/* Expanded Content - Only for first thread */}
-            {index === 0 && expandedThread && (
-              <Animated.View
-                style={[
-                  demoStyles.expandedContent,
-                  { opacity: contentOpacity }
-                ]}
-              >
-                {showStudentMessage && (
-                  <View style={demoStyles.chatMessageContainer}>
-                    <View style={demoStyles.studentChatBubble}>
-                      <Text style={demoStyles.studentChatText}>
-                        My tomato plant leaves are turning yellow and I'm not sure what's wrong. Can you help?
-                      </Text>
-                    </View>
-                  </View>
-                )}
+            {showExpandedMessage && (
+              <>
+                {/* Expanded sources dropdown */}
+                <View style={demoStyles.expandedSourcesToggle}>
+                  <Text style={demoStyles.expandedSourcesText}>📚 Recommended Resources (2)</Text>
+                  <ChevronDown size={12} color={colors.white} style={{ transform: [{ rotate: '180deg' }] }} />
+                </View>
                 
-                {showRelevantSources && (
-                  <View style={demoStyles.relevantSourcesContainer}>
-                    <Text style={demoStyles.relevantSourcesTitle}>📋 Most Relevant Sources</Text>
-                    
-                    {[
-                      { title: 'Tomato Disease Identification', relevance: '95%' },
-                      { title: 'Nutrient Deficiency Guide', relevance: '87%' },
-                      { title: 'Watering Best Practices', relevance: '78%' },
-                    ].map((source, idx) => (
-                      <Animated.View
-                        key={idx}
-                        style={[
-                          demoStyles.relevantSourceItem,
-                          { opacity: sourceOpacity[idx] }
-                        ]}
-                      >
-                        <FileText size={12} color={colors.primary} />
-                        <View style={demoStyles.sourceDetails}>
-                          <Text style={demoStyles.sourceTitle}>{source.title}</Text>
-                          <Text style={demoStyles.sourceRelevance}>{source.relevance} match</Text>
-                        </View>
-                      </Animated.View>
-                    ))}
-                  </View>
-                )}
-              </Animated.View>
+                <Text style={demoStyles.expandedMessageTime}>2:34 PM</Text>
+              </>
             )}
-          </Animated.View>
-        ))}
-      </View>
-    </Animated.View>
+          </View>
+          
+          {/* Source chunks displayed below */}
+          {showExpandedMessage && (
+            <View style={demoStyles.sourceChunksContainer}>
+              {/* First source chunk */}
+              <View style={demoStyles.sourceChunk}>
+                <View style={demoStyles.sourceChunkHeader}>
+                  <View style={demoStyles.sourceChunkTitleRow}>
+                    <BookOpen size={12} color={colors.primary} />
+                    <Text style={demoStyles.sourceChunkTitle}>Tomato Disease Identification</Text>
+                    <Text style={demoStyles.sourceRelevance}>95%</Text>
+                  </View>
+                </View>
+                <Text style={demoStyles.sourceChunkContent} numberOfLines={2}>
+                  Yellow leaves in tomatoes are commonly caused by overwatering, nutrient deficiency, or disease. Check soil moisture levels first - if soil is soggy, reduce watering frequency.
+                </Text>
+                <View style={demoStyles.sourceExpandRow}>
+                  <Text style={demoStyles.sourceUrl}>📄 University Extension Guide</Text>
+                  <ChevronDown size={10} color={colors.primary} />
+                </View>
+              </View>
+              
+              {/* Second source chunk */}
+              <View style={demoStyles.sourceChunk}>
+                <View style={demoStyles.sourceChunkHeader}>
+                  <View style={demoStyles.sourceChunkTitleRow}>
+                    <BookOpen size={12} color={colors.primary} />
+                    <Text style={demoStyles.sourceChunkTitle}>Nutrient Deficiency Manual</Text>
+                    <Text style={demoStyles.sourceRelevance}>87%</Text>
+                  </View>
+                </View>
+                <Text style={demoStyles.sourceChunkContent} numberOfLines={2}>
+                  Nitrogen deficiency manifests as yellowing of older leaves first, progressing upward through the plant. Apply balanced fertilizer at half strength.
+                </Text>
+                <View style={demoStyles.sourceExpandRow}>
+                  <Text style={demoStyles.sourceUrl}>📄 Plant Nutrition Handbook</Text>
+                  <ChevronDown size={10} color={colors.primary} />
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
   );
 };
 
@@ -585,7 +558,6 @@ const slides: OnboardingSlide[] = [
 
 export default function OnboardingScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showNextButton, setShowNextButton] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
   const { completeOnboarding } = useAuth();
@@ -594,36 +566,6 @@ export default function OnboardingScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const nextButtonOpacity = useRef(new Animated.Value(0)).current;
-
-  // Removed auto-advance - users must manually navigate
-
-  useEffect(() => {
-    // Reset and fade in Next button during final animation phase of each screen
-    setShowNextButton(false);
-    nextButtonOpacity.setValue(0);
-    
-    // Different timing for each screen's final animation phase
-    const screenTimings = [
-      7000,  // Screen 1 (AIUsageDemo): During final source cycle
-      8500,  // Screen 2 (TeacherURLDemo): During chunk counting completion 
-      5300,  // Screen 3 (StudentChatDemo): When sources start appearing
-      4700,  // Screen 4 (TeacherAssistanceDemo): When relevant sources start appearing
-    ];
-    
-    const timing = screenTimings[currentIndex] || 7000;
-    
-    const timer = setTimeout(() => {
-      setShowNextButton(true);
-      Animated.timing(nextButtonOpacity, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }).start();
-    }, timing);
-
-    return () => clearTimeout(timer);
-  }, [currentIndex]);
 
   const goToNext = () => {
     if (currentIndex < slides.length - 1) {
@@ -768,37 +710,25 @@ export default function OnboardingScreen() {
       {/* Bottom section */}
       <View style={styles.footer}>
         {currentIndex === slides.length - 1 ? (
-          <Animated.View
-            style={[
-              styles.buttonContainer,
-              { opacity: showNextButton ? nextButtonOpacity : 0 }
-            ]}
-          >
+          <View style={styles.buttonContainer}>
             <Pressable 
               onPress={handleGetStarted} 
               style={[styles.getStartedButton, { backgroundColor: currentSlide.color }]}
-              disabled={!showNextButton}
             >
               <Text style={styles.getStartedText}>Get Started</Text>
               <CheckCircle size={20} color={colors.white} />
             </Pressable>
-          </Animated.View>
+          </View>
         ) : (
-          <Animated.View
-            style={[
-              styles.buttonContainer,
-              { opacity: showNextButton ? nextButtonOpacity : 0 }
-            ]}
-          >
+          <View style={styles.buttonContainer}>
             <Pressable 
               onPress={goToNext} 
               style={[styles.nextButton, { backgroundColor: currentSlide.color }]}
-              disabled={!showNextButton}
             >
               <Text style={styles.nextText}>Next</Text>
               <ChevronRight size={20} color={colors.white} />
             </Pressable>
-          </Animated.View>
+          </View>
         )}
         
         {/* Progress indicator */}
@@ -1112,6 +1042,82 @@ const demoStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  
+  // New source bubble styles for updated UI
+  sourcesToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  sourcesToggleText: {
+    fontSize: 12,
+    color: colors.white,
+    fontWeight: '500',
+  },
+  timestampText: {
+    fontSize: 10,
+    color: colors.white,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  sourceBubble: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    marginLeft: 16,
+    marginRight: 16,
+    maxWidth: '85%',
+    borderWidth: 1,
+    borderColor: colors.grayLight,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  sourceHeader: {
+    marginBottom: 8,
+  },
+  sourceTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  sourceTitle: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 6,
+    marginRight: 6,
+    lineHeight: 16,
+  },
+  externalLinkText: {
+    fontSize: 10,
+    color: colors.muted,
+  },
+  relevanceText: {
+    fontSize: 10,
+    color: colors.primary,
+    fontWeight: '500',
+    marginLeft: 20, // Align with content below icon
+  },
+  sourceContent: {
+    fontSize: 11,
+    color: colors.text,
+    lineHeight: 16,
+    marginBottom: 6,
+  },
+  seeMoreText: {
+    fontSize: 10,
+    color: colors.primary,
+    fontWeight: '500',
+  },
 
   // Teacher Assistance Demo Styles
   teacherAssistanceContainer: {
@@ -1177,11 +1183,6 @@ const demoStyles = StyleSheet.create({
   sourceDetails: {
     marginLeft: 8,
     flex: 1,
-  },
-  sourceTitle: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: colors.text,
   },
   sourceRelevance: {
     fontSize: 9,
@@ -1306,6 +1307,211 @@ const demoStyles = StyleSheet.create({
     fontSize: 11,
     color: colors.white,
     lineHeight: 16,
+  },
+  teacherSourceBubblesContainer: {
+    paddingHorizontal: 8,
+    marginTop: 8,
+  },
+  teacherSourcesToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  teacherSourcesToggleText: {
+    fontSize: 12,
+    color: colors.white,
+    fontWeight: '500',
+  },
+  
+  // Message Thread Demo Styles
+  messageThreadContainer: {
+    width: 320,
+    height: 350,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  messagesHeader: {
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.grayLight,
+    marginBottom: 8,
+  },
+  messagesHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  threadsContainer: {
+    marginBottom: 8,
+  },
+  messageThreadItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 6,
+    marginBottom: 4,
+  },
+  studentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  avatarInitials: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  messageContent: {
+    flex: 1,
+  },
+  messageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  studentName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  messageMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  messageTime: {
+    fontSize: 10,
+    color: colors.muted,
+  },
+  unreadIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+  },
+  messagePreview: {
+    fontSize: 11,
+    color: colors.muted,
+  },
+  expandedThreadContainer: {
+    backgroundColor: colors.backgroundLight,
+    borderRadius: 8,
+    padding: 8,
+  },
+  expandedThreadHeader: {
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.grayLight,
+    marginBottom: 8,
+  },
+  expandedThreadTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  expandedStudentMessage: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 8,
+  },
+  expandedMessageText: {
+    fontSize: 11,
+    color: colors.white,
+    lineHeight: 16,
+  },
+  expandedMessageTime: {
+    fontSize: 9,
+    color: colors.white,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  expandedSourcesToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  expandedSourcesText: {
+    fontSize: 12,
+    color: colors.white,
+    fontWeight: '500',
+  },
+  messageTimestamp: {
+    fontSize: 10,
+    color: colors.white,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  sourceChunksContainer: {
+    marginTop: 8,
+  },
+  sourceChunk: {
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  sourceChunkHeader: {
+    marginBottom: 8,
+  },
+  sourceChunkTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sourceChunkTitle: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 6,
+  },
+  sourceChunkContent: {
+    fontSize: 11,
+    color: colors.text,
+    lineHeight: 16,
+    marginBottom: 6,
+  },
+  sourceUrl: {
+    fontSize: 10,
+    color: colors.muted,
+    fontStyle: 'italic',
+  },
+  sourceExpandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
   },
 });
 

@@ -7,9 +7,10 @@ import colors, { DESIGN_TOKENS } from '@/constants/colors';
 interface GSSourcesDropdownProps {
   sources: Source[];
   textColor?: string;
+  title?: string;
 }
 
-export function GSSourcesDropdown({ sources, textColor = '#FFFFFF' }: GSSourcesDropdownProps) {
+export function GSSourcesDropdown({ sources, textColor = '#FFFFFF', title = 'See sources' }: GSSourcesDropdownProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
 
@@ -58,7 +59,7 @@ export function GSSourcesDropdown({ sources, textColor = '#FFFFFF' }: GSSourcesD
         onPress={() => setIsExpanded(!isExpanded)}
       >
         <Text style={[styles.dropdownText, { color: textColor }]}>
-          📚 See sources ({sources.length})
+          {title.includes('Potential') ? '🔍' : '📚'} {title} ({sources.length})
         </Text>
         {isExpanded ? (
           <ChevronUp size={16} color={textColor} />

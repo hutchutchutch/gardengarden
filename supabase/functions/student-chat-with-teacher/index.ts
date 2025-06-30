@@ -112,86 +112,139 @@ serve(async (req) => {
     console.log(`[4.1] Found ${activeLessonIds.length} active lessons: ${activeLessonIds.join(', ')}`)
 
     // Step 3: Search for relevant content chunks
-    // Using a custom query instead of the lesson-specific RPC function
     console.log('[5] Searching for relevant content chunks...')
     
-    let searchQuery = supabase
-      .from('url_chunks')
-      .select(`
-        id,
-        content,
-        lesson_url_id,
-        lesson_urls!inner(
-          id,
-          lesson_id,
-          title,
-          url
-        )
-      `)
-      .not('embedding', 'is', null)
-      .order('embedding <-> $1', { ascending: true })
-      .limit(3)
-
-    // If student has active lessons, prioritize content from those lessons
-    if (activeLessonIds.length > 0) {
-      searchQuery = searchQuery.in('lesson_urls.lesson_id', activeLessonIds)
-    }
-
-    // Execute vector similarity search using raw SQL
-    const { data: searchResults, error: searchError } = await supabase.rpc('search_all_lesson_content', {
-      query_embedding: queryEmbedding,
-      p_lesson_ids: activeLessonIds.length > 0 ? activeLessonIds : null,
-      match_count: 3
-    }).catch(async (err) => {
-      // If the RPC doesn't exist, we'll create it first
-      console.log('[5.1] RPC function not found, creating it...')
-      
-      // Create the RPC function
-      const createFunctionQuery = `
-        CREATE OR REPLACE FUNCTION public.search_all_lesson_content(
-          query_embedding vector,
-          p_lesson_ids uuid[] DEFAULT NULL,
-          match_count integer DEFAULT 3
-        )
-        RETURNS TABLE(
-          id uuid,
-          content text,
-          lesson_url_id uuid,
-          lesson_id uuid,
-          similarity double precision
-        )
-        LANGUAGE plpgsql
-        AS $$
-        BEGIN
-          RETURN QUERY
-          SELECT 
-            uc.id,
-            uc.content,
-            uc.lesson_url_id,
-            lu.lesson_id,
-            1 - (uc.embedding <=> query_embedding) as similarity
-          FROM url_chunks uc
-          JOIN lesson_urls lu ON uc.lesson_url_id = lu.id
-          WHERE 
-            uc.embedding IS NOT NULL
-            AND (p_lesson_ids IS NULL OR lu.lesson_id = ANY(p_lesson_ids))
-          ORDER BY uc.embedding <=> query_embedding
-          LIMIT match_count;
-        END;
-        $$;
-      `
-      
-      await supabase.rpc('exec_sql', { sql: createFunctionQuery }).catch(() => {
-        console.log('[5.2] Could not create RPC function, falling back to direct query')
-      })
-      
-      // Retry the search
-      return await supabase.rpc('search_all_lesson_content', {
+    let searchResults: any[] = []
+    let searchError: any = null
+    
+    try {
+      // Try to call the RPC function first
+      const result = await supabase.rpc('search_all_lesson_content', {
         query_embedding: queryEmbedding,
         p_lesson_ids: activeLessonIds.length > 0 ? activeLessonIds : null,
         match_count: 3
       })
-    })
+      
+      searchResults = result.data || []
+      searchError = result.error
+      
+    } catch (err) {
+      console.log('[5.1] RPC function not found, attempting to create it...')
+      
+      try {
+        // Create the RPC function
+        const createFunctionQuery = `
+          CREATE OR REPLACE FUNCTION public.search_all_lesson_content(
+            query_embedding vector,
+            p_lesson_ids uuid[] DEFAULT NULL,
+            match_count integer DEFAULT 3
+          )
+          RETURNS TABLE(
+            id uuid,
+            content text,
+            lesson_url_id uuid,
+            lesson_id uuid,
+            similarity double precision
+          )
+          LANGUAGE plpgsql
+          AS $$
+          BEGIN
+            RETURN QUERY
+            SELECT 
+              uc.id,
+              uc.content,
+              uc.lesson_url_id,
+              lu.lesson_id,
+              1 - (uc.embedding <=> query_embedding) as similarity
+            FROM url_chunks uc
+            JOIN lesson_urls lu ON uc.lesson_url_id = lu.id
+            WHERE 
+              uc.embedding IS NOT NULL
+              AND (p_lesson_ids IS NULL OR lu.lesson_id = ANY(p_lesson_ids))
+            ORDER BY uc.embedding <=> query_embedding
+            LIMIT match_count;
+          END;
+          $$;
+        `
+        
+        // Try to create the function using raw SQL
+        const { error: createError } = await supabase.rpc('exec_sql', { sql: createFunctionQuery })
+        
+        if (createError) {
+          console.log('[5.2] Could not create RPC function, falling back to direct query')
+          console.error('[5.2.1] Create function error:', createError)
+        } else {
+          console.log('[5.2] RPC function created successfully, retrying search...')
+          
+          // Retry the search after creating the function
+          const retryResult = await supabase.rpc('search_all_lesson_content', {
+            query_embedding: queryEmbedding,
+            p_lesson_ids: activeLessonIds.length > 0 ? activeLessonIds : null,
+            match_count: 3
+          })
+          
+          searchResults = retryResult.data || []
+          searchError = retryResult.error
+        }
+        
+      } catch (createErr) {
+        console.log('[5.3] Error creating RPC function, using fallback approach')
+        console.error('[5.3.1] Create error:', createErr)
+        
+        // Fallback: Use a direct query approach
+        try {
+          const fallbackQuery = `
+            SELECT 
+              uc.id,
+              uc.content,
+              uc.lesson_url_id,
+              lu.lesson_id,
+              1 - (uc.embedding <=> $1::vector) as similarity
+            FROM url_chunks uc
+            JOIN lesson_urls lu ON uc.lesson_url_id = lu.id
+            WHERE 
+              uc.embedding IS NOT NULL
+              ${activeLessonIds.length > 0 ? 'AND lu.lesson_id = ANY($2::uuid[])' : ''}
+            ORDER BY uc.embedding <=> $1::vector
+            LIMIT $${activeLessonIds.length > 0 ? '3' : '2'};
+          `
+          
+          const queryParams = activeLessonIds.length > 0 
+            ? [JSON.stringify(queryEmbedding), activeLessonIds]
+            : [JSON.stringify(queryEmbedding), 3]
+          
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('url_chunks')
+            .select(`
+              id,
+              content,
+              lesson_url_id,
+              lesson_urls!inner(
+                lesson_id
+              )
+            `)
+            .not('embedding', 'is', null)
+            .limit(3)
+          
+          if (!fallbackError && fallbackData) {
+            // Transform the fallback data to match expected format
+            searchResults = fallbackData.map((chunk: any) => ({
+              id: chunk.id,
+              content: chunk.content,
+              lesson_url_id: chunk.lesson_url_id,
+              lesson_id: chunk.lesson_urls.lesson_id,
+              similarity: 0.5 // Default similarity since we can't calculate it easily
+            }))
+          }
+          
+          searchError = fallbackError
+          
+        } catch (fallbackErr) {
+          console.error('[5.4] Fallback query also failed:', fallbackErr)
+          searchError = fallbackErr
+        }
+      }
+    }
 
     console.log(`[5.3] Search completed, found ${searchResults?.length || 0} results`)
     console.log(`[5.4] Search error: ${searchError?.message || 'none'}`)

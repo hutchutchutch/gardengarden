@@ -566,6 +566,13 @@ export default function AIChat({ analysis, photoUri, plantId, initialMode = 'ai'
                       textColor={textColor}
                     />
                   )}
+                  {msg.role === 'user' && msg.sources && msg.sources.length > 0 && (
+                    <GSSourcesDropdown 
+                      sources={msg.sources}
+                      textColor={textColor}
+                      title="Potential resources"
+                    />
+                  )}
                   <Text style={[styles.timestamp, { color: textColor, opacity: 0.7 }]}>
                     {formatTime(msg.timestamp)}
                   </Text>

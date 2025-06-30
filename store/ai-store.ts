@@ -164,9 +164,10 @@ export const useAIStore = create<AIState>()(
             };
           });
           
-          // Enrich AI messages with full source information
+          // Enrich AI messages and student messages with full source information
           const enrichedMessages: AIMessage[] = [];
           for (const msg of aiMessages) {
+            // Handle AI messages with ai_sources
             if (msg.role === 'assistant' && msg.sources && msg.sources.length > 0) {
               // Get all chunk_ids from the sources
               const chunkIds = msg.sources
@@ -175,6 +176,7 @@ export const useAIStore = create<AIState>()(
               
               if (chunkIds.length > 0) {
                 try {
+                  console.log(`Enriching AI message ${msg.id} with ${chunkIds.length} source chunks`);
                   // Fetch full chunk and lesson_url information
                   const { data: chunkData, error: chunkError } = await supabase
                     .from('url_chunks')
@@ -207,6 +209,7 @@ export const useAIStore = create<AIState>()(
                       return source;
                     });
                     
+                    console.log(`Successfully enriched AI message ${msg.id} with full source data`);
                     enrichedMessages.push({
                       ...msg,
                       sources: enrichedSources
@@ -216,10 +219,64 @@ export const useAIStore = create<AIState>()(
                     enrichedMessages.push(msg);
                   }
                 } catch (error) {
-                  console.error('Error enriching sources:', error);
+                  console.error('Error enriching AI message sources:', error);
                   enrichedMessages.push(msg);
                 }
               } else {
+                enrichedMessages.push(msg);
+              }
+            }
+            // Handle student messages with relevant_chunks
+            else if (msg.role === 'user') {
+              // Check if this message has relevant_chunks stored in the database
+              try {
+                const { data: dbMessage, error: dbError } = await supabase
+                  .from('messages')
+                  .select('relevant_chunks')
+                  .eq('id', msg.id)
+                  .single();
+
+                if (!dbError && dbMessage?.relevant_chunks && dbMessage.relevant_chunks.length > 0) {
+                  console.log(`Enriching student message ${msg.id} with ${dbMessage.relevant_chunks.length} relevant chunks`);
+                  // Fetch full chunk and lesson_url information for student message
+                  const { data: chunkData, error: chunkError } = await supabase
+                    .from('url_chunks')
+                    .select(`
+                      id,
+                      content,
+                      lesson_url_id,
+                      lesson_urls!inner(
+                        url,
+                        title
+                      )
+                    `)
+                    .in('id', dbMessage.relevant_chunks);
+
+                  if (!chunkError && chunkData) {
+                    // Transform chunk data into Source format
+                    const sources = chunkData.map((chunk: any) => ({
+                      chunk_id: chunk.id,
+                      lesson_url_id: chunk.lesson_url_id,
+                      url: (chunk.lesson_urls as any)?.url || '',
+                      title: (chunk.lesson_urls as any)?.title || 'Lesson Reference',
+                      snippet: chunk.content.substring(0, 200) + '...',
+                      content: chunk.content,
+                      similarity: 0.5 // Default similarity for existing messages
+                    }));
+                    
+                    console.log(`Successfully enriched student message ${msg.id} with relevant chunks`);
+                    enrichedMessages.push({
+                      ...msg,
+                      sources: sources
+                    });
+                  } else {
+                    enrichedMessages.push(msg);
+                  }
+                } else {
+                  enrichedMessages.push(msg);
+                }
+              } catch (error) {
+                console.error('Error enriching student message sources:', error);
                 enrichedMessages.push(msg);
               }
             } else {
@@ -310,23 +367,98 @@ export const useAIStore = create<AIState>()(
           }));
 
           if (mode === 'teacher') {
-            // Student sending message to teacher - save to database only
-            const studentMessage = await MessageService.sendMessage(currentThreadId, userDbId, content, imageUri, receiverId);
-            
-            // Update local state with the saved user message
-            const savedUserMessage: AIMessage = {
-              id: studentMessage.id,
-              role: 'user',
-              content: studentMessage.content || '',
-              timestamp: studentMessage.created_at
-            };
-            
-            set(state => ({
-              messages: [...state.messages.slice(0, -1), savedUserMessage],
-              isLoading: false
-            }));
+            // Student sending message to teacher - call student-chat-with-teacher function
+            try {
+              // Call student-chat-with-teacher function to identify relevant resources
+              const { data: resourceData, error: resourceError } = await supabase.functions.invoke('student-chat-with-teacher', {
+                body: {
+                  message: content,
+                  student_id: userDbId,
+                  thread_id: currentThreadId,
+                  create_message: true // This will save the message and return relevant chunks
+                }
+              });
 
-            console.log('Student message sent to teacher via thread:', currentThreadId);
+              if (resourceError) {
+                console.error('Error calling student-chat-with-teacher:', resourceError);
+                // Fallback: save message without resources
+                const fallbackMessage = await MessageService.sendMessage(currentThreadId, userDbId, content, imageUri, receiverId);
+                const savedUserMessage: AIMessage = {
+                  id: fallbackMessage.id,
+                  role: 'user',
+                  content: fallbackMessage.content || '',
+                  timestamp: fallbackMessage.created_at
+                };
+                
+                set(state => ({
+                  messages: [...state.messages.slice(0, -1), savedUserMessage],
+                  isLoading: false
+                }));
+              } else if (resourceData?.success) {
+                // Transform the relevant chunks into Source format
+                let sources: any[] | undefined = undefined;
+                if (resourceData.relevant_chunks && resourceData.relevant_chunks.length > 0) {
+                  try {
+                    // Get lesson URL information for the chunks
+                    const lessonUrlIds = [...new Set(resourceData.relevant_chunks.map((chunk: any) => chunk.lesson_url_id))];
+                    
+                    const { data: lessonUrls, error: urlError } = await supabase
+                      .from('lesson_urls')
+                      .select('id, url, title')
+                      .in('id', lessonUrlIds);
+
+                    if (!urlError && lessonUrls) {
+                      sources = resourceData.relevant_chunks.map((chunk: any) => {
+                        const lessonUrl = lessonUrls.find((lu: any) => lu.id === chunk.lesson_url_id);
+                        
+                        return {
+                          chunk_id: chunk.chunk_id,
+                          lesson_url_id: chunk.lesson_url_id,
+                          url: lessonUrl?.url || '',
+                          title: lessonUrl?.title || 'Lesson Reference',
+                          snippet: chunk.content.substring(0, 200) + '...',
+                          content: chunk.content,
+                          similarity: chunk.similarity
+                        };
+                      });
+                    }
+                  } catch (error) {
+                    console.error('Error fetching lesson URL data for student message sources:', error);
+                  }
+                }
+
+                // Update local state with the saved message including sources
+                const savedUserMessage: AIMessage = {
+                  id: resourceData.message_id,
+                  role: 'user',
+                  content: content,
+                  timestamp: new Date().toISOString(),
+                  sources: sources
+                };
+                
+                set(state => ({
+                  messages: [...state.messages.slice(0, -1), savedUserMessage],
+                  isLoading: false
+                }));
+
+                console.log('Student message sent to teacher with relevant resources via thread:', currentThreadId);
+              }
+            } catch (error) {
+              console.error('Error in student-chat-with-teacher flow:', error);
+              // Fallback: save message without resources
+              const fallbackMessage = await MessageService.sendMessage(currentThreadId, userDbId, content, imageUri, receiverId);
+              const savedUserMessage: AIMessage = {
+                id: fallbackMessage.id,
+                role: 'user',
+                content: fallbackMessage.content || '',
+                timestamp: fallbackMessage.created_at
+              };
+              
+              set(state => ({
+                messages: [...state.messages.slice(0, -1), savedUserMessage],
+                isLoading: false
+              }));
+            }
           } else {
             // Student sending message to AI - process with AI
             try {

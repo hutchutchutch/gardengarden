@@ -137,6 +137,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         
         setUser(userData);
+        
+        // If this is a student with a class, ensure they have plant story entries
+        if (userData.role === 'student' && userData.classId) {
+          try {
+            // Import dynamically to avoid circular dependency
+            const { PlantStoriesService } = await import('@/services/plant-stories-service');
+            await PlantStoriesService.ensureClassPlantStoriesExist(userData.id);
+          } catch (error) {
+            console.error('Error ensuring plant stories exist:', error);
+            // Don't fail user login for this
+          }
+        }
       } else {
         console.error('Failed to load user profile:', error);
         setUser(null);
@@ -251,10 +263,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getAllStudents = async (): Promise<User[]> => {
     try {
+      // If no current user, return empty array
+      if (!user) {
+        console.warn('No current user found when fetching students');
+        return [];
+      }
+
+      // If current user has no class_id, return empty array
+      if (!user.classId) {
+        console.warn('Current user has no class_id when fetching students');
+        return [];
+      }
+
       const { data: students, error } = await supabase
         .from('users')
         .select('*')
         .eq('role', 'student')
+        .eq('class_id', user.classId) // Only students from same class
         .order('name');
 
       if (error) throw error;
